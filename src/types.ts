@@ -46,6 +46,8 @@ export interface VoiceNote {
 
 export interface LearnerProfile {
   name: string;
+  /** Grammatical agreement Spanish should use for the learner (cansado / cansada). 'x' shows both. */
+  gender: 'm' | 'f' | 'x';
   proficiencySelf: 'none' | 'few-words' | 'basic' | 'conversational' | 'advanced';
   destinationCountry: string;
   destinationCity: string;
@@ -179,6 +181,8 @@ export interface AppState {
   /** Exercise-type performance, used to adapt practice mix. */
   exerciseStats: Record<string, { attempts: number; correct: number }>;
   seenRecapWeek?: string;
+  /** Learner-written personal memory associations, keyed by card key. */
+  associations: Record<string, string>;
 }
 
 export const STATE_VERSION = 1;

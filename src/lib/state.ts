@@ -32,6 +32,7 @@ export function defaultState(): AppState {
     achievements: [],
     techniqueStats: emptyTechniqueStats(),
     exerciseStats: {},
+    associations: {},
   };
 }
 

@@ -81,3 +81,13 @@ describe('active time tracking', () => {
     expect(creditFor(0, { ...base, now: 60_000, lastInteraction: 59_000 })).toBe(2_000);
   });
 });
+
+import { render } from '../src/lib/template';
+describe('dialogue templating', () => {
+  it('renders gender agreement and names', () => {
+    expect(render('¡{g:Bienvenido|Bienvenida}, {name}!', { name: 'Sam', gender: 'f' })).toBe('¡Bienvenida, Sam!');
+    expect(render('Estoy {g:cansado|cansada}', { name: 'Sam', gender: 'x' })).toBe('Estoy cansado/a');
+    expect(render('Estoy {g:cansado|cansada}', { name: 'Sam', gender: 'x' }, 'speech')).toBe('Estoy cansado');
+    expect(render('{g:el nuevo vecino|la nueva vecina}', { name: '', gender: 'x' })).toBe('el nuevo vecino / la nueva vecina');
+  });
+});

@@ -1,0 +1,227 @@
+import type { Activity, AppState, Region } from '../types';
+import { VERBS, VERB_BY_INF, conjugate, parseExample, personsForRegion, verbKey, type Tense, type Verb, type VerbExample } from '../data/verbs';
+import { regularPresent } from './answer';
+
+export type ExKind = 'type' | 'choice' | 'match' | 'build' | 'listen' | 'fix' | 'translate' | 'context' | 'serEstar';
+
+export const EX_LABEL: Record<ExKind, string> = {
+  type: 'Conjugate',
+  choice: 'Choose the form',
+  match: 'Match the pairs',
+  build: 'Build the sentence',
+  listen: 'Listen',
+  fix: 'Fix the mistake',
+  translate: 'Translate',
+  context: 'In conversation',
+  serEstar: 'Ser or estar?',
+};
+
+export interface SerEstarItem {
+  before: string;
+  after: string;
+  answer: string;
+  options: string[];
+  en: string;
+  why: string;
+  person: number;
+  verb: 'ser' | 'estar';
+}
+
+export const SER_ESTAR: SerEstarItem[] = [
+  { before: 'Mi piso', after: 'en Lavapiés.', answer: 'está', options: ['es', 'está'], en: 'My flat is in Lavapiés.', why: 'Location → estar.', person: 2, verb: 'estar' },
+  { before: 'Mi piso', after: 'pequeño pero bonito.', answer: 'es', options: ['es', 'está'], en: 'My flat is small but pretty.', why: 'Characteristics → ser.', person: 2, verb: 'ser' },
+  { before: 'Yo', after: 'de Manchester.', answer: 'soy', options: ['soy', 'estoy'], en: 'I am from Manchester.', why: 'Origin → ser.', person: 0, verb: 'ser' },
+  { before: 'Hoy', after: 'muy cansado.', answer: 'estoy', options: ['soy', 'estoy'], en: 'Today I am very tired.', why: 'Temporary state → estar.', person: 0, verb: 'estar' },
+  { before: 'Carmen', after: 'muy simpática.', answer: 'es', options: ['es', 'está'], en: 'Carmen is very nice.', why: 'Personality → ser.', person: 2, verb: 'ser' },
+  { before: 'La farmacia', after: 'al lado del café.', answer: 'está', options: ['es', 'está'], en: 'The pharmacy is next to the café.', why: 'Location of a thing → estar.', person: 2, verb: 'estar' },
+  { before: 'Javi', after: 'camarero.', answer: 'es', options: ['es', 'está'], en: 'Javi is a waiter.', why: 'Profession → ser.', person: 2, verb: 'ser' },
+  { before: '¿Cómo', after: '? — Bien, gracias.', answer: 'estás', options: ['eres', 'estás'], en: 'How are you? — Fine, thanks.', why: 'How you are right now → estar.', person: 1, verb: 'estar' },
+  { before: 'La fiesta', after: 'en casa de Marta.', answer: 'es', options: ['es', 'está'], en: 'The party is at Marta\'s place.', why: 'Where an EVENT takes place → ser (a classic exception!).', person: 2, verb: 'ser' },
+  { before: 'Nosotros', after: 'en el metro.', answer: 'estamos', options: ['somos', 'estamos'], en: 'We are on the metro.', why: 'Location → estar.', person: 3, verb: 'estar' },
+  { before: '', after: 'las ocho y media.', answer: 'Son', options: ['Son', 'Están'], en: 'It\'s half past eight.', why: 'Time → ser.', person: 5, verb: 'ser' },
+  { before: 'El café', after: 'frío.', answer: 'está', options: ['es', 'está'], en: 'The coffee is cold (it\'s gone cold).', why: 'Condition right now → estar.', person: 2, verb: 'estar' },
+  { before: 'Mis vecinos', after: 'muy ruidosos.', answer: 'son', options: ['son', 'están'], en: 'My neighbours are very noisy (by nature).', why: 'A characteristic → ser.', person: 5, verb: 'ser' },
+  { before: 'Marta', after: 'contenta con su trabajo nuevo.', answer: 'está', options: ['es', 'está'], en: 'Marta is happy with her new job.', why: 'Emotion / state → estar.', person: 2, verb: 'estar' },
+];
+
+export type Exercise =
+  | { kind: 'type' | 'choice' | 'listen'; verb: string; tense: Tense; person: number; options?: string[]; pronoun: string }
+  | { kind: 'context'; verb: string; tense: 'present'; person: number; example: VerbExample }
+  | { kind: 'match'; verb: string; tense: Tense; persons: number[]; pronouns: string[] }
+  | { kind: 'build'; verb: string; example: VerbExample; tiles: string[] }
+  | { kind: 'fix'; verb: string; example: VerbExample; wrong: string; options: string[] }
+  | { kind: 'translate'; verb: string; example: VerbExample; options: string[] }
+  | { kind: 'serEstar'; item: SerEstarItem };
+
+export type Rng = () => number;
+
+export function shuffle<T>(arr: T[], rng: Rng = Math.random): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+const PRONOUN_CHOICES: string[][] = [['yo'], ['tú'], ['él', 'ella', 'usted'], ['nosotros', 'nosotras'], ['vosotros', 'vosotras'], ['ellos', 'ellas', 'ustedes']];
+const IO_PRONOUN_CHOICES: string[][] = [['a mí'], ['a ti'], ['a él', 'a ella', 'a usted'], ['a nosotros'], ['a vosotros'], ['a ellos', 'a ellas', 'a ustedes']];
+
+export function pronounFor(verb: Verb, person: number, rng: Rng = Math.random): string {
+  const list = (verb.pronominal ? IO_PRONOUN_CHOICES : PRONOUN_CHOICES)[person];
+  return list[Math.floor(rng() * list.length)];
+}
+
+/** Distractors: other persons' forms plus the "regularised" mistake for irregular verbs. */
+export function formOptions(verb: Verb, tense: Tense, person: number, region: Region, rng: Rng = Math.random, n = 4): string[] {
+  const answer = conjugate(verb, tense, person);
+  const pool = new Set<string>();
+  if (tense === 'present' && verb.group !== 'regular' && !verb.pronominal) {
+    const reg = regularPresent(verb.inf, person);
+    if (reg !== answer) pool.add(reg);
+  }
+  for (const p of shuffle(personsForRegion(region), rng)) {
+    const f = conjugate(verb, tense, p);
+    if (f !== answer) pool.add(f);
+  }
+  if (tense === 'progressive' && !verb.pronominal) pool.add(`${['he', 'has', 'ha', 'hemos', 'habéis', 'han'][person]} ${verb.gerund}`);
+  if (tense === 'perfect' && !verb.pronominal) pool.add(`${['estoy', 'estás', 'está', 'estamos', 'estáis', 'están'][person]} ${verb.participle}`);
+  return shuffle([answer, ...[...pool].slice(0, n - 1)], rng);
+}
+
+export function tokenize(sentence: string): string[] {
+  return sentence.split(/\s+/).filter(Boolean);
+}
+
+export interface PlanInput {
+  state: AppState;
+  focus?: string[];
+  tense: Tense;
+  length?: number;
+  now?: number;
+  rng?: Rng;
+  mode?: 'ser-estar';
+}
+
+/** Picks which verbs to practise: due → weak → in-progress → new (by frequency, within level). */
+export function pickVerbs(state: AppState, tense: Tense, count: number, now = Date.now()): string[] {
+  const region = state.profile?.region ?? 'spain';
+  const persons = personsForRegion(region);
+  // Frequency order; A2 verbs come later for A1 learners naturally (they rank lower).
+  const eligible = [...VERBS].sort((a, b) => a.frequencyRank - b.frequencyRank);
+  const info = eligible.map((v) => {
+    const cards = persons.map((p) => state.srs[verbKey(v.inf, tense, p)]).filter(Boolean);
+    const attempts = cards.reduce((a, c) => a + c!.attempts, 0);
+    const correct = cards.reduce((a, c) => a + c!.correct, 0);
+    const due = cards.some((c) => c!.attempts > 0 && c!.due <= now);
+    return { inf: v.inf, attempts, acc: attempts ? correct / attempts : 1, due };
+  });
+  const due = info.filter((i) => i.due).map((i) => i.inf);
+  const weak = info.filter((i) => i.attempts >= 2 && i.acc < 0.75 && !due.includes(i.inf)).sort((a, b) => a.acc - b.acc).map((i) => i.inf);
+  const started = info.filter((i) => i.attempts > 0 && !due.includes(i.inf) && !weak.includes(i.inf)).map((i) => i.inf);
+  const fresh = info.filter((i) => i.attempts === 0).map((i) => i.inf);
+  // Mix: never more than 2 brand-new verbs per session so new forms stick.
+  const out: string[] = [];
+  for (const list of [due, weak, fresh.slice(0, 2), started, fresh.slice(2)]) for (const v of list) if (out.length < count && !out.includes(v)) out.push(v);
+  return out;
+}
+
+const KIND_PREF: Record<Activity, ExKind[]> = {
+  games: ['match', 'choice'],
+  writing: ['type', 'build'],
+  audio: ['listen'],
+  stories: ['context', 'translate'],
+  visual: ['match', 'build'],
+  speaking: ['context'],
+};
+
+/** Builds a varied session. Preferences tilt the mix but every learner sees every kind. */
+export function buildSession({ state, focus, tense, length = 12, now = Date.now(), rng = Math.random, mode }: PlanInput): Exercise[] {
+  const region = state.profile?.region ?? 'spain';
+  if (mode === 'ser-estar') {
+    const items = shuffle(SER_ESTAR, rng).slice(0, Math.min(length, SER_ESTAR.length));
+    const mixed: Exercise[] = items.map((item) => ({ kind: 'serEstar', item }));
+    // Interleave a couple of conjugation items for ser/estar themselves.
+    mixed.splice(3, 0, { kind: 'match', verb: 'ser', tense: 'present', persons: shuffle(personsForRegion(region), rng).slice(0, 4), pronouns: [] });
+    mixed.splice(7, 0, { kind: 'match', verb: 'estar', tense: 'present', persons: shuffle(personsForRegion(region), rng).slice(0, 4), pronouns: [] });
+    return fillPronouns(mixed, rng);
+  }
+
+  const verbs = focus?.length ? focus.filter((v) => VERB_BY_INF[v]) : pickVerbs(state, tense, 5, now);
+  const persons = personsForRegion(region);
+  const prefs = state.profile?.activities ?? [];
+  const base: ExKind[] = ['choice', 'type', 'match', 'listen', 'fix', 'type', 'choice', 'build'];
+  if (tense === 'present') base.push('context', 'translate', 'context');
+  const kinds: ExKind[] = [...base];
+  for (const a of prefs) for (const k of KIND_PREF[a]) if (tense === 'present' || !['context', 'translate', 'build', 'fix'].includes(k)) kinds.push(k);
+
+  const out: Exercise[] = [];
+  let i = 0;
+  // Progression within a session: recognition first, production later.
+  const order = (k: ExKind) => ({ match: 0, choice: 1, listen: 2, translate: 3, fix: 4, build: 5, context: 6, type: 7, serEstar: 1 })[k];
+  const picks = shuffle(kinds, rng).slice(0, length).sort((a, b) => order(a) - order(b));
+  for (const kind of picks) {
+    const inf = verbs[i++ % verbs.length];
+    const verb = VERB_BY_INF[inf];
+    const examples = verb.examples.filter((e) => e.person >= 0 && (region !== 'mexico' || e.person !== 4));
+    const ex = examples.length ? examples[Math.floor(rng() * examples.length)] : undefined;
+    const person = persons[Math.floor(rng() * persons.length)];
+    const needsExample = ['context', 'build', 'fix', 'translate'].includes(kind);
+    if (needsExample && (!ex || tense !== 'present')) {
+      out.push({ kind: 'type', verb: inf, tense, person, pronoun: '' });
+      continue;
+    }
+    switch (kind) {
+      case 'type':
+        out.push({ kind, verb: inf, tense, person, pronoun: '' });
+        break;
+      case 'choice':
+      case 'listen':
+        out.push({ kind, verb: inf, tense, person, options: formOptions(verb, tense, person, region, rng), pronoun: '' });
+        break;
+      case 'match':
+        out.push({ kind, verb: inf, tense, persons: shuffle(persons, rng).slice(0, 4), pronouns: [] });
+        break;
+      case 'context':
+        out.push({ kind, verb: inf, tense: 'present', person: ex!.person, example: ex! });
+        break;
+      case 'build':
+        out.push({ kind, verb: inf, example: ex!, tiles: shuffle(tokenize(parseExample(ex!).plain), rng) });
+        break;
+      case 'fix': {
+        const right = verb.present[ex!.person];
+        const wrongs = formOptions(verb, 'present', ex!.person, region, rng).filter((f) => f !== right);
+        const wrong = wrongs[0];
+        out.push({ kind, verb: inf, example: ex!, wrong, options: shuffle([right, ...wrongs.slice(1, 3)], rng) });
+        break;
+      }
+      case 'translate': {
+        const pe = parseExample(ex!);
+        const wrongForms = formOptions(verb, 'present', ex!.person, region, rng).filter((f) => f.toLowerCase() !== pe.answer.toLowerCase()).slice(0, 2);
+        const sentences = wrongForms.map((w) => pe.before + (pe.answer[0] === pe.answer[0].toUpperCase() ? w[0].toUpperCase() + w.slice(1) : w) + pe.after);
+        out.push({ kind, verb: inf, example: ex!, options: shuffle([pe.plain, ...sentences], rng) });
+        break;
+      }
+      default:
+        break;
+    }
+  }
+  return fillPronouns(out, rng);
+}
+
+function fillPronouns(list: Exercise[], rng: Rng): Exercise[] {
+  return list.map((e) => {
+    if (e.kind === 'type' || e.kind === 'choice' || e.kind === 'listen') return { ...e, pronoun: pronounFor(VERB_BY_INF[e.verb], e.person, rng) };
+    if (e.kind === 'match') return { ...e, pronouns: e.persons.map((p) => pronounFor(VERB_BY_INF[e.verb], p, rng)) };
+    return e;
+  });
+}
+
+export function cardKeyFor(e: Exercise): { key: string; person: number; tense: Tense } | null {
+  switch (e.kind) {
+    case 'type': case 'choice': case 'listen': return { key: verbKey(e.verb, e.tense, e.person), person: e.person, tense: e.tense };
+    case 'context': case 'build': case 'fix': case 'translate': return { key: verbKey(e.verb, 'present', e.example.person), person: e.example.person, tense: 'present' };
+    case 'serEstar': return { key: verbKey(e.item.verb, 'present', e.item.person), person: e.item.person, tense: 'present' };
+    case 'match': return null;
+  }
+}
