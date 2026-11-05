@@ -14,6 +14,7 @@ import { recognitionSupported, recognize, speak, speakable, stopSpeaking, region
 import { addToDeck, completeScene, recordMistake, updateDay } from '../lib/state';
 import { useStore } from '../lib/store';
 import { CITY_THEMES } from '../data/cityThemes';
+import { useAccount } from '../lib/account';
 import { confetti, haptic, sfx } from '../lib/fx';
 import { render, type TemplateCtx } from '../lib/template';
 import type { Interest } from '../types';
@@ -35,6 +36,7 @@ function overlap(a: string, b: string): number {
 export function ScenePlayer({ id }: { id: string }) {
   const scene = SCENE_BY_ID[id];
   const { state, update } = useStore();
+  const account = useAccount();
   const p = state.profile!;
   const [nodeId, setNodeId] = useState(scene?.start ?? '');
   const [history, setHistory] = useState<Line[]>([]);
@@ -236,6 +238,12 @@ export function ScenePlayer({ id }: { id: string }) {
                 {scene.vocab.map((v) => <span key={v} className="rounded-full bg-white px-3 py-1 text-sm ring-1 ring-ink/5">{vocabForm(VOCAB_BY_ID[v], p.region)}</span>)}
               </div>
             </div>
+            {account.configured && !account.session && (
+              <button onClick={() => navigate('account')} className="mt-5 flex w-full items-center gap-3 rounded-2xl bg-olive-50 p-3 text-left text-sm ring-1 ring-olive/20">
+                <Icon name="user" size={20} className="shrink-0 text-olive" />
+                <span><b>Keep this progress safe.</b> Create a free account (just a username and password) to continue on any device.</span>
+              </button>
+            )}
             <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
               <button className="btn-primary" onClick={() => navigate(`verbs?focus=${scene.verbs.slice(0, 4).join(',')}`)}><Icon name="dumbbell" size={18} /> Practise this chapter’s verbs</button>
               {nextScene ? (

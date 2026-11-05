@@ -6,7 +6,8 @@ import * as hashwasm from 'npm:hash-wasm@4.12.0';
 import postgres from 'npm:postgres@3.4.5';
 import { argon2Hasher, createHandler } from '../_shared/account-core.ts';
 
-const sql = postgres(Deno.env.get('SUPABASE_DB_URL')!, { prepare: false, max: 3 });
+// SUPABASE_DB_URL is injected automatically. LWD_DB_URL lets you point at the connection pooler instead.
+const sql = postgres(Deno.env.get('LWD_DB_URL') ?? Deno.env.get('SUPABASE_DB_URL')!, { prepare: false, max: 3 });
 
 const handler = createHandler(
   { query: (q, params = []) => sql.unsafe(q, params as never[]) as never },

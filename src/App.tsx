@@ -3,6 +3,11 @@ import { useEffect, type ReactNode } from 'react';
 import { Icon, type IconName } from './components/Icon';
 import { Toasts } from './components/ui';
 import { BrandLogo } from './components/BrandLogo';
+import { SyncBadge } from './components/SyncBadge';
+import { WelcomeBack } from './components/WelcomeBack';
+import { Account } from './screens/Account';
+import { Journey } from './screens/Journey';
+import { resumeLabel } from './lib/resume';
 import { stopSpeaking } from './lib/speech';
 import { navigate, useRoute, type RouteName } from './lib/router';
 import { useStore } from './lib/store';
@@ -30,14 +35,16 @@ const NAV: { name: RouteName; label: string; es: string; icon: IconName; mobile?
   { name: 'games', label: 'Arcade', es: 'Juegos', icon: 'sparkle', mobile: true },
   { name: 'verbs', label: 'Verbs', es: 'Verbos', icon: 'dumbbell', mobile: true },
   { name: 'review', label: 'Memory', es: 'Memoria', icon: 'brain', mobile: true },
-  { name: 'progress', label: 'Progress', es: 'Progreso', icon: 'chart', mobile: true },
+  { name: 'journey', label: 'My journey', es: 'Mi camino', icon: 'star', mobile: true },
+  { name: 'progress', label: 'Statistics', es: 'Progreso', icon: 'chart' },
   { name: 'teacher', label: 'Teacher', es: 'Profe', icon: 'mail' },
   { name: 'settings', label: 'Me', es: 'Tú', icon: 'user', mobile: true },
 ];
 
 const LEARNING: RouteName[] = ['scene', 'verbs', 'review', 'assessment', 'game'];
+const RESUMABLE: RouteName[] = ['scene', 'verbs', 'review', 'game'];
 
-function TimerPill() {
+function TimerPill({ compact }: { compact?: boolean }) {
   const { timer, state } = useStore();
   const mins = Math.floor(todaySeconds(state) / 60);
   const on = timer === 'active' || timer === 'listening';
@@ -45,13 +52,13 @@ function TimerPill() {
   return (
     <span className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium ring-1 ring-ink/10" title="Active learning time counts only on learning screens while you’re interacting (or audio is playing)." aria-live="off">
       <span className={`h-2 w-2 rounded-full ${on ? 'bg-olive animate-pulse' : 'bg-ink/25'}`} aria-hidden />
-      {label} · {mins} min today
+      {compact ? `${mins} min` : `${label} · ${mins} min today`}
     </span>
   );
 }
 
 function Shell({ children, route }: { children: ReactNode; route: RouteName }) {
-  const active = route === 'scene' || route === 'recap' ? 'world' : route === 'privacy' ? 'settings' : route === 'game' ? 'games' : route;
+  const active = route === 'scene' || route === 'recap' ? 'world' : route === 'privacy' || route === 'account' ? 'settings' : route === 'game' ? 'games' : route === 'progress' ? 'journey' : route;
   return (
     <div className="min-h-[100dvh] bg-cream">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-full focus:bg-ink focus:px-4 focus:py-2 focus:text-cream">Skip to content</a>
@@ -66,13 +73,13 @@ function Shell({ children, route }: { children: ReactNode; route: RouteName }) {
             </button>
           ))}
         </nav>
-        <div className="mt-auto"><TimerPill /></div>
+        <div className="mt-auto grid gap-2"><SyncBadge /><TimerPill /></div>
       </aside>
 
       {/* Mobile top bar */}
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-ink/5 bg-cream/85 px-4 py-2.5 backdrop-blur lg:hidden">
         <BrandLogo variant="bar" />
-        <TimerPill />
+        <div className="flex min-w-0 items-center gap-1.5"><SyncBadge compact /><TimerPill compact /></div>
       </header>
 
       <main id="main" className="px-4 pb-28 pt-5 sm:px-6 lg:ml-60 lg:px-10 lg:pb-12 lg:pt-10">
@@ -96,7 +103,7 @@ function Shell({ children, route }: { children: ReactNode; route: RouteName }) {
 }
 
 export default function App() {
-  const { ready, state, setLearning } = useStore();
+  const { ready, state, setLearning, update } = useStore();
   const route = useRoute();
 
   useEffect(() => {
@@ -104,10 +111,19 @@ export default function App() {
     stopSpeaking();
   }, [route.name, route.id, setLearning]);
 
+  // Remember the last learning activity for "Continue learning" on any device.
+  useEffect(() => {
+    if (!ready || !state.onboardingDone || !RESUMABLE.includes(route.name)) return;
+    const label = resumeLabel(route.name, route.id, route.params);
+    if (!label) return;
+    const href = `${route.name}${route.id ? `/${route.id}` : ''}${route.params.toString() ? `?${route.params.toString()}` : ''}`;
+    update((s) => (s.resume?.route === href ? s : { ...s, resume: { route: href, label, at: Date.now() } }));
+  }, [ready, state.onboardingDone, route.name, route.id, route.params, update]);
+
   // Route guards
   useEffect(() => {
     if (!ready) return;
-    const pre: RouteName[] = ['welcome', 'onboarding', 'level', 'assessment', 'dna', 'privacy'];
+    const pre: RouteName[] = ['welcome', 'onboarding', 'level', 'assessment', 'dna', 'privacy', 'account'];
     if (!state.onboardingDone && !pre.includes(route.name)) navigate('welcome');
     if (state.onboardingDone && ['welcome', 'onboarding', 'level', 'dna'].includes(route.name)) navigate('world');
   }, [ready, state.onboardingDone, route.name]);
@@ -135,9 +151,10 @@ export default function App() {
       case 'assessment': screen = <Assessment />; break;
       case 'dna': screen = <ProfileScreen onboarding />; break;
       case 'privacy': screen = <Privacy />; break;
+      case 'account': screen = <Account />; break;
       default: screen = <Welcome />;
     }
-    return <><Toasts />{screen}</>;
+    return <><Toasts /><WelcomeBack />{screen}</>;
   }
 
   switch (route.name) {
@@ -151,6 +168,8 @@ export default function App() {
     case 'privacy': screen = <Privacy />; break;
     case 'assessment': screen = <Assessment />; break;
     case 'games': screen = <Arcade />; break;
+    case 'account': screen = <Account />; break;
+    case 'journey': screen = <Journey />; break;
     case 'game':
       screen = route.id === 'order' ? <OrderUp key="order" /> : route.id === 'swipe' ? <SwipeCheck key="swipe" /> : route.id === 'serestar' ? <SerEstarDrop key="serestar" /> : <MetroRush key="metro" />;
       break;
@@ -160,6 +179,7 @@ export default function App() {
   return (
     <>
       <Toasts />
+      <WelcomeBack />
       <Shell route={route.name}>
         <AnimatePresence mode="wait">
           <motion.div key={route.name + (route.id ?? '')} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>

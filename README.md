@@ -36,6 +36,10 @@ The build uses relative paths (`base: './'`) and hash routing, so it works on an
 
 Microphone recording and installing as an app both need HTTPS (or `localhost`), and all of these hosts provide it.
 
+## Accounts & cross-device progress
+
+Optional free accounts with a username and password (no email). Progress saves automatically, works offline, and continues on any device. There's also a **My Learning Journey** page and a personal welcome-back greeting. See [`docs/ACCOUNTS.md`](docs/ACCOUNTS.md) for the security design, Supabase setup steps (about 15 minutes, free tier) and costs. Until the account server is configured, the app runs local-only exactly as before.
+
 ## Dina, your tutor
 
 An illustrated, animated Dina peeks out from behind the **Learning with Dina** logo (desktop sidebar, mobile header, welcome screen): playful entrance when the app opens, natural blinking, occasional broad smiles, a small wave, gentle head movement. Tap her and she greets you — “¡Hola! ¡Bienvenida a Learning with Dina!” (“Bienvenido” if you chose masculine agreement) — in an Argentinian Spanish voice when the device has one (es-AR, then other Latin American voices), with the greeting always shown as text too. Reduced-motion preferences turn the animation off; she still greets on tap.

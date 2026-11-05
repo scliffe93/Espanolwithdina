@@ -189,6 +189,12 @@ export interface AppState {
   seenRecapWeek?: string;
   /** Learner-written personal memory associations, keyed by card key. */
   associations: Record<string, string>;
+  /** When each editable section last changed (used to merge devices safely). */
+  meta?: { profileAt?: number; settingsAt?: number; teacherAt?: number; changedAt?: number };
+  /** Last learning activity, for "Continue learning". */
+  resume?: { route: string; label: string; at: number };
+  /** Set on a device's guest progress once it has been copied into an account. */
+  linkedTo?: string;
   /** Arcade records per game id. */
   games: Record<string, { best: number; plays: number; lastAt: number; bestCombo: number }>;
 }

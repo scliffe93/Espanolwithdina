@@ -22,9 +22,16 @@ function db() {
   return dbp;
 }
 
-export async function loadState(): Promise<AppState> {
+/** Guest (signed-out) progress lives under 'state' — the same key as before accounts existed. */
+export const GUEST_KEY = 'state';
+export const accountKey = (userId: string) => `state:u:${userId}`;
+const syncKey = (userId: string) => `sync:${userId}`;
+
+export interface SyncMeta { version: number; dirty: boolean; lastSyncedAt: number | null }
+
+export async function loadState(key = GUEST_KEY): Promise<AppState> {
   try {
-    const raw = await (await db()).get('kv', 'state');
+    const raw = await (await db()).get('kv', key);
     return migrate(raw);
   } catch (e) {
     console.warn('VIVA: could not open IndexedDB, starting fresh (progress will not persist).', e);
@@ -32,8 +39,36 @@ export async function loadState(): Promise<AppState> {
   }
 }
 
-export async function saveState(state: AppState): Promise<void> {
-  await (await db()).put('kv', state, 'state');
+export async function saveState(state: AppState, key = GUEST_KEY): Promise<void> {
+  await (await db()).put('kv', state, key);
+}
+
+export async function hasKey(key: string): Promise<boolean> {
+  try {
+    return (await (await db()).get('kv', key)) !== undefined;
+  } catch {
+    return false;
+  }
+}
+
+export async function deleteKey(key: string): Promise<void> {
+  await (await db()).delete('kv', key);
+}
+
+export async function loadSyncMeta(userId: string): Promise<SyncMeta> {
+  try {
+    return ((await (await db()).get('kv', syncKey(userId))) as SyncMeta | undefined) ?? { version: 0, dirty: false, lastSyncedAt: null };
+  } catch {
+    return { version: 0, dirty: false, lastSyncedAt: null };
+  }
+}
+
+export async function saveSyncMeta(userId: string, m: SyncMeta): Promise<void> {
+  await (await db()).put('kv', m, syncKey(userId));
+}
+
+export async function deleteSyncMeta(userId: string): Promise<void> {
+  await (await db()).delete('kv', syncKey(userId));
 }
 
 export async function saveRecording(id: string, blob: Blob): Promise<void> {

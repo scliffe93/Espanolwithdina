@@ -9,6 +9,7 @@ import {
 } from '../data/profileOptions';
 import { useTtsSpeaking } from '../hooks/useSpeech';
 import { CityPicker } from '../components/CityPicker';
+import { cloudConfigured } from '../lib/cloud';
 import { BrandLogo, TAGLINE_EN, TAGLINE_ES } from '../components/BrandLogo';
 import { CitySkyline } from '../components/CitySkyline';
 import { CITY_ORDER, CITY_THEMES } from '../data/cityThemes';
@@ -146,9 +147,13 @@ export function Welcome() {
             <button className="btn-primary px-7 py-4 text-base" onClick={() => navigate('onboarding')}>
               {resumed ? `Continue, ${state.profile!.name}` : 'Start my Spanish life'} <Icon name="arrowRight" size={18} />
             </button>
-            <button className="btn-ghost" onClick={() => navigate('privacy')}><Icon name="shield" size={18} /> Private by design</button>
+            {cloudConfigured ? (
+              <button className="btn-ghost" onClick={() => navigate('account')}><Icon name="user" size={18} /> I already have an account</button>
+            ) : (
+              <button className="btn-ghost" onClick={() => navigate('privacy')}><Icon name="shield" size={18} /> Private by design</button>
+            )}
           </motion.div>
-          <p className="mt-4 text-sm text-ink-mute">Free. No account. Everything stays on this device.</p>
+          <p className="mt-4 text-sm text-ink-mute">{cloudConfigured ? 'Free. Start right away — create an account any time to save your progress on every device.' : 'Free. No account needed. Everything stays on this device.'}</p>
         </div>
         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2, type: 'spring' }} className="shrink-0">
           <Character look={CHARACTERS.lucia.look} mood="wave" size={260} label="Lucía, your guide, waving hello" />

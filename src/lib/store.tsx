@@ -1,7 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AppState } from '../types';
 import { ACHIEVEMENTS, newlyUnlocked, type AchievementDef } from './achievements';
-import { loadState, saveState } from './db';
+import { GUEST_KEY, accountKey, hasKey, loadState, saveState } from './db';
+import { api, cloudConfigured, loadSession } from './cloud';
+import { migrate } from './state';
 import { onSpeakingChange } from './speech';
 import { addActiveSeconds, defaultState } from './state';
 import { creditFor, timerStatus, type TimerStatus } from './timeTracker';
@@ -33,7 +35,13 @@ interface StoreValue {
   state: AppState;
   ready: boolean;
   update: (fn: (s: AppState) => AppState) => void;
-  replace: (s: AppState) => void;
+  /** Replace the whole state. `silent` = came from sync, don't schedule another upload. */
+  replace: (s: AppState, opts?: { silent?: boolean }) => void;
+  /** Switch which local copy is active (guest vs an account) and show `s`. */
+  switchStorage: (key: string, s: AppState) => Promise<void>;
+  storageKey: () => string;
+  getState: () => AppState;
+  subscribe: (fn: (s: AppState) => void) => () => void;
   toasts: Toast[];
   dismissToast: (id: number) => void;
   notify: (title: string, body?: string) => void;
@@ -53,12 +61,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const saveTimer = useRef<number>();
   const toastId = useRef(0);
   const learning = useRef(false);
+  const keyRef = useRef(GUEST_KEY);
+  const listeners = useRef(new Set<(s: AppState) => void>());
 
   useEffect(() => {
-    loadState().then((s) => {
+    (async () => {
+      // A remembered account session opens that learner's own local copy.
+      const session = cloudConfigured ? loadSession() : null;
+      let s: AppState;
+      if (session) {
+        keyRef.current = accountKey(session.user.id);
+        if (await hasKey(keyRef.current)) s = await loadState(keyRef.current);
+        else {
+          // No local copy on this device yet (e.g. storage was cleared): fetch from the cloud if possible.
+          try {
+            const remote = await api.getProgress(session.token);
+            s = migrate(remote.data as AppState | null);
+          } catch {
+            s = migrate(null);
+          }
+        }
+      } else s = await loadState(GUEST_KEY);
       setState(s);
       setReady(true);
-    });
+    })();
   }, []);
 
   // City theme, Spanish variety and sound follow the learner's settings.
@@ -70,7 +96,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const persist = useCallback((s: AppState) => {
     window.clearTimeout(saveTimer.current);
-    saveTimer.current = window.setTimeout(() => saveState(s).catch((e) => console.warn('VIVA save failed', e)), 400);
+    const key = keyRef.current;
+    saveTimer.current = window.setTimeout(() => saveState(s, key).catch((e) => console.warn('Learning with Dina: local save failed', e)), 400);
   }, []);
 
   const pushToast = useCallback((t: Omit<Toast, 'id'>) => {
@@ -84,6 +111,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setState((prev) => {
         let next = fn(prev);
         if (next === prev) return prev;
+        // Remember when each editable section changed, so devices can be merged safely.
+        const now = Date.now();
+        const meta = { ...(next.meta ?? {}), changedAt: now };
+        if (next.profile !== prev.profile) meta.profileAt = now;
+        if (next.settings !== prev.settings) meta.settingsAt = now;
+        if (next.teacher !== prev.teacher) meta.teacherAt = now;
+        next = { ...next, meta };
         if (next.onboardingDone) {
           const unlocked = newlyUnlocked(next);
           if (unlocked.length) {
@@ -93,6 +127,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           }
         }
         persist(next);
+        const snapshot = next;
+        queueMicrotask(() => listeners.current.forEach((l) => l(snapshot)));
         return next;
       });
     },
@@ -100,12 +136,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const replace = useCallback(
-    (s: AppState) => {
+    (s: AppState, opts: { silent?: boolean } = {}) => {
       setState(s);
+      stateRef.current = s;
       persist(s);
+      if (!opts.silent) queueMicrotask(() => listeners.current.forEach((l) => l(s)));
     },
     [persist],
   );
+
+  const switchStorage = useCallback(async (key: string, s: AppState) => {
+    window.clearTimeout(saveTimer.current);
+    await saveState(stateRef.current, keyRef.current).catch(() => undefined); // flush the outgoing copy first
+    keyRef.current = key;
+    stateRef.current = s;
+    setState(s);
+    await saveState(s, key);
+  }, []);
 
   // ── Active learning timer ─────────────────────────────────────────
   useEffect(() => {
@@ -165,7 +212,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // Flush state on unload as a best effort.
   useEffect(() => {
-    const on = () => saveState(stateRef.current).catch(() => undefined);
+    const on = () => saveState(stateRef.current, keyRef.current).catch(() => undefined);
     window.addEventListener('pagehide', on);
     return () => window.removeEventListener('pagehide', on);
   }, []);
@@ -176,13 +223,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ready,
       update,
       replace,
+      switchStorage,
+      storageKey: () => keyRef.current,
+      getState: () => stateRef.current,
+      subscribe: (fn) => {
+        listeners.current.add(fn);
+        return () => listeners.current.delete(fn);
+      },
       toasts,
       dismissToast: (id) => setToasts((ts) => ts.filter((t) => t.id !== id)),
       notify: (title, body) => pushToast({ kind: 'info', title, body }),
       timer,
       setLearning: (on) => (learning.current = on),
     }),
-    [state, ready, update, replace, toasts, pushToast, timer],
+    [state, ready, update, replace, switchStorage, toasts, pushToast, timer],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

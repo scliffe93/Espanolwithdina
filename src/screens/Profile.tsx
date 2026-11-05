@@ -6,6 +6,7 @@ import { PageHeader, Segmented, Sheet } from '../components/ui';
 import { CHARACTERS, scenesForCity } from '../data/story';
 import { CITY_THEMES } from '../data/cityThemes';
 import { CityPicker } from '../components/CityPicker';
+import { statusLabel, useAccount } from '../lib/account';
 import {
   ACTIVITIES, DIFFICULTIES, GENDER, INTERESTS, MINUTES, PROFICIENCY, REASONS, RELOCATION, SOCIAL, blankProfile, labelOf,
 } from '../data/profileOptions';
@@ -95,6 +96,18 @@ function VoiceNoteRow({ id, label, transcript, onDelete }: { id: string; label: 
         {url && <button className="ctrl !px-2.5" onClick={() => playUrl(url)} aria-label={`Play voice note: ${label}`}><Icon name="play" size={16} /></button>}
         <button className="ctrl !px-2.5" onClick={onDelete} aria-label={`Delete voice note: ${label}`}><Icon name="trash" size={16} /></button>
       </div>
+    </div>
+  );
+}
+
+function AccountSummary() {
+  const acc = useAccount();
+  if (!acc.configured) return <p className="text-sm text-ink-soft">Online accounts aren’t switched on for this copy of the app yet — progress is saved on this device. Use export / import below to move it.</p>;
+  if (!acc.session) return <button className="btn-primary" onClick={() => navigate('account')}><Icon name="user" size={18} /> Log in or create a free account</button>;
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <p className="text-sm"><b>@{acc.session.user.username}</b> · {statusLabel(acc.status, acc.lastSyncedAt).text}</p>
+      <button className="btn-ghost" onClick={() => navigate('account')}>Manage account</button>
     </div>
   );
 }
@@ -270,6 +283,10 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
                   <li className="flex justify-between"><span>Speech recognition (transcripts)</span><b>{recognitionSupported ? 'Supported' : 'Not supported — type instead'}</b></li>
                 </ul>
                 {recognitionSupported && <p className="mt-2 text-xs text-ink-mute">Note: in Chrome and Edge, speech recognition audio is processed by the browser vendor’s online service. Recordings themselves are stored only on this device.</p>}
+              </Section>
+
+              <Section title="Account & cloud sync" hint="Log in with a username and password to save progress online and continue on any device.">
+                <AccountSummary />
               </Section>
 
               <Section title="Your data" hint="Learning with Dina has no servers and no account. Everything is stored in this browser (IndexedDB) on this device.">

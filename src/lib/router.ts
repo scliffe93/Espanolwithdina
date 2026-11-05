@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 export type RouteName =
   | 'welcome' | 'onboarding' | 'level' | 'assessment' | 'dna'
-  | 'world' | 'scene' | 'verbs' | 'review' | 'progress' | 'teacher' | 'recap' | 'settings' | 'privacy' | 'games' | 'game';
+  | 'world' | 'scene' | 'verbs' | 'review' | 'progress' | 'teacher' | 'recap' | 'settings' | 'privacy' | 'games' | 'game' | 'account' | 'journey';
 
 export interface ParsedRoute {
   name: RouteName;
