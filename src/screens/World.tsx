@@ -34,8 +34,8 @@ function skyFor(hour: number): Sky {
 
 const PLACES: Record<string, { x: number; y: number; icon: IconName; color: string }> = {
   llegada: { x: 84, y: 22, icon: 'plane', color: '#1F3A5F' },
-  piso: { x: 44, y: 66, icon: 'key', color: '#5E7149' },
-  cafe: { x: 55, y: 58, icon: 'cup', color: '#C2593A' },
+  piso: { x: 40, y: 70, icon: 'key', color: '#5E7149' },
+  cafe: { x: 59, y: 56, icon: 'cup', color: '#C2593A' },
   mercado: { x: 36, y: 38, icon: 'lock', color: '#7A7067' },
   gimnasio: { x: 66, y: 46, icon: 'lock', color: '#7A7067' },
   oficina: { x: 52, y: 30, icon: 'lock', color: '#7A7067' },
@@ -182,7 +182,8 @@ export function World() {
       </div>
 
       {/* The world */}
-      <div className="relative overflow-hidden rounded-4xl shadow-lift ring-1 ring-ink/5" style={{ aspectRatio: '1000 / 640', minHeight: 300 }}>
+      <div ref={(el) => { if (el && !el.dataset.centred) { el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2; el.dataset.centred = '1'; } }} className="-mx-4 overflow-x-auto px-4 pb-1 scrollbar-none sm:mx-0 sm:px-0" aria-label="Map of Madrid — scroll sideways to explore">
+      <div className="relative min-w-[680px] overflow-hidden rounded-4xl shadow-lift ring-1 ring-ink/5" style={{ aspectRatio: '1000 / 640' }}>
         <MadridMap sky={sky} />
         {SCENES.map((s) => {
           const pos = PLACES[s.id];
@@ -238,6 +239,8 @@ export function World() {
           )}
         </AnimatePresence>
       </div>
+      </div>
+      <p className="mt-2 text-center text-xs text-ink-mute sm:hidden">Swipe the map to explore Madrid</p>
 
       {/* Coach */}
       {top && (

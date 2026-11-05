@@ -61,7 +61,7 @@ export const VERBS: Verb[] = [
     inf: 'ser', en: 'to be (identity, origin, profession)', group: 'irregular',
     present: ['soy', 'eres', 'es', 'somos', 'sois', 'son'], gerund: 'siendo', participle: 'sido',
     frequencyRank: 1, level: 'A1',
-    origin: 'From Latin esse / sedere — the root of English "essence".',
+    origin: 'From Latin esse, "to be" — English "essence"; some forms (e.g. sido, sea) come from sedere, "to sit".',
     trick: 'SER is for what you ARE at the core: think "SERious, permanent facts" — name, nationality, job.',
     note: 'Use ser for identity, origin, profession, time and characteristics. Use estar for location and temporary states.',
     examples: [
@@ -131,7 +131,7 @@ export const VERBS: Verb[] = [
     note: 'Like tener: irregular yo (vengo) + e→ie (vienes, viene, vienen).',
     examples: [
       { es: '¿{Vienes} a la fiesta?', en: 'Are you coming to the party?', person: 1 },
-      { es: 'Yo {vengo} de Inglaterra.', en: 'I come from England.', person: 0 },
+      { es: 'Yo {vengo} del trabajo.', en: 'I\'m coming from work.', person: 0 },
     ],
   },
   {
@@ -355,7 +355,7 @@ export const VERBS: Verb[] = [
     origin: 'From Vulgar Latin comparare, "to procure".',
     trick: 'You COMPARE prices before you BUY.',
     examples: [
-      { es: 'Yo {compro} el pan en la esquina.', en: 'I buy bread on the corner.', person: 0 },
+      { es: 'Yo {compro} el pan en la panadería de la esquina.', en: 'I buy bread at the bakery on the corner.', person: 0 },
       { es: '¿Dónde {compras} la fruta?', en: 'Where do you buy fruit?', person: 1 },
     ],
   },
@@ -379,7 +379,7 @@ export const VERBS: Verb[] = [
     trick: 'You ENCOUNTER (find) things.',
     examples: [
       { es: 'No {encuentro} mis llaves.', en: 'I can\'t find my keys.', person: 0 },
-      { es: '¿{Encuentras} piso fácilmente?', en: 'Are you finding a flat easily?', person: 1 },
+      { es: '¿{Encuentras} las llaves?', en: 'Can you find the keys?', person: 1 },
     ],
   },
   {
@@ -401,7 +401,7 @@ export const VERBS: Verb[] = [
     trick: 'You SLEEP in a DORMitory.',
     examples: [
       { es: 'Yo {duermo} fatal con este calor.', en: 'I sleep terribly in this heat.', person: 0 },
-      { es: 'Madrid no {duerme}.', en: 'Madrid never sleeps.', person: 2 },
+      { es: 'Madrid nunca {duerme}.', en: 'Madrid never sleeps.', person: 2 },
     ],
   },
   {
@@ -475,7 +475,7 @@ export const VERBS: Verb[] = [
     inf: 'pagar', en: 'to pay', group: 'regular',
     present: ['pago', 'pagas', 'paga', 'pagamos', 'pagáis', 'pagan'], gerund: 'pagando', participle: 'pagado',
     frequencyRank: 36, level: 'A1',
-    origin: 'From Latin pacare, "to pacify" — via Old French, also the source of English "pay".',
+    origin: 'From Latin pacare, "to pacify" (i.e. settle a debt) — English "pay" comes from the same word via Old French.',
     trick: 'PAGar ≈ PAY.',
     examples: [
       { es: '¿Puedo {pagar} con tarjeta?', en: 'Can I pay by card?', person: -1 },
@@ -497,7 +497,7 @@ export const VERBS: Verb[] = [
     inf: 'llegar', en: 'to arrive', group: 'regular',
     present: ['llego', 'llegas', 'llega', 'llegamos', 'llegáis', 'llegan'], gerund: 'llegando', participle: 'llegado',
     frequencyRank: 38, level: 'A1',
-    origin: 'From Latin plicare, "to fold" — sailors folded the sails on arrival (also English "apply", "ply").',
+    origin: 'From Latin plicare, "to fold", via applicare, "to bring (a ship) to shore" — English "apply".',
     trick: 'Picture sailors FOLDING sails as they ARRIVE.',
     examples: [
       { es: '¿A qué hora {llegas}?', en: 'What time do you arrive?', person: 1 },

@@ -139,7 +139,7 @@ export const INTEREST_LINES: Record<Interest | 'default', { you: { es: string; e
     invite: { es: 'El jueves hay un concierto en una sala aquí al lado. ¿Te apuntas?', en: 'There\'s a gig at a venue round the corner on Thursday. Want to come?' },
   },
   art: {
-    you: { es: 'Me gusta mucho el arte y los museos.', en: 'I really like art and museums.' },
+    you: { es: 'Me gustan mucho el arte y los museos.', en: 'I really like art and museums.' },
     invite: { es: 'El Reina Sofía es gratis algunas tardes. ¿Vamos juntos un día?', en: 'The Reina Sofía is free some evenings. Shall we go together one day?' },
   },
   tech: {
@@ -302,7 +302,7 @@ export const SCENES: Scene[] = [
           { es: '¿Qué pasa, tía?', en: 'What\'s up, girl?', next: 'p4b', quality: 'off', rel: -5, category: 'register', setFlag: ['register', 'slang'], feedback: '"Tía" is slang between friends of your age. With an older neighbour you\'ve just met, it\'s far too casual.' },
         ],
       },
-      { id: 'p4', speaker: 'carmen', es: 'Muy bien, gracias. ¡Qué {g:educado|educada}! Pero llámame de tú, ¿eh? Aquí somos todos vecinos.', en: 'Very well, thank you. How polite! But call me "tú", OK? We\'re all neighbours here.', grammar: '"Llamar de tú" = to address someone informally. Older Spaniards often invite you to switch to tú — wait for the invitation.', next: 'p5' },
+      { id: 'p4', speaker: 'carmen', es: 'Muy bien, gracias. ¡Qué {g:educado|educada}! Pero háblame de tú, ¿eh? Aquí somos todos vecinos.', en: 'Very well, thank you. How polite! But call me "tú", OK? We\'re all neighbours here.', grammar: '"Hablar / tratar de tú" (tutear) = to address someone informally. Older Spaniards often invite you to switch to tú — wait for the invitation.', next: 'p5' },
       { id: 'p4b', speaker: 'carmen', es: 'Ay… ¡qué moderno! Bueno, bueno. Encantada.', en: 'Oh… how modern! Well, well. Pleased to meet you.', next: 'p5' },
       {
         id: 'p5', speaker: 'carmen',
@@ -463,7 +463,7 @@ export const SCENES: Scene[] = [
         en: 'By the way… do you have a partner, or are you enjoying the single life in Madrid?',
         grammar: '"Tener pareja" = to have a partner (gender-neutral). "Estar soltero/a" = to be single.',
         choices: [
-          { es: 'Estoy {g:soltero|soltera}, ¡y {g:abierto|abierta} a conocer gente!', en: 'I\'m single, and open to meeting people!', next: 'c9e', quality: 'great', rel: 5, feedback: 'Estar soltero/a — marital status usually takes estar in everyday speech.' },
+          { es: 'Estoy {g:soltero|soltera}, ¡y {g:abierto|abierta} a conocer gente!', en: 'I\'m single, and open to meeting people!', next: 'c9e', quality: 'great', rel: 5, feedback: 'Both "soy soltero/a" and "estoy soltero/a" are common; estar is very frequent in conversation.' },
           { es: 'Sí, tengo pareja.', en: 'Yes, I have a partner.', next: 'c10', quality: 'great', rel: 3 },
           { es: 'Prefiero no hablar de eso, ¡jaja!', en: 'I\'d rather not talk about that, haha!', next: 'c10', quality: 'great', rel: 3, feedback: 'A perfectly polite boundary.' },
         ],
@@ -484,7 +484,7 @@ export const SCENES: Scene[] = [
           { es: 'Aquí tienes. ¡Gracias, Javi!', en: 'Here you are. Thanks, Javi!', next: 'c11', quality: 'great', rel: 5 },
         ],
       },
-      { id: 'c11', speaker: 'javi', es: '¡Claro! Pues nada, ¡hasta luego! Vuelve cuando quieras.', en: 'Of course! Well then, see you later! Come back whenever you like.', grammar: '"Pues nada" is a classic Spanish filler to wrap up a conversation.', end: true },
+      { id: 'c11', speaker: 'javi', es: '¡A ti! Pues nada, ¡hasta luego! Vuelve cuando quieras.', en: 'Thank you! Well then, see you later! Come back whenever you like.', grammar: '"Pues nada" is a classic Spanish filler to wrap up a conversation.', end: true },
     ]),
   },
 ];

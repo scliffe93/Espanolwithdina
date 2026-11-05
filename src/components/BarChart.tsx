@@ -14,7 +14,7 @@ export function BarChart({ data, unit, title, highlightLast = false, height = 16
 }) {
   const [hover, setHover] = useState<number | null>(null);
   const max = Math.max(1, ...data.map((d) => d.value));
-  const nice = max <= 5 ? 5 : max <= 10 ? 10 : max <= 30 ? Math.ceil(max / 10) * 10 : Math.ceil(max / 30) * 30;
+  const nice = max <= 10 ? 10 : max <= 30 ? Math.ceil(max / 10) * 10 : Math.ceil(max / 30) * 30;
   const w = 100 / data.length;
   return (
     <figure className="relative">

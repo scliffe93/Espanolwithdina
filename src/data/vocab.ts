@@ -68,11 +68,11 @@ export const VOCAB: VocabItem[] = [
   { id: 'vale', es: 'vale', mx: 'va / sale', en: 'OK, sure', theme: 'social', level: 'A1', regionNote: 'Spain: vale (constantly!). Mexico: va, sale, órale.', origin: 'From valer, "to be worth" — Latin valere, English "valid".' },
   { id: 'encantado', es: 'encantado / encantada', en: 'pleased to meet you', theme: 'social', level: 'A1', origin: 'Literally "enchanted" — English "enchanted".' },
   { id: 'tapas', es: 'las tapas', en: 'small shared plates', theme: 'social', level: 'A1', gender: 'f', origin: 'From tapar, "to cover" — popular accounts say bread or ham once covered a drink.' },
-  { id: 'cerveza', es: 'la cerveza', mx: 'la chela (informal)', en: 'the beer', theme: 'social', level: 'A1', gender: 'f', regionNote: 'In Spain, una caña is a small draught beer. In Mexico, chela is informal for beer.' },
+  { id: 'cerveza', es: 'la cerveza', en: 'the beer', theme: 'social', level: 'A1', gender: 'f', regionNote: 'In Spain, una caña is a small draught beer. In Mexico, chela is informal for beer.' },
 
   // Everyday
   { id: 'gracias', es: 'gracias', en: 'thank you', theme: 'everyday', level: 'A1', origin: 'From Latin gratia — English "gratitude", "grace".' },
-  { id: 'perdon', es: 'perdón', en: 'sorry / excuse me', theme: 'everyday', level: 'A1', origin: 'English "pardon".' },
+  { id: 'perdon', es: 'perdón', en: 'sorry / excuse me', theme: 'everyday', level: 'A1', origin: 'From Late Latin perdonare (per + donare, "to give completely") — same root as English "pardon".' },
   { id: 'ordenador', es: 'el ordenador', mx: 'la computadora', en: 'the computer', theme: 'everyday', level: 'A1', regionNote: 'Spain: ordenador (m). Mexico: computadora (f).', trick: 'It puts your files in ORDER: ordenador.' },
   { id: 'coche', es: 'el coche', mx: 'el carro', en: 'the car', theme: 'everyday', level: 'A1', gender: 'm', regionNote: 'Spain: coche. Mexico: carro (also auto).', origin: 'Coche shares its origin with English "coach" (from Kocs, a Hungarian town).' },
   { id: 'autobus', es: 'el autobús', mx: 'el camión', en: 'the bus', theme: 'everyday', level: 'A1', gender: 'm', regionNote: 'Spain: autobús. Mexico City: camión (a city bus).' },
@@ -100,7 +100,7 @@ export const VOCAB: VocabItem[] = [
   { id: 'aplicacion', es: 'la aplicación / la app', en: 'the app', theme: 'tech', level: 'A1', gender: 'f' },
   { id: 'viaje', es: 'el viaje', en: 'the trip', theme: 'travel', level: 'A1', gender: 'm', origin: 'From Latin viaticum, provisions for a journey (via = road) — English "voyage".' },
   { id: 'playa', es: 'la playa', en: 'the beach', theme: 'travel', level: 'A1', gender: 'f', trick: 'You PLAY on the PLAYA.' },
-  { id: 'marcha', es: 'la marcha', en: 'nightlife, going out (Spain, informal)', theme: 'nightlife', level: 'B1', gender: 'f', regionNote: 'Spain: ir de marcha. Mexico: ir de fiesta / salir de antro.' },
+  { id: 'marcha', es: 'la marcha', en: 'nightlife, going out (Spain, informal)', theme: 'nightlife', level: 'B1', gender: 'f', regionNote: 'Spain: ir de marcha. Mexico: ir de fiesta / ir al antro.' },
   { id: 'discoteca', es: 'la discoteca', mx: 'el antro', en: 'the club', theme: 'nightlife', level: 'A2', regionNote: 'Spain: discoteca. Mexico: antro.' },
   { id: 'libro', es: 'el libro', en: 'the book', theme: 'reading', level: 'A1', gender: 'm', origin: 'From Latin liber — English "library".', trick: 'Watch out: librería = bookshop, biblioteca = library.' },
   { id: 'pelicula', es: 'la película', en: 'the film', theme: 'cinema', level: 'A1', gender: 'f', origin: 'Literally "little skin / film" — from Latin pellicula.' },

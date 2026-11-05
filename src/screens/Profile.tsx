@@ -45,7 +45,7 @@ function DnaStrand({ profile }: { profile: LearnerProfile }) {
   const colors = ['#C2593A', '#E3A33B', '#5E7149', '#1F3A5F', '#D98C8C'];
   return (
     <div className="relative overflow-hidden rounded-4xl bg-ink p-6 text-cream">
-      <svg className="absolute right-0 top-0 h-full w-1/2 opacity-60" viewBox="0 0 200 300" preserveAspectRatio="xMidYMid slice" aria-hidden>
+      <svg className="absolute right-0 top-0 hidden h-full w-1/3 opacity-30 md:block" viewBox="0 0 200 300" preserveAspectRatio="xMidYMid slice" aria-hidden>
         {Array.from({ length: 14 }).map((_, i) => {
           const y = 10 + i * 21;
           const x = Math.sin(i * 0.7) * 50;
