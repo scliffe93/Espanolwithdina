@@ -106,8 +106,8 @@ const story: CityStory = {
         },
         {
           id: 'a4', speaker: 'mx-ximena',
-          es: 'Para llegar a la Roma puedes tomar el Metrobús, la línea 4, o un taxi autorizado. Con tantas maletas, yo digo que taxi.',
-          en: 'To get to the Roma you can take the Metrobús, line 4, or an authorised taxi. With all those suitcases, I\'d say taxi.',
+          es: 'Para llegar a la Roma puedes tomar el Metrobús —la línea 4 y luego transbordar— o un taxi autorizado. Con tantas maletas, yo digo que taxi.',
+          en: 'To get to the Roma you can take the Metrobús (line 4, then change) or an authorised taxi. With all those suitcases, I\'d say taxi.',
           vocab: ['maleta', 'taxi'],
           grammar: 'In Mexico you TOMAR transport: tomar el Metro, el camión, un taxi. Never use "coger" — in Spain it means "to take", but in Mexico it\'s a vulgar word for sex.',
           choices: [
@@ -320,7 +320,7 @@ const story: CityStory = {
           id: 'p11', speaker: 'mx-lupe',
           es: 'Bueno, con permiso, que ya va a empezar mi telenovela. ¡{g:Bienvenido|Bienvenida} al edificio!',
           en: 'Well, excuse me, my telenovela is about to start. Welcome to the building!',
-          grammar: '"Con permiso" is also how Mexicans politely excuse themselves to leave a conversation. The reply: "Propio" or "Pásele".',
+          grammar: '"Con permiso" is also how Mexicans politely excuse themselves to leave a conversation. The usual reply: "Propio".',
           end: true,
         },
       ]),
@@ -354,7 +354,7 @@ const story: CityStory = {
           choices: [
             { es: 'Me da tres tacos al pastor, por favor.', en: 'Three tacos al pastor, please.', next: 'c3', quality: 'great', rel: 6, setFlag: ['order', 'tacos'], feedback: 'Exactly how chilangos order. "Me da…" sounds polite and natural.' },
             { es: '¿Me da tres de pastor, por favor?', en: 'Could I have three pastor ones, please?', next: 'c3', quality: 'great', rel: 6, setFlag: ['order', 'tacos'], feedback: 'Very local — "tres de pastor" drops "tacos" because it\'s obvious.' },
-            { es: '¿Me regala tres tacos, por favor?', en: 'Will you "gift" me three tacos, please?', next: 'c3', quality: 'ok', rel: 2, setFlag: ['order', 'tacos'], category: 'vocabulary', feedback: 'Beto understands, but "¿Me regala…?" sounds Colombian — he may joke "¿regalados? ¡No, joven!". In CDMX say "¿Me da…?".' },
+            { es: '¿Me regala tres tacos, por favor?', en: 'Will you "gift" me three tacos, please?', next: 'c3', quality: 'ok', rel: 2, setFlag: ['order', 'tacos'], category: 'vocabulary', feedback: 'Beto understands — "¿Me regala…?" is heard in Mexico too, but at a taquería "¿Me da…?" is the most typical way to order.' },
             { es: 'Yo quero tres tacos.', en: '(I wanting three tacos.)', next: 'c2', quality: 'off', category: 'stem-change', feedback: 'Querer is stem-changing (e→ie): yo QUIERO. Even better for ordering: "Me da tres tacos, por favor." Try again.' },
           ],
         },
@@ -420,7 +420,7 @@ const story: CityStory = {
           id: 'c8', speaker: 'mx-pau',
           es: '¡Jaja, sí! A dos cuadras. ¿Y ya conoces la ciudad?',
           en: 'Haha, yes! Two blocks away. And do you know the city yet?',
-          grammar: 'CONOCER = to know a place or person (be familiar with). SABER = to know facts or how to do something. Both are irregular in the yo form: conozco, sé. "Cuadra" = block (Spain: manzana).',
+          grammar: 'CONOCER = to know a place or person (be familiar with). SABER = to know facts or how to do something. Both are irregular in the yo form: conozco, sé. "Cuadra" = block (Spain: "a dos calles").',
           choices: [
             { es: 'Todavía no, pero quiero conocerla.', en: 'Not yet, but I want to get to know it.', next: 'c9', quality: 'great', rel: 5, feedback: 'Conocer for a place, and the pronoun attached: conocerla.' },
             { es: 'Conozco el Centro, pero nada más.', en: 'I know the Centro, but that\'s all.', next: 'c9', quality: 'great', rel: 5, feedback: 'Conozco — irregular yo form. ¡Bien!' },

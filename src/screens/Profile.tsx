@@ -3,7 +3,9 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Character } from '../components/Character';
 import { Icon } from '../components/Icon';
 import { PageHeader, Segmented, Sheet } from '../components/ui';
-import { CHARACTERS } from '../data/story';
+import { CHARACTERS, scenesForCity } from '../data/story';
+import { CITY_THEMES } from '../data/cityThemes';
+import { CityPicker } from '../components/CityPicker';
 import {
   ACTIVITIES, DIFFICULTIES, GENDER, INTERESTS, MINUTES, PROFICIENCY, REASONS, RELOCATION, SOCIAL, blankProfile, labelOf,
 } from '../data/profileOptions';
@@ -40,9 +42,9 @@ function DnaStrand({ profile }: { profile: LearnerProfile }) {
     ...profile.interests.map((i) => labelOf(INTERESTS, i)),
     ...profile.reasons.map((r) => labelOf(REASONS, r)),
     `${profile.dailyMinutes} min / day`,
-    profile.region === 'mexico' ? 'Mexican Spanish' : 'Spain Spanish',
+    CITY_THEMES[profile.city]?.varietyLabel ?? 'Spain Spanish',
   ].slice(0, 10);
-  const colors = ['#C2593A', '#E3A33B', '#5E7149', '#1F3A5F', '#D98C8C'];
+  const colors = ['rgb(var(--c-primary))', '#E3A33B', 'rgb(var(--c-tertiary))', '#1F3A5F', '#D98C8C'];
   return (
     <div className="relative overflow-hidden rounded-4xl bg-ink p-6 text-cream">
       <svg className="absolute right-0 top-0 hidden h-full w-1/3 opacity-30 md:block" viewBox="0 0 200 300" preserveAspectRatio="xMidYMid slice" aria-hidden>
@@ -119,7 +121,7 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
 
   const finish = () => {
     update((s) => ({ ...s, onboardingDone: true }));
-    navigate('scene/llegada');
+    navigate(`scene/${scenesForCity(p.city)[0]?.id ?? 'llegada'}`);
   };
 
   const doExport = async () => {
@@ -147,7 +149,7 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
   };
 
   return (
-    <div className={onboarding ? 'min-h-[100dvh] bg-[#F4E7D3] px-5 py-8' : ''}>
+    <div className={onboarding ? 'min-h-[100dvh] bg-cream-warm px-5 py-8' : ''}>
       <div className="mx-auto max-w-3xl">
         {onboarding ? (
           <div className="mb-6 flex items-center gap-4">
@@ -166,7 +168,7 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
 
         {onboarding && (
           <motion.button initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="btn-primary mt-5 w-full py-4 text-base" onClick={finish}>
-            <Icon name="plane" size={20} /> Land in Madrid
+            <Icon name="plane" size={20} /> Land in {CITY_THEMES[p.city].name}
           </motion.button>
         )}
 
@@ -184,8 +186,8 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
             <Chips label="Relocation" options={RELOCATION} values={[p.relocation]} onToggle={(v) => set({ relocation: v })} />
           </Section>
 
-          <Section title="Spanish variety" hint="Changes vocabulary (coche / carro), whether vosotros is drilled, and the guide’s voice. Argentina and Colombia are planned.">
-            <Segmented label="Spanish variety" value={p.region} onChange={(v) => set({ region: v })} options={[{ value: 'spain', label: 'Spain' }, { value: 'mexico', label: 'Mexico' }]} />
+          <Section title="Your city" hint={`${CITY_THEMES[p.city].varietyLabel}. The city sets the story, characters, colours and the Spanish you practise (vosotros in Spain, vos in Buenos Aires, ustedes in Latin America).`}>
+            <CityPicker value={p.city} onChange={(c) => set({ city: c, region: CITY_THEMES[c].variety, destinationCity: CITY_THEMES[c].name, destinationCountry: CITY_THEMES[c].country, citiesVisited: p.citiesVisited.includes(c) ? p.citiesVisited : [...p.citiesVisited, c] })} />
           </Section>
 
           <Section title="Skill levels" hint={`Source: ${p.levelSource === 'assessment' ? 'placement assessment' : p.levelSource === 'zero' ? 'starting from zero' : 'self-selected'}${p.levelOverridden ? ' · manually adjusted' : ''}. Each skill is tracked separately.`}>
@@ -242,6 +244,10 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
                     <input type="checkbox" className="h-5 w-5 accent-terracotta" checked={state.settings.streaksEnabled} onChange={(e) => update((s) => ({ ...s, settings: { ...s.settings, streaksEnabled: e.target.checked } }))} />
                   </label>
                   <label className="flex items-center justify-between gap-4">
+                    <span><span className="font-medium">Sound effects &amp; vibration</span><span className="block text-sm text-ink-mute">Chimes, combos and haptics in lessons and games.</span></span>
+                    <input type="checkbox" className="h-5 w-5 accent-terracotta" checked={state.settings.sound} onChange={(e) => update((s) => ({ ...s, settings: { ...s.settings, sound: e.target.checked } }))} />
+                  </label>
+                  <label className="flex items-center justify-between gap-4">
                     <span><span className="font-medium">Guide speaks automatically</span><span className="block text-sm text-ink-mute">Characters read their lines aloud when they appear.</span></span>
                     <input type="checkbox" className="h-5 w-5 accent-terracotta" checked={state.settings.guideVoice} onChange={(e) => update((s) => ({ ...s, settings: { ...s.settings, guideVoice: e.target.checked } }))} />
                   </label>
@@ -285,7 +291,7 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
         </div>
 
         {onboarding && (
-          <button className="btn-primary mt-6 w-full py-4 text-base" onClick={finish}><Icon name="plane" size={20} /> Land in Madrid</button>
+          <button className="btn-primary mt-6 w-full py-4 text-base" onClick={finish}><Icon name="plane" size={20} /> Land in {CITY_THEMES[p.city].name}</button>
         )}
       </div>
 

@@ -54,8 +54,10 @@ async function playScene(page, id) {
   await next(); // name
   await page.getByRole('radio', { name: /Feminine/ }).click(); await next();
   await page.getByRole('radio', { name: /A few words/ }).click(); await next();
-  await next(); // region (Spain default)
-  await next(); // destination
+  await page.getByRole('radio', { name: /Buenos Aires/ }).click();
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: `${OUT}/02b-city-picker.png` });
+  await next(); // city
   await next(); // relocation
   await page.getByRole('checkbox', { name: /Moving abroad/ }).click(); await next();
   await page.getByRole('checkbox', { name: /Football/ }).click();
@@ -83,19 +85,19 @@ async function playScene(page, id) {
   await page.getByRole('button', { name: /Use these levels/ }).click();
   await page.getByText('Here’s your Spanish DNA').waitFor();
   await page.screenshot({ path: `${OUT}/05-dna.png`, fullPage: false });
-  await page.getByRole('button', { name: /Land in Madrid/ }).first().click();
+  await page.getByRole('button', { name: /Land in/ }).first().click();
   log('assessment + DNA done');
 
   // Scenes
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${OUT}/06-scene-arrival.png` });
-  for (const id of ['llegada', 'piso', 'cafe']) {
+  for (const id of ['ba-llegada', 'ba-depto', 'ba-cafe']) {
     const ok = await playScene(page, id);
     log(`scene ${id}`, ok ? 'completed' : 'DID NOT COMPLETE');
-    if (id === 'cafe') await page.screenshot({ path: `${OUT}/08-scene-complete.png` });
+    if (id === 'ba-cafe') await page.screenshot({ path: `${OUT}/08-scene-complete.png` });
   }
   // capture a mid-scene shot with feedback
-  await page.goto(`${BASE}#/scene/piso`);
+  await page.goto(`${BASE}#/scene/ba-depto`);
   for (let k = 0; k < 2; k++) { await tap(page.locator('button', { hasText: /^Continue/ }).first()); await page.waitForTimeout(400); }
   await tap(page.locator('div.group > button.flex-1').nth(2));
   await page.waitForTimeout(300);
@@ -156,6 +158,34 @@ async function playScene(page, id) {
   }
   log('review done');
 
+  // Arcade
+  await page.goto(`${BASE}#/games`);
+  await page.waitForTimeout(900);
+  await page.screenshot({ path: `${OUT}/30-arcade.png` });
+  for (const g of ['metro', 'order', 'swipe', 'serestar']) {
+    await page.goto(`${BASE}#/game/${g}`);
+    await page.getByRole('button', { name: /¡Vamos!/ }).click();
+    await page.waitForTimeout(2900);
+    for (let k = 0; k < 14; k++) {
+      if (g === 'metro') await tap(page.locator('button[aria-label^="Carriage"]').nth(k % 4));
+      if (g === 'order') {
+        await tap(page.locator('div.grid.grid-cols-2 > button').nth(k % 8));
+        if (k % 3 === 2) await tap(page.getByRole('button', { name: /Serve/ }));
+      }
+      if (g === 'swipe') await tap(page.getByRole('button', { name: k % 2 ? 'Correct' : 'Incorrect' }));
+      if (g === 'serestar') await tap(page.getByRole('button', { name: k % 2 ? 'Ser' : 'Estar', exact: true }));
+      await page.waitForTimeout(g === 'metro' ? 500 : 650);
+      if (k === 5) await page.screenshot({ path: `${OUT}/31-game-${g}.png` });
+    }
+    // end the game
+    await tap(page.getByRole('button', { name: 'Pause' }));
+    await tap(page.getByRole('button', { name: 'End game' }));
+    await page.waitForTimeout(700);
+    const over = await page.getByRole('button', { name: /Play again/ }).isVisible().catch(() => false);
+    log(`game ${g}:`, over ? 'played to end screen' : 'NO END SCREEN');
+    if (g === 'metro') await page.screenshot({ path: `${OUT}/32-game-over.png` });
+  }
+
   // Progress + teacher
   await page.waitForTimeout(6000); // let the active timer flush
   await page.goto(`${BASE}#/progress`);
@@ -189,6 +219,18 @@ async function playScene(page, id) {
   log('stored: scenes', stored.story.completedScenes, 'activeSeconds', day.activeSeconds, 'attempted', day.exercisesAttempted, 'correct', day.exercisesCorrect, 'mistakes', day.mistakes.length, 'srs cards', Object.keys(stored.srs).length, 'achievements', stored.achievements.map((a) => a.id));
   log('mistake categories', [...new Set(day.mistakes.map((m) => m.category))]);
 
+  // City tour (desktop)
+  for (const city of ['madrid', 'barcelona', 'sevilla', 'cdmx', 'buenosaires', 'medellin']) {
+    await page.evaluate((c) => new Promise((res) => {
+      const r = indexedDB.open('viva');
+      r.onsuccess = () => { const tx = r.result.transaction('kv', 'readwrite'); const st = tx.objectStore('kv'); const g = st.get('state'); g.onsuccess = () => { const v = g.result; v.profile.city = c; v.profile.region = { madrid: 'spain', barcelona: 'spain', sevilla: 'spain', cdmx: 'mexico', buenosaires: 'argentina', medellin: 'colombia' }[c]; st.put(v, 'state'); }; tx.oncomplete = res; };
+    }), city);
+    await page.goto(`${BASE}#/world`);
+    await page.reload();
+    await page.waitForTimeout(1300);
+    await page.screenshot({ path: `${OUT}/40-city-${city}.png` });
+  }
+
   // Mobile
   const m = await browser.newContext({ ...require('playwright').devices['iPhone 13'] });
   const mp = await m.newPage();
@@ -202,7 +244,7 @@ async function playScene(page, id) {
     r.onupgradeneeded = () => { r.result.createObjectStore('kv'); r.result.createObjectStore('recordings'); };
     r.onsuccess = () => { const tx = r.result.transaction('kv', 'readwrite'); tx.objectStore('kv').put(s, 'state'); tx.oncomplete = res; };
   }), stored);
-  for (const [route, name] of [['world', '21-world-mobile'], ['scene/cafe', '22-scene-mobile'], ['verbs', '23-verbs-mobile'], ['progress', '24-progress-mobile'], ['settings', '25-dna-mobile']]) {
+  for (const [route, name] of [['world', '21-world-mobile'], ['scene/ba-cafe', '22-scene-mobile'], ['games', '26-arcade-mobile'], ['game/order', '27-order-mobile'], ['verbs', '23-verbs-mobile'], ['progress', '24-progress-mobile'], ['settings', '25-dna-mobile']]) {
     await mp.goto(`${BASE}#/${route}`);
     await mp.reload();
     await mp.waitForTimeout(1000);

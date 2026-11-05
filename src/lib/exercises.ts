@@ -25,23 +25,44 @@ export interface SerEstarItem {
   why: string;
   person: number;
   verb: 'ser' | 'estar';
+  /** The other verb is also possible with a different meaning (e.g. está simpática = being nice today). */
+  ambiguous?: boolean;
 }
 
 export const SER_ESTAR: SerEstarItem[] = [
   { before: 'Mi piso', after: 'en Lavapiés.', answer: 'está', options: ['es', 'está'], en: 'My flat is in Lavapiés.', why: 'Location → estar.', person: 2, verb: 'estar' },
-  { before: 'Mi piso', after: 'pequeño pero bonito.', answer: 'es', options: ['es', 'está'], en: 'My flat is small but pretty.', why: 'Characteristics → ser.', person: 2, verb: 'ser' },
+  { before: 'Mi piso', after: 'pequeño pero bonito.', answer: 'es', options: ['es', 'está'], en: 'My flat is small but pretty.', why: 'Characteristics → ser.', person: 2, verb: 'ser', ambiguous: true },
   { before: 'Yo', after: 'de Manchester.', answer: 'soy', options: ['soy', 'estoy'], en: 'I am from Manchester.', why: 'Origin → ser.', person: 0, verb: 'ser' },
   { before: 'Hoy', after: 'muy cansado.', answer: 'estoy', options: ['soy', 'estoy'], en: 'Today I am very tired.', why: 'Temporary state → estar.', person: 0, verb: 'estar' },
-  { before: 'Carmen', after: 'muy simpática.', answer: 'es', options: ['es', 'está'], en: 'Carmen is very nice.', why: 'Personality → ser.', person: 2, verb: 'ser' },
+  { before: 'Carmen', after: 'muy simpática.', answer: 'es', options: ['es', 'está'], en: 'Carmen is very nice.', why: 'Personality → ser.', person: 2, verb: 'ser', ambiguous: true },
   { before: 'La farmacia', after: 'al lado del café.', answer: 'está', options: ['es', 'está'], en: 'The pharmacy is next to the café.', why: 'Location of a thing → estar.', person: 2, verb: 'estar' },
   { before: 'Javi', after: 'camarero.', answer: 'es', options: ['es', 'está'], en: 'Javi is a waiter.', why: 'Profession → ser.', person: 2, verb: 'ser' },
   { before: '¿Cómo', after: '? — Bien, gracias.', answer: 'estás', options: ['eres', 'estás'], en: 'How are you? — Fine, thanks.', why: 'How you are right now → estar.', person: 1, verb: 'estar' },
   { before: 'La fiesta', after: 'en casa de Marta.', answer: 'es', options: ['es', 'está'], en: 'The party is at Marta\'s place.', why: 'Where an EVENT takes place → ser (a classic exception!).', person: 2, verb: 'ser' },
   { before: 'Nosotros', after: 'en el metro.', answer: 'estamos', options: ['somos', 'estamos'], en: 'We are on the metro.', why: 'Location → estar.', person: 3, verb: 'estar' },
   { before: '', after: 'las ocho y media.', answer: 'Son', options: ['Son', 'Están'], en: 'It\'s half past eight.', why: 'Time → ser.', person: 5, verb: 'ser' },
-  { before: 'El café', after: 'frío.', answer: 'está', options: ['es', 'está'], en: 'The coffee is cold (it\'s gone cold).', why: 'Condition right now → estar.', person: 2, verb: 'estar' },
-  { before: 'Mis vecinos', after: 'muy ruidosos.', answer: 'son', options: ['son', 'están'], en: 'My neighbours are very noisy (by nature).', why: 'A characteristic → ser.', person: 5, verb: 'ser' },
+  { before: 'El café', after: 'frío.', answer: 'está', options: ['es', 'está'], en: 'The coffee is cold (it\'s gone cold).', why: 'Condition right now → estar.', person: 2, verb: 'estar', ambiguous: true },
+  { before: 'Mis vecinos', after: 'muy ruidosos.', answer: 'son', options: ['son', 'están'], en: 'My neighbours are very noisy (by nature).', why: 'A characteristic → ser.', person: 5, verb: 'ser', ambiguous: true },
   { before: 'Marta', after: 'contenta con su trabajo nuevo.', answer: 'está', options: ['es', 'está'], en: 'Marta is happy with her new job.', why: 'Emotion / state → estar.', person: 2, verb: 'estar' },
+  { before: 'Hoy', after: 'lunes.', answer: 'es', options: ['es', 'está'], en: 'Today is Monday.', why: 'Days and dates → ser.', person: 2, verb: 'ser' },
+  { before: 'La sopa', after: 'muy caliente.', answer: 'está', options: ['es', 'está'], en: 'The soup is very hot.', why: 'A current condition → estar.', person: 2, verb: 'estar', ambiguous: true },
+  { before: 'Mi hermana', after: 'médica.', answer: 'es', options: ['es', 'está'], en: 'My sister is a doctor.', why: 'Profession → ser.', person: 2, verb: 'ser' },
+  { before: 'El concierto', after: 'en el teatro.', answer: 'es', options: ['es', 'está'], en: 'The concert is (taking place) at the theatre.', why: 'Where an event happens → ser.', person: 2, verb: 'ser' },
+  { before: 'Las llaves', after: 'en la mesa.', answer: 'están', options: ['son', 'están'], en: 'The keys are on the table.', why: 'Location of things → estar.', person: 5, verb: 'estar' },
+  { before: '¿De dónde', after: '?', answer: 'eres', options: ['eres', 'estás'], en: 'Where are you from?', why: 'Origin → ser.', person: 1, verb: 'ser' },
+  { before: 'Yo', after: 'muy contenta hoy.', answer: 'estoy', options: ['soy', 'estoy'], en: 'I\'m very happy today.', why: 'Mood right now → estar.', person: 0, verb: 'estar' },
+  { before: 'La reunión', after: 'a las diez.', answer: 'es', options: ['es', 'está'], en: 'The meeting is at ten.', why: 'Time of an event → ser.', person: 2, verb: 'ser' },
+  { before: 'Este restaurante', after: 'muy caro.', answer: 'es', options: ['es', 'está'], en: 'This restaurant is very expensive.', why: 'A characteristic → ser.', person: 2, verb: 'ser', ambiguous: true },
+  { before: 'Los niños', after: 'dormidos.', answer: 'están', options: ['son', 'están'], en: 'The children are asleep.', why: 'A resulting state → estar.', person: 5, verb: 'estar' },
+  { before: 'Mi abuelo', after: 'muy mayor.', answer: 'es', options: ['es', 'está'], en: 'My grandfather is very old.', why: 'Age as a characteristic → ser.', person: 2, verb: 'ser', ambiguous: true },
+  { before: 'La tienda', after: 'cerrada.', answer: 'está', options: ['es', 'está'], en: 'The shop is closed.', why: 'A current state → estar.', person: 2, verb: 'estar' },
+  { before: '', after: 'las tres de la tarde.', answer: 'Son', options: ['Son', 'Están'], en: 'It\'s three in the afternoon.', why: 'Telling the time → ser.', person: 5, verb: 'ser' },
+  { before: 'Nosotros', after: 'de vacaciones.', answer: 'estamos', options: ['somos', 'estamos'], en: 'We\'re on holiday.', why: 'Estar de vacaciones — a temporary situation.', person: 3, verb: 'estar' },
+  { before: 'Esta mesa', after: 'de madera.', answer: 'es', options: ['es', 'está'], en: 'This table is made of wood.', why: 'Material → ser.', person: 2, verb: 'ser' },
+  { before: '¿Cómo', after: 'tu madre? — Bien, gracias.', answer: 'está', options: ['es', 'está'], en: 'How is your mother? — Fine, thanks.', why: 'How someone is doing → estar.', person: 2, verb: 'estar' },
+  { before: 'Juan', after: 'aburrido: no hay nada que hacer.', answer: 'está', options: ['es', 'está'], en: 'Juan is bored: there\'s nothing to do.', why: 'Estar aburrido = to be bored (a feeling).', person: 2, verb: 'estar' },
+  { before: 'Esta película', after: 'aburrida.', answer: 'es', options: ['es', 'está'], en: 'This film is boring.', why: 'Ser aburrido = to be boring (a characteristic).', person: 2, verb: 'ser', ambiguous: true },
+  { before: 'Mi casa', after: 'cerca del metro.', answer: 'está', options: ['es', 'está'], en: 'My house is near the metro.', why: 'Location → estar.', person: 2, verb: 'estar' },
 ];
 
 export type Exercise =

@@ -6,7 +6,7 @@ import { useSay } from '../hooks/useSpeech';
 import { playUrl, useRecorder } from '../hooks/useRecorder';
 import { useStore, mediaEnd, mediaStart } from '../lib/store';
 import { addSpeakingAttempt } from '../lib/state';
-import { recognitionSupported, recognize, speakable, ttsSupported } from '../lib/speech';
+import { recognitionSupported, recognize, speakable, ttsSupported, regionLang } from '../lib/speech';
 import { normalize, stripAccents } from '../lib/answer';
 
 /** Word overlap between what the recogniser heard and the target — shown as words, never as a "score". */
@@ -40,7 +40,7 @@ export function SpeakControls({
   const recRef = useRef<{ stop(): void } | null>(null);
   const rec = useRecorder(recordId, { maxMs: 20_000, onSaved: () => update((s) => addSpeakingAttempt(s)) });
   const spoken = speakable(es);
-  const lang = state.profile?.region === 'mexico' ? 'es-MX' : 'es-ES';
+  const lang = regionLang(state.profile?.region ?? 'spain');
 
   useEffect(() => {
     setPanel(autoShowMeaning ? 'meaning' : 'none');

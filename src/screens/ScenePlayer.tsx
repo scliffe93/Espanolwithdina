@@ -10,9 +10,11 @@ import { VOCAB_BY_ID, vocabForm, vocabKey } from '../data/vocab';
 import { useTtsSpeaking } from '../hooks/useSpeech';
 import { normalize, stripAccents, CATEGORY_LABEL } from '../lib/answer';
 import { navigate } from '../lib/router';
-import { recognitionSupported, recognize, speak, speakable, stopSpeaking } from '../lib/speech';
+import { recognitionSupported, recognize, speak, speakable, stopSpeaking, regionLang } from '../lib/speech';
 import { addToDeck, completeScene, recordMistake, updateDay } from '../lib/state';
 import { useStore } from '../lib/store';
+import { CITY_THEMES } from '../data/cityThemes';
+import { confetti, haptic, sfx } from '../lib/fx';
 import { render, type TemplateCtx } from '../lib/template';
 import type { Interest } from '../types';
 
@@ -121,7 +123,7 @@ export function ScenePlayer({ id }: { id: string }) {
       }
       return n;
     });
-    if (c.quality !== 'off') speak(r(c.es, 'speech'), { region: p.region, rate: state.settings.speechRate });
+    if (c.quality === 'off') { sfx.wrong(); haptic([30, 30, 30]); } else { if (c.quality === 'great') sfx.correct(); speak(r(c.es, 'speech'), { region: p.region, rate: state.settings.speechRate }); };
     setFeedback({ choice: c, retry });
   };
 
@@ -167,7 +169,7 @@ export function ScenePlayer({ id }: { id: string }) {
     if (!recognitionSupported || listening) return;
     setListening(true);
     setHeard(null);
-    const h = recognize(p.region === 'mexico' ? 'es-MX' : 'es-ES', (alts, final) => {
+    const h = recognize(regionLang(p.region), (alts, final) => {
       setHeard(alts[0]);
       if (!final) return;
       if (node?.input) {
@@ -200,6 +202,8 @@ export function ScenePlayer({ id }: { id: string }) {
       return n;
     });
     setFinished(true);
+    sfx.win();
+    confetti({ count: 150 });
   };
 
   // ─── Completion ───
@@ -208,7 +212,7 @@ export function ScenePlayer({ id }: { id: string }) {
     return (
       <div className="mx-auto max-w-2xl">
         <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="card overflow-hidden">
-          <div className="relative h-40 overflow-hidden"><SceneBackdrop id={scene.id} /><div className="absolute inset-0 bg-gradient-to-t from-white via-white/30" /></div>
+          <div className="relative h-40 overflow-hidden"><SceneBackdrop id={scene.backdrop} label={scene.place.split(',')[0]} /><div className="absolute inset-0 bg-gradient-to-t from-white via-white/30" /></div>
           <div className="-mt-12 p-6 pt-0 text-center">
             <div className="relative mx-auto w-fit"><Character look={CHARACTERS[scene.cast[0]].look} mood="happy" size={110} /></div>
             <p className="eyebrow mt-2">Chapter complete</p>
@@ -216,7 +220,7 @@ export function ScenePlayer({ id }: { id: string }) {
             <p className="mx-auto mt-2 max-w-md text-ink-soft">{scene.outro}</p>
             <div className="mt-5 grid grid-cols-3 gap-2">
               <div className="rounded-2xl bg-olive-50 p-3"><b className="block text-2xl text-olive">{stats.great}</b><span className="text-xs">natural replies</span></div>
-              <div className="rounded-2xl bg-saffron-50 p-3"><b className="block text-2xl text-[#a66d12]">{stats.ok}</b><span className="text-xs">OK replies</span></div>
+              <div className="rounded-2xl bg-saffron-50 p-3"><b className="block text-2xl text-ink-soft">{stats.ok}</b><span className="text-xs">OK replies</span></div>
               <div className="rounded-2xl bg-terracotta-50 p-3"><b className="block text-2xl text-terracotta">{stats.off}</b><span className="text-xs">learning moments</span></div>
             </div>
             {Object.keys(rel).length > 0 && (
@@ -237,7 +241,7 @@ export function ScenePlayer({ id }: { id: string }) {
               {nextScene ? (
                 <button className="btn-ghost" onClick={() => navigate('world')}><Icon name="map" size={18} /> {nextScene.title} unlocked</button>
               ) : (
-                <button className="btn-ghost" onClick={() => navigate('world')}><Icon name="map" size={18} /> Back to Madrid</button>
+                <button className="btn-ghost" onClick={() => navigate('world')}><Icon name="map" size={18} /> Back to {CITY_THEMES[scene.city].name}</button>
               )}
             </div>
           </div>
@@ -258,13 +262,13 @@ export function ScenePlayer({ id }: { id: string }) {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <button className="ctrl" onClick={() => navigate('world')}><Icon name="arrowLeft" size={16} /> Madrid</button>
+        <button className="ctrl" onClick={() => navigate('world')}><Icon name="arrowLeft" size={16} /> {CITY_THEMES[scene.city].name}</button>
         <div className="text-right"><p className="eyebrow">{scene.place}</p><p className="font-display text-lg font-semibold">{scene.titleEs}</p></div>
       </div>
 
       {/* Stage */}
       <div className="relative h-56 overflow-hidden rounded-4xl shadow-lift sm:h-72">
-        <SceneBackdrop id={scene.id} />
+        <SceneBackdrop id={scene.backdrop} label={scene.place.split(',')[0]} />
         <AnimatePresence mode="wait">
           {speaker ? (
             <motion.div key={speaker.id} className="absolute bottom-0 left-1/2 -translate-x-1/2" initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}>

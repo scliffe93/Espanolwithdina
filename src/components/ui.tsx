@@ -3,7 +3,7 @@ import { useEffect, type ReactNode } from 'react';
 import { Icon, type IconName } from './Icon';
 import { useStore } from '../lib/store';
 
-export function ProgressRing({ value, size = 64, stroke = 7, color = '#C2593A', track = 'rgba(30,27,24,.08)', children, label }: {
+export function ProgressRing({ value, size = 64, stroke = 7, color = 'rgb(var(--c-primary))', track = 'rgba(30,27,24,.08)', children, label }: {
   value: number; size?: number; stroke?: number; color?: string; track?: string; children?: ReactNode; label?: string;
 }) {
   const r = (size - stroke) / 2;
@@ -14,7 +14,7 @@ export function ProgressRing({ value, size = 64, stroke = 7, color = '#C2593A', 
       <svg width={size} height={size} className="-rotate-90">
         <circle cx={size / 2} cy={size / 2} r={r} stroke={track} strokeWidth={stroke} fill="none" />
         <motion.circle
-          cx={size / 2} cy={size / 2} r={r} stroke={color} strokeWidth={stroke} fill="none" strokeLinecap="round"
+          cx={size / 2} cy={size / 2} r={r} style={{ stroke: color }} strokeWidth={stroke} fill="none" strokeLinecap="round"
           strokeDasharray={c}
           initial={{ strokeDashoffset: c }}
           animate={{ strokeDashoffset: c * (1 - v) }}
@@ -47,7 +47,7 @@ export function PageHeader({ eyebrow, title, subtitle, right }: { eyebrow?: stri
   );
 }
 
-export function Sheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
+export function Sheet({ open, onClose, title, children, wide }: { open: boolean; onClose: () => void; title: string; children: ReactNode; wide?: boolean }) {
   useEffect(() => {
     if (!open) return;
     const on = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -61,7 +61,7 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
           <div className="absolute inset-0 bg-ink/40 backdrop-blur-sm" onClick={onClose} />
           <motion.div
             role="dialog" aria-modal="true" aria-label={title}
-            className="relative max-h-[88vh] w-full overflow-y-auto rounded-t-4xl bg-cream p-6 pb-safe shadow-lift sm:max-w-lg sm:rounded-4xl"
+            className={`relative max-h-[88vh] w-full overflow-y-auto rounded-t-4xl bg-cream p-6 pb-safe shadow-lift sm:rounded-4xl ${wide ? 'sm:max-w-4xl' : 'sm:max-w-lg'}`}
             initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 320, damping: 30 }}
           >

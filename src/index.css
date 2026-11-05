@@ -8,6 +8,13 @@
 @layer base {
   :root {
     color-scheme: light;
+    /* Madrid defaults; replaced at runtime by applyCityTheme() */
+    --c-primary: 194 89 58; --c-primary-dark: 150 63 38; --c-primary-light: 224 122 85; --c-primary-50: 251 237 230;
+    --c-secondary: 227 163 59; --c-secondary-light: 242 198 110; --c-secondary-50: 253 244 226;
+    --c-tertiary: 94 113 73; --c-tertiary-light: 141 164 111; --c-tertiary-50: 238 242 232;
+    --c-deep: 31 58 95; --c-deep-light: 60 106 158; --c-deep-50: 231 238 246;
+    --c-rose: 217 140 140; --c-rose-50: 250 237 236;
+    --c-bg: 251 246 238; --c-bg-100: 246 238 225; --c-bg-200: 239 227 207; --c-bg-warm: 244 231 211;
     --safe-bottom: env(safe-area-inset-bottom, 0px);
   }
   html {
@@ -16,6 +23,7 @@
   }
   body {
     @apply bg-cream text-ink font-sans antialiased;
+    transition: background-color .6s ease;
     font-feature-settings: 'ss01', 'cv11';
   }
   h1, h2, h3, .font-display {
@@ -24,11 +32,11 @@
     letter-spacing: -0.015em;
   }
   :focus-visible {
-    outline: 2.5px solid #1F3A5F;
+    outline: 2.5px solid rgb(var(--c-deep));
     outline-offset: 2px;
     border-radius: 10px;
   }
-  ::selection { background: #F2C66E; }
+  ::selection { background: rgb(var(--c-secondary-light)); }
 }
 
 @layer components {
@@ -36,7 +44,12 @@
     @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-[15px] font-semibold transition
       active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none select-none;
   }
-  .btn-primary { @apply btn bg-terracotta text-white shadow-soft hover:bg-terracotta-dark; }
+  .btn-primary {
+    @apply btn bg-terracotta text-white hover:brightness-110;
+    box-shadow: 0 4px 0 0 rgb(var(--c-primary-dark)), 0 12px 24px -10px rgb(var(--c-primary) / .6);
+    transform: translateY(0);
+  }
+  .btn-primary:active { box-shadow: 0 1px 0 0 rgb(var(--c-primary-dark)); transform: translateY(3px) scale(.99); }
   .btn-dark { @apply btn bg-ink text-cream hover:bg-ink-soft; }
   .btn-ghost { @apply btn bg-white/70 text-ink ring-1 ring-ink/10 hover:bg-white; }
   .btn-soft { @apply btn bg-cream-100 text-ink hover:bg-cream-200; }
@@ -75,3 +88,11 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Signature city patterns (very subtle) */
+html[data-city='madrid'] body { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Cpath d='M24 6 L42 24 L24 42 L6 24 Z' fill='none' stroke='%2523C2593A' stroke-opacity='.07' stroke-width='2'/%3E%3Ccircle cx='24' cy='24' r='3' fill='%2523E3A33B' fill-opacity='.10'/%3E%3C/svg%3E"); }
+html[data-city='barcelona'] body { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cpath d='M0 0 L28 6 L20 30 L0 22Z' fill='%25231D6FB8' fill-opacity='.06'/%3E%3Cpath d='M34 4 L62 0 L58 26 L30 22Z' fill='%2523F2B530' fill-opacity='.08'/%3E%3Cpath d='M66 8 L90 2 L90 30 L70 32Z' fill='%25231E9E8F' fill-opacity='.06'/%3E%3Cpath d='M4 34 L26 38 L22 62 L2 58Z' fill='%2523E86F5A' fill-opacity='.06'/%3E%3Cpath d='M32 30 L60 34 L56 60 L34 64Z' fill='%25231D6FB8' fill-opacity='.05'/%3E%3Cpath d='M64 38 L88 36 L86 62 L66 60Z' fill='%2523F2B530' fill-opacity='.07'/%3E%3Cpath d='M0 66 L24 70 L20 90 L0 90Z' fill='%25231E9E8F' fill-opacity='.06'/%3E%3Cpath d='M30 70 L58 66 L62 90 L28 90Z' fill='%2523E86F5A' fill-opacity='.05'/%3E%3Cpath d='M66 66 L90 68 L90 90 L68 90Z' fill='%25231D6FB8' fill-opacity='.06'/%3E%3C/svg%3E"); }
+html[data-city='sevilla'] body { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Crect x='1' y='1' width='54' height='54' fill='none' stroke='%25231B4F8C' stroke-opacity='.07' stroke-width='2'/%3E%3Cpath d='M28 8 C34 20 36 22 48 28 C36 34 34 36 28 48 C22 36 20 34 8 28 C20 22 22 20 28 8Z' fill='%25231B4F8C' fill-opacity='.06'/%3E%3Ccircle cx='28' cy='28' r='4' fill='%2523E3A21A' fill-opacity='.14'/%3E%3Cpath d='M0 0 L8 0 L0 8Z M56 0 L48 0 L56 8Z M0 56 L8 56 L0 48Z M56 56 L48 56 L56 48Z' fill='%2523B23A2B' fill-opacity='.08'/%3E%3C/svg%3E"); }
+html[data-city='cdmx'] body { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='70'%3E%3Cpath d='M0 6 Q60 18 120 6' stroke='%2523000' stroke-opacity='.06' fill='none'/%3E%3Cpath d='M6 8 L30 12 L28 40 L18 46 L8 40Z' fill='%2523D6247A' fill-opacity='.07'/%3E%3Cpath d='M36 13 L60 14 L60 42 L50 48 L38 42Z' fill='%2523F29A1A' fill-opacity='.08'/%3E%3Cpath d='M66 14 L90 12 L92 40 L82 46 L70 42Z' fill='%252313896F' fill-opacity='.07'/%3E%3Cpath d='M96 11 L118 7 L120 34 L110 40 L100 36Z' fill='%25231D3F9E' fill-opacity='.06'/%3E%3Ccircle cx='18' cy='26' r='4' fill='%2523fff' fill-opacity='.5'/%3E%3Ccircle cx='48' cy='28' r='4' fill='%2523fff' fill-opacity='.5'/%3E%3Ccircle cx='80' cy='27' r='4' fill='%2523fff' fill-opacity='.5'/%3E%3C/svg%3E"); }
+html[data-city='buenosaires'] body { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cpath d='M10 40 C10 20 30 20 30 34 C30 44 20 44 20 36' fill='none' stroke='%25232C6FB7' stroke-opacity='.08' stroke-width='2.5' stroke-linecap='round'/%3E%3Cpath d='M70 40 C70 60 50 60 50 46 C50 36 60 36 60 44' fill='none' stroke='%2523C8102E' stroke-opacity='.07' stroke-width='2.5' stroke-linecap='round'/%3E%3Ccircle cx='40' cy='40' r='3' fill='%2523F6B40E' fill-opacity='.16'/%3E%3C/svg%3E"); }
+html[data-city='medellin'] body { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Cg fill='%2523C2307A' fill-opacity='.07'%3E%3Ccircle cx='16' cy='10' r='5'/%3E%3Ccircle cx='22' cy='16' r='5'/%3E%3Ccircle cx='16' cy='22' r='5'/%3E%3Ccircle cx='10' cy='16' r='5'/%3E%3C/g%3E%3Ccircle cx='16' cy='16' r='3' fill='%2523F5C518' fill-opacity='.2'/%3E%3Cg fill='%25232D8A4E' fill-opacity='.07'%3E%3Ccircle cx='48' cy='42' r='4'/%3E%3Ccircle cx='53' cy='47' r='4'/%3E%3Ccircle cx='48' cy='52' r='4'/%3E%3Ccircle cx='43' cy='47' r='4'/%3E%3C/g%3E%3C/svg%3E"); }

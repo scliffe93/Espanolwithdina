@@ -18,17 +18,23 @@ import { Progress } from './screens/Progress';
 import { Teacher } from './screens/Teacher';
 import { Recap } from './screens/Recap';
 import { Privacy } from './screens/Privacy';
+import { Arcade } from './screens/games/Arcade';
+import { MetroRush } from './screens/games/MetroRush';
+import { OrderUp } from './screens/games/OrderUp';
+import { SwipeCheck } from './screens/games/SwipeCheck';
+import { SerEstarDrop } from './screens/games/SerEstarDrop';
 
-const NAV: { name: RouteName; label: string; es: string; icon: IconName }[] = [
-  { name: 'world', label: 'Madrid', es: 'Madrid', icon: 'map' },
-  { name: 'verbs', label: 'Verbs', es: 'Verbos', icon: 'dumbbell' },
-  { name: 'review', label: 'Memory', es: 'Memoria', icon: 'brain' },
-  { name: 'progress', label: 'Progress', es: 'Progreso', icon: 'chart' },
+const NAV: { name: RouteName; label: string; es: string; icon: IconName; mobile?: boolean }[] = [
+  { name: 'world', label: 'My city', es: 'Ciudad', icon: 'map', mobile: true },
+  { name: 'games', label: 'Arcade', es: 'Juegos', icon: 'sparkle', mobile: true },
+  { name: 'verbs', label: 'Verbs', es: 'Verbos', icon: 'dumbbell', mobile: true },
+  { name: 'review', label: 'Memory', es: 'Memoria', icon: 'brain', mobile: true },
+  { name: 'progress', label: 'Progress', es: 'Progreso', icon: 'chart', mobile: true },
   { name: 'teacher', label: 'Teacher', es: 'Profe', icon: 'mail' },
-  { name: 'settings', label: 'Me', es: 'Tú', icon: 'user' },
+  { name: 'settings', label: 'Me', es: 'Tú', icon: 'user', mobile: true },
 ];
 
-const LEARNING: RouteName[] = ['scene', 'verbs', 'review', 'assessment'];
+const LEARNING: RouteName[] = ['scene', 'verbs', 'review', 'assessment', 'game'];
 
 function TimerPill() {
   const { timer, state } = useStore();
@@ -44,20 +50,21 @@ function TimerPill() {
 }
 
 function Shell({ children, route }: { children: ReactNode; route: RouteName }) {
-  const active = route === 'scene' || route === 'recap' ? 'world' : route === 'privacy' ? 'settings' : route;
+  const active = route === 'scene' || route === 'recap' ? 'world' : route === 'privacy' ? 'settings' : route === 'game' ? 'games' : route;
   return (
     <div className="min-h-[100dvh] bg-cream">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-full focus:bg-ink focus:px-4 focus:py-2 focus:text-cream">Skip to content</a>
       {/* Desktop side rail */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-ink/5 bg-[#F4E7D3]/60 p-5 backdrop-blur lg:flex">
         <button onClick={() => navigate('world')} className="mb-8 text-left">
-          <span className="font-display text-3xl font-semibold">VIVA</span>
+          <span className="font-display text-3xl font-semibold text-terracotta">VIVA</span>
           <span className="block font-display text-sm italic text-ink-mute">Learn Spanish. Live Spanish.</span>
         </button>
         <nav className="grid gap-1" aria-label="Main">
           {NAV.map((n) => (
-            <button key={n.name} onClick={() => navigate(n.name)} aria-current={active === n.name ? 'page' : undefined} className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left font-medium transition ${active === n.name ? 'bg-ink text-cream' : 'text-ink-soft hover:bg-white/70 hover:text-ink'}`}>
-              <Icon name={n.icon} size={20} /> {n.label} <span className={`ml-auto text-xs ${active === n.name ? 'text-cream/60' : 'text-ink-mute'}`}>{n.es}</span>
+            <button key={n.name} onClick={() => navigate(n.name)} aria-current={active === n.name ? 'page' : undefined} className={`relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left font-medium transition ${active === n.name ? 'text-white' : 'text-ink-soft hover:bg-white/70 hover:text-ink'}`}>
+              {active === n.name && <motion.span layoutId="rail-pill" className="absolute inset-0 rounded-2xl bg-terracotta shadow-glow" transition={{ type: 'spring', stiffness: 400, damping: 32 }} />}
+              <span className="relative flex w-full items-center gap-3"><Icon name={n.icon} size={20} /> {n.label} <span className={`ml-auto text-xs ${active === n.name ? 'text-white/70' : 'text-ink-mute'}`}>{n.es}</span></span>
             </button>
           ))}
         </nav>
@@ -66,7 +73,7 @@ function Shell({ children, route }: { children: ReactNode; route: RouteName }) {
 
       {/* Mobile top bar */}
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-ink/5 bg-cream/85 px-4 py-2.5 backdrop-blur lg:hidden">
-        <button onClick={() => navigate('world')} className="font-display text-2xl font-semibold">VIVA</button>
+        <button onClick={() => navigate('world')} className="font-display text-2xl font-semibold text-terracotta">VIVA</button>
         <TimerPill />
       </header>
 
@@ -77,10 +84,11 @@ function Shell({ children, route }: { children: ReactNode; route: RouteName }) {
       {/* Mobile tab bar */}
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-ink/5 bg-cream/90 pb-safe backdrop-blur lg:hidden" aria-label="Main">
         <div className="mx-auto grid max-w-lg grid-cols-6">
-          {NAV.map((n) => (
-            <button key={n.name} onClick={() => navigate(n.name)} aria-current={active === n.name ? 'page' : undefined} className={`flex flex-col items-center gap-0.5 pt-2 text-[10.5px] font-medium ${active === n.name ? 'text-terracotta' : 'text-ink-mute'}`}>
-              <Icon name={n.icon} size={22} />
-              {n.es}
+          {NAV.filter((n) => n.mobile).map((n) => (
+            <button key={n.name} onClick={() => navigate(n.name)} aria-current={active === n.name ? 'page' : undefined} className={`relative flex flex-col items-center gap-0.5 pt-2 text-[10.5px] font-semibold ${active === n.name ? 'text-terracotta' : 'text-ink-mute'}`}>
+              {active === n.name && <motion.span layoutId="tab-pill" className="absolute inset-x-2 top-1 h-9 rounded-2xl bg-terracotta-50" transition={{ type: 'spring', stiffness: 400, damping: 30 }} />}
+              <span className="relative"><Icon name={n.icon} size={22} /></span>
+              <span className="relative">{n.es}</span>
             </button>
           ))}
         </div>
@@ -144,6 +152,10 @@ export default function App() {
     case 'settings': screen = <ProfileScreen />; break;
     case 'privacy': screen = <Privacy />; break;
     case 'assessment': screen = <Assessment />; break;
+    case 'games': screen = <Arcade />; break;
+    case 'game':
+      screen = route.id === 'order' ? <OrderUp key="order" /> : route.id === 'swipe' ? <SwipeCheck key="swipe" /> : route.id === 'serestar' ? <SerEstarDrop key="serestar" /> : <MetroRush key="metro" />;
+      break;
     default: screen = <World />;
   }
 

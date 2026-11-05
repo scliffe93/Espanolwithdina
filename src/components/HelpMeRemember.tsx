@@ -86,7 +86,7 @@ export function HelpMeRemember({ source, onReveal, onHintUsed, compact }: { sour
       <AnimatePresence initial={false}>
         {hints.slice(0, step).map((h, i) => (
           <motion.div key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mb-2 text-sm">
-            <span className={`mr-2 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${h.genuine ? 'bg-olive/15 text-olive' : 'bg-saffron/25 text-[#8a5a12]'}`}>{h.label}</span>
+            <span className={`mr-2 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${h.genuine ? 'bg-olive/15 text-olive' : 'bg-saffron/25 text-ink-soft'}`}>{h.label}</span>
             <span className={h.technique === 'first-letters' ? 'font-mono tracking-wider' : ''}>{h.text}</span>
           </motion.div>
         ))}

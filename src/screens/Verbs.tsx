@@ -12,6 +12,7 @@ import { EX_LABEL, buildSession, cardKeyFor, shuffle, type Exercise } from '../l
 import { navigate } from '../lib/router';
 import { completeLesson, recordAttempt } from '../lib/state';
 import { useStore } from '../lib/store';
+import { confetti, haptic, sfx } from '../lib/fx';
 import type { ErrorCategory } from '../types';
 import type { Grade } from '../lib/srs';
 
@@ -76,6 +77,7 @@ function Session({ exercises: initial, tense, onExit }: { exercises: Exercise[];
       setQueue((q) => [...q, { kind: 'type', verb: verbInf, tense: card.tense, person: card.person, pronoun: (ex as { pronoun?: string }).pronoun || personLabel(card.person).split(' ')[0] }]);
     }
     if (r.correct && r.sayText) say(r.sayText);
+    if (r.correct) sfx.correct(); else { sfx.wrong(); haptic([30, 30, 30]); }
     setResult(r);
   };
 
@@ -85,6 +87,8 @@ function Session({ exercises: initial, tense, onExit }: { exercises: Exercise[];
     else {
       update((s) => completeLesson(s));
       setDone(true);
+      sfx.win();
+      if (log.filter((l) => l.correct).length / Math.max(1, log.length) >= 0.7) confetti({ count: 120 });
     }
   };
 
@@ -96,7 +100,7 @@ function Session({ exercises: initial, tense, onExit }: { exercises: Exercise[];
     return (
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mx-auto max-w-xl">
         <div className="card p-6 text-center">
-          <ProgressRing value={correct / Math.max(1, log.length)} size={110} stroke={10} color="#5E7149">
+          <ProgressRing value={correct / Math.max(1, log.length)} size={110} stroke={10} color="rgb(var(--c-tertiary))">
             <span className="font-display text-2xl font-semibold">{Math.round((correct / Math.max(1, log.length)) * 100)}%</span>
           </ProgressRing>
           <h2 className="mt-3 text-3xl font-semibold">{correct === log.length ? '¡Perfecto!' : correct / log.length > 0.7 ? '¡Muy bien!' : 'Buen trabajo'}</h2>
@@ -459,7 +463,7 @@ function VerbSheet({ verb, onClose, onPractise }: { verb: Verb | null; onClose: 
       {region === 'mexico' && <p className="mt-2 text-xs text-ink-mute">Vosotros is hidden for Mexican Spanish — ustedes is used for "you all".</p>}
       {verb.note && <p className="mt-4 rounded-2xl bg-azul-50 p-3 text-sm"><b>Note.</b> {verb.note}</p>}
       {verb.origin && <p className="mt-2 rounded-2xl bg-olive-50 p-3 text-sm"><b className="text-olive">Real word origin.</b> {verb.origin}</p>}
-      <p className="mt-2 rounded-2xl bg-saffron-50 p-3 text-sm"><b className="text-[#8a5a12]">Memory trick (invented).</b> {verb.trick}</p>
+      <p className="mt-2 rounded-2xl bg-saffron-50 p-3 text-sm"><b className="text-ink-soft">Memory trick (invented).</b> {verb.trick}</p>
       <div className="mt-4 grid gap-2">
         {verb.examples.map((e, i) => {
           const pe = parseExample(e);
@@ -546,7 +550,7 @@ export function Verbs({ params }: { params: URLSearchParams }) {
           </div>
         </div>
         <div className="card flex items-center gap-4 p-5">
-          <ProgressRing value={(counts.mastered + counts.familiar * 0.5) / VERBS.length} size={92} stroke={9} color="#5E7149">
+          <ProgressRing value={(counts.mastered + counts.familiar * 0.5) / VERBS.length} size={92} stroke={9} color="rgb(var(--c-tertiary))">
             <span className="text-center text-xs leading-tight"><b className="block font-display text-2xl">{counts.mastered}</b>mastered</span>
           </ProgressRing>
           <div className="text-sm">
@@ -571,7 +575,7 @@ export function Verbs({ params }: { params: URLSearchParams }) {
           return (
             <div key={v.inf} className={`card flex items-center gap-3 p-3 ${inFocus ? 'ring-2 ring-terracotta' : ''}`}>
               <button className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={() => setDetail(v)} aria-label={`${v.inf}: details`}>
-                <ProgressRing value={m.score} size={40} stroke={5} color={m.level === 'mastered' ? '#5E7149' : '#C2593A'} label={`${v.inf} ${Math.round(m.score * 100)}% strength`} />
+                <ProgressRing value={m.score} size={40} stroke={5} color={m.level === 'mastered' ? 'rgb(var(--c-tertiary))' : 'rgb(var(--c-primary))'} label={`${v.inf} ${Math.round(m.score * 100)}% strength`} />
                 <span className="min-w-0">
                   <span className="block font-semibold">{v.inf}</span>
                   <span className="block truncate text-xs text-ink-mute">{v.en.split(' (')[0]}</span>

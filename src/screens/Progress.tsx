@@ -3,7 +3,8 @@ import { BarChart } from '../components/BarChart';
 import { Character } from '../components/Character';
 import { Icon } from '../components/Icon';
 import { Bar, PageHeader, ProgressRing, achievementIcon } from '../components/ui';
-import { SCENES, CHARACTERS } from '../data/story';
+import { CHARACTERS, scenesForCity } from '../data/story';
+import { CITY_THEMES } from '../data/cityThemes';
 import { VERBS } from '../data/verbs';
 import { ACHIEVEMENTS } from '../lib/achievements';
 import { allVerbMastery, currentStreak, previousWeek, thisWeek, todaySeconds, totalActiveSeconds, weekSummary } from '../lib/analytics';
@@ -112,7 +113,7 @@ export function Progress() {
         <section className="card p-5">
           <p className="eyebrow">Mastery milestones</p>
           <div className="mt-2 flex items-center gap-4">
-            <ProgressRing value={mastered / 10} size={72} stroke={8} color="#5E7149"><b className="font-display text-xl">{mastered}</b></ProgressRing>
+            <ProgressRing value={mastered / 10} size={72} stroke={8} color="rgb(var(--c-tertiary))"><b className="font-display text-xl">{mastered}</b></ProgressRing>
             <div className="text-sm">
               <p><b>{mastered}</b> of {VERBS.length} verbs mastered (all persons, present)</p>
               <p><b>{familiar}</b> familiar</p>
@@ -131,9 +132,9 @@ export function Progress() {
       </section>
 
       <section className="mt-6">
-        <h2 className="mb-3 text-2xl font-semibold">Your Madrid story</h2>
+        <h2 className="mb-3 text-2xl font-semibold">Your {CITY_THEMES[p.city].name} story</h2>
         <div className="grid gap-3 sm:grid-cols-3">
-          {SCENES.map((s) => {
+          {scenesForCity(p.city).map((s) => {
             const done = state.story.completedScenes.includes(s.id);
             return (
               <button key={s.id} onClick={() => navigate(`scene/${s.id}`)} disabled={!!s.requires && !state.story.completedScenes.includes(s.requires)} className="card flex items-center gap-3 p-4 text-left disabled:opacity-50">

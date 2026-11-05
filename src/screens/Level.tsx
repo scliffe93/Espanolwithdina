@@ -31,7 +31,7 @@ export function LevelChoice() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-[#F4E7D3] px-5 py-8">
+    <div className="min-h-[100dvh] bg-cream-warm px-5 py-8">
       <div className="mx-auto max-w-4xl">
         <button className="ctrl mb-6" onClick={() => navigate('onboarding')}><Icon name="arrowLeft" size={16} /> Back</button>
         <p className="eyebrow">Your starting point</p>
@@ -61,7 +61,7 @@ export function LevelChoice() {
           </div>
 
           <button className="card group flex flex-col items-start gap-3 p-6 text-left transition hover:-translate-y-0.5 hover:shadow-lift" onClick={() => navigate('assessment')}>
-            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-saffron-50 text-[#a66d12]"><Icon name="brain" /></span>
+            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-saffron-50 text-ink-soft"><Icon name="brain" /></span>
             <span className="text-xl font-semibold">Find my level</span>
             <span className="text-ink-soft">{ASSESSMENT.length} quick questions on vocabulary, grammar, reading, listening and verbs. About 5 minutes.</span>
             <span className="mt-auto inline-flex items-center gap-1 font-semibold text-terracotta">Take the placement <Icon name="arrowRight" size={16} /></span>
@@ -105,7 +105,7 @@ export function Assessment() {
 
   if (done && result) {
     return (
-      <div className="min-h-[100dvh] bg-[#F4E7D3] px-5 py-10">
+      <div className="min-h-[100dvh] bg-cream-warm px-5 py-10">
         <div className="mx-auto max-w-2xl">
           <div className="flex items-center gap-4">
             <Character look={CHARACTERS.lucia.look} mood="happy" size={110} />
@@ -134,7 +134,7 @@ export function Assessment() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#F4E7D3] px-5 py-6">
+    <div className="min-h-[100dvh] bg-cream-warm px-5 py-6">
       <div className="mx-auto max-w-2xl">
         <div className="flex items-center gap-3">
           <button className="ctrl !px-2" onClick={() => navigate(state.onboardingDone ? 'settings' : 'level')} aria-label="Exit assessment"><Icon name="x" size={18} /></button>

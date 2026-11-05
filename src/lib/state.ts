@@ -33,6 +33,7 @@ export function defaultState(): AppState {
     techniqueStats: emptyTechniqueStats(),
     exerciseStats: {},
     associations: {},
+    games: {},
   };
 }
 

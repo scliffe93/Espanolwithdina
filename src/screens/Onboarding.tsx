@@ -8,6 +8,9 @@ import {
   ACTIVITIES, DIFFICULTIES, GENDER, INTERESTS, MINUTES, PROFICIENCY, REASONS, RELOCATION, SOCIAL, blankProfile,
 } from '../data/profileOptions';
 import { useTtsSpeaking } from '../hooks/useSpeech';
+import { CityPicker } from '../components/CityPicker';
+import { CitySkyline } from '../components/CitySkyline';
+import { CITY_ORDER, CITY_THEMES } from '../data/cityThemes';
 import { playUrl, useRecorder } from '../hooks/useRecorder';
 import { navigate } from '../lib/router';
 import { recognitionSupported, recognize, speak, stopSpeaking, ttsSupported } from '../lib/speech';
@@ -20,7 +23,7 @@ interface Step {
   id: string;
   es: string;
   en: string;
-  kind: 'text' | 'single' | 'multi' | 'destination' | 'teacher';
+  kind: 'text' | 'single' | 'multi' | 'city' | 'teacher';
   field?: keyof LearnerProfile;
   options?: Opt[];
   placeholder?: string;
@@ -32,8 +35,7 @@ const STEPS: Step[] = [
   { id: 'name', es: '¡Hola! Soy Lucía, tu guía en VIVA. ¿Cómo te llamas?', en: 'Hi! I\'m Lucía, your VIVA guide. What\'s your name?', kind: 'text', field: 'name', placeholder: 'Your first name', mood: 'wave' },
   { id: 'gender', es: 'En español, algunas palabras cambian: cansado o cansada. ¿Cómo te hablo?', en: 'In Spanish, some words change form: cansado or cansada. Which should I use for you?', kind: 'single', field: 'gender', options: GENDER },
   { id: 'proficiency', es: '¿Cuánto español hablas ahora mismo?', en: 'How much Spanish do you speak right now?', kind: 'single', field: 'proficiencySelf', options: PROFICIENCY },
-  { id: 'region', es: '¿Qué español quieres aprender?', en: 'Which Spanish do you want to learn? (Argentina, Colombia and more are planned.)', kind: 'single', field: 'region', options: [{ value: 'spain', label: 'Spain', hint: 'vosotros, vale, coche' }, { value: 'mexico', label: 'Mexico', hint: 'ustedes, sale, carro' }] },
-  { id: 'destination', es: '¿Adónde sueñas con vivir?', en: 'Where do you dream of living?', kind: 'destination' },
+  { id: 'city', es: '¿Dónde quieres vivir tu nueva vida?', en: 'Where do you want to live your new life? Each city has its own story, people, colours — and its own Spanish.', kind: 'city', mood: 'happy' },
   { id: 'relocation', es: '¿Y cuándo es la mudanza?', en: 'And when\'s the move?', kind: 'single', field: 'relocation', options: RELOCATION },
   { id: 'reasons', es: '¿Por qué aprendes español?', en: 'Why are you learning Spanish? Pick all that apply.', kind: 'multi', field: 'reasons', options: REASONS },
   { id: 'interests', es: 'Cuéntame, ¿qué te gusta hacer?', en: 'Tell me — what do you love doing? Your story in Madrid will follow your interests.', kind: 'multi', field: 'interests', options: INTERESTS, mood: 'happy' },
@@ -105,17 +107,26 @@ function VoiceNote({ stepId, onTranscript }: { stepId: string; onTranscript: (t:
 export function Welcome() {
   const { state } = useStore();
   const resumed = !!state.profile?.name;
+  const [ci, setCi] = useState(0);
+  useEffect(() => {
+    const iv = window.setInterval(() => setCi((n) => (n + 1) % CITY_ORDER.length), 3800);
+    return () => window.clearInterval(iv);
+  }, []);
+  const showCity = CITY_ORDER[ci];
   return (
-    <div className="relative min-h-[100dvh] overflow-hidden bg-[#F4E7D3]">
+    <div className="relative min-h-[100dvh] overflow-hidden bg-cream-warm transition-colors duration-700" style={{ background: CITY_THEMES[showCity].palette.bgWarm }}>
       <div className="grain pointer-events-none absolute inset-0" />
-      <svg className="absolute inset-x-0 bottom-0 w-full" viewBox="0 0 1440 360" preserveAspectRatio="none" aria-hidden>
-        <path d="M0 250 L60 250 L60 190 L110 190 L110 230 L170 230 L170 150 L200 120 L230 150 L230 230 L300 230 L300 180 L360 180 L360 240 L420 240 L420 160 L470 160 L470 110 A30 30 0 0 1 530 110 L530 160 L580 160 L580 230 L660 230 L660 200 L720 170 L780 200 L780 240 L860 240 L860 170 L920 170 L920 230 L990 230 L990 140 L1010 100 L1030 140 L1030 230 L1110 230 L1110 190 L1180 190 L1180 240 L1260 240 L1260 180 L1320 180 L1320 230 L1440 230 L1440 360 L0 360 Z" fill="#C2593A" opacity=".18" />
-        <path d="M0 300 C240 270 480 320 720 300 C960 280 1200 320 1440 295 L1440 360 L0 360 Z" fill="#C2593A" opacity=".9" />
-      </svg>
+      <div className="absolute inset-x-0 bottom-0">
+        <AnimatePresence mode="wait">
+          <motion.div key={showCity} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.8 }}>
+            <CitySkyline city={showCity} height={260} />
+          </motion.div>
+        </AnimatePresence>
+      </div>
       <motion.div className="absolute right-[-60px] top-[-60px] h-72 w-72 rounded-full bg-saffron/60 blur-2xl" animate={{ scale: [1, 1.06, 1] }} transition={{ duration: 8, repeat: Infinity }} />
-      <main className="relative mx-auto flex min-h-[100dvh] max-w-5xl flex-col items-center justify-center gap-10 px-6 pb-40 pt-16 md:flex-row md:justify-between md:pb-24">
+      <main className="relative mx-auto flex min-h-[100dvh] max-w-5xl flex-col items-center justify-center gap-10 px-6 pb-72 pt-16 md:flex-row md:justify-between md:pb-56">
         <div className="max-w-lg text-center md:text-left">
-          <motion.p className="eyebrow !text-terracotta-dark" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>Madrid · Lavapiés · Tu nueva vida</motion.p>
+          <p className="eyebrow !text-ink-soft">Tu nueva vida en <AnimatePresence mode="wait"><motion.span key={showCity} className="inline-block font-bold" style={{ color: CITY_THEMES[showCity].palette.primary }} initial={{ y: 8, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -8, opacity: 0 }}>{CITY_THEMES[showCity].name}</motion.span></AnimatePresence></p>
           <motion.h1 className="mt-3 font-display text-[64px] font-semibold leading-[0.95] sm:text-[88px]" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }}>
             VIVA
           </motion.h1>
@@ -123,7 +134,7 @@ export function Welcome() {
             Learn Spanish. Live Spanish.
           </motion.p>
           <motion.p className="mt-5 text-lg text-ink-soft" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
-            Land in Madrid, find your flat, order your first café con leche and make real friends — while mastering the verbs that make Spanish work.
+            Choose your city — Madrid, Barcelona, Sevilla, Ciudad de México, Buenos Aires or Medellín. Land, find your flat, order like a local, make real friends, and master the verbs that make Spanish work.
           </motion.p>
           <motion.div className="mt-8 flex flex-col items-center gap-3 sm:flex-row md:items-start" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
             <button className="btn-primary px-7 py-4 text-base" onClick={() => navigate('onboarding')}>
@@ -188,7 +199,7 @@ export function Onboarding() {
   const guideMood: Mood = speaking ? 'happy' : step.mood ?? 'listening';
 
   return (
-    <div className="min-h-[100dvh] bg-[#F4E7D3]">
+    <div className="min-h-[100dvh] bg-cream-warm">
       <div className="mx-auto flex min-h-[100dvh] max-w-5xl flex-col px-5 pb-10 pt-5">
         <div className="flex items-center gap-3">
           <button className="ctrl !px-2" onClick={() => (i ? setI(i - 1) : navigate('welcome'))} aria-label="Back"><Icon name="arrowLeft" size={18} /></button>
@@ -200,7 +211,7 @@ export function Onboarding() {
         </div>
         <p className="eyebrow mt-4 text-center">VIVA Discover</p>
 
-        <div className="mt-4 grid flex-1 items-start gap-6 md:grid-cols-[300px_1fr] md:gap-10 md:pt-6">
+        <div className={`mt-4 grid flex-1 items-start gap-6 md:gap-10 md:pt-6 ${step.kind === 'city' ? 'md:grid-cols-[180px_1fr]' : 'md:grid-cols-[300px_1fr]'}`}>
           <div className="flex flex-col items-center">
             <Character look={CHARACTERS.lucia.look} speaking={speaking} mood={guideMood} size={190} label="Lucía, your guide" />
           </div>
@@ -250,18 +261,13 @@ export function Onboarding() {
                   </div>
                 )}
 
-                {step.kind === 'destination' && (
-                  <div className="grid gap-3">
-                    <div className="flex flex-wrap gap-2">
-                      {[['Spain', 'Madrid'], ['Spain', 'Barcelona'], ['Spain', 'Valencia'], ['Spain', 'Málaga'], ['Mexico', 'Ciudad de México'], ['Mexico', 'Guadalajara']].map(([c, city]) => (
-                        <button key={city} className="chip" aria-pressed={profile.destinationCity === city} onClick={() => set({ destinationCountry: c, destinationCity: city })}>{city}</button>
-                      ))}
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <label className="text-sm font-medium">Country<input className="input mt-1" value={profile.destinationCountry} onChange={(e) => set({ destinationCountry: e.target.value })} /></label>
-                      <label className="text-sm font-medium">City<input className="input mt-1" value={profile.destinationCity} onChange={(e) => set({ destinationCity: e.target.value })} /></label>
-                    </div>
-                    <p className="text-sm text-ink-mute">Your story begins in Madrid. More cities are on the roadmap.</p>
+                {step.kind === 'city' && (
+                  <div>
+                    <CityPicker value={profile.city} onChange={(c) => {
+                      const t = CITY_THEMES[c];
+                      set({ city: c, region: t.variety, destinationCity: t.name, destinationCountry: t.country, citiesVisited: [c] });
+                    }} />
+                    <p className="mt-3 text-sm text-ink-mute">You can move to another city at any time — your verbs and vocabulary come with you.</p>
                   </div>
                 )}
 

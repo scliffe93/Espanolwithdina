@@ -1,4 +1,7 @@
 import type { AppState } from '../types';
+import { SCENE_BY_ID } from '../data/story';
+
+const doneChapter = (s: AppState, ch: number) => s.story.completedScenes.some((id) => SCENE_BY_ID[id]?.chapter === ch);
 import { allVerbMastery, currentStreak, thisWeek, totalActiveSeconds } from './analytics';
 
 export interface AchievementDef {
@@ -12,10 +15,12 @@ export interface AchievementDef {
 const allDays = (s: AppState) => Object.values(s.days);
 
 export const ACHIEVEMENTS: AchievementDef[] = [
-  { id: 'arrived', title: '¡Bienvenido a Madrid!', description: 'Completed your arrival at Barajas.', icon: 'plane', check: (s) => s.story.completedScenes.includes('llegada') },
-  { id: 'keys', title: 'Las llaves', description: 'Got the keys to your Lavapiés flat.', icon: 'key', check: (s) => s.story.completedScenes.includes('piso') },
-  { id: 'regular', title: 'Un café, como siempre', description: 'Ordered like a local at Café La Plaza.', icon: 'cup', check: (s) => s.story.completedScenes.includes('cafe') },
-  { id: 'polite', title: 'Muy educado', description: 'Chose usted with Doña Carmen.', icon: 'bow', check: (s) => s.story.flags.register === 'usted' },
+  { id: 'arrived', title: '¡Ya estoy aquí!', description: 'Completed your arrival in a new city.', icon: 'plane', check: (s) => doneChapter(s, 1) },
+  { id: 'keys', title: 'Las llaves', description: 'Got the keys to your new home.', icon: 'key', check: (s) => doneChapter(s, 2) },
+  { id: 'regular', title: 'Un café, como siempre', description: 'Ordered like a local and made a friend.', icon: 'cup', check: (s) => doneChapter(s, 3) },
+  { id: 'nomad', title: 'Trotamundos', description: 'Completed a chapter in two different cities.', icon: 'plane', check: (s) => new Set(s.story.completedScenes.map((id) => SCENE_BY_ID[id]?.city).filter(Boolean)).size >= 2 },
+  { id: 'arcade', title: 'Rey del arcade', description: 'Scored 1,000+ in any arcade game.', icon: 'star', check: (s) => Object.values(s.games ?? {}).some((g) => g.best >= 1000) },
+  { id: 'polite', title: 'Muy educado', description: 'Chose usted with an older neighbour.', icon: 'bow', check: (s) => s.story.flags.register === 'usted' },
   { id: 'friend', title: 'Primera amistad', description: 'Reached a strong relationship (60+) with a character.', icon: 'heart', check: (s) => Object.values(s.story.relationships).some((r) => r >= 60) },
   { id: 'first-words', title: 'Primeras palabras', description: 'Answered 25 exercises correctly.', icon: 'star', check: (s) => allDays(s).reduce((a, d) => a + d.exercisesCorrect, 0) >= 25 },
   { id: 'verbs-5', title: 'Cinco verbos', description: 'Reached "familiar" on 5 verbs in the present tense.', icon: 'book', check: (s) => allVerbMastery(s, 'present', s.profile?.region).filter((v) => v.level === 'familiar' || v.level === 'mastered').length >= 5 },

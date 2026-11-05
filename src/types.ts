@@ -189,6 +189,8 @@ export interface AppState {
   seenRecapWeek?: string;
   /** Learner-written personal memory associations, keyed by card key. */
   associations: Record<string, string>;
+  /** Arcade records per game id. */
+  games: Record<string, { best: number; plays: number; lastAt: number; bestCombo: number }>;
 }
 
 export const STATE_VERSION = 1;

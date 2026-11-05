@@ -5,6 +5,9 @@ import { loadState, saveState } from './db';
 import { onSpeakingChange } from './speech';
 import { addActiveSeconds, defaultState } from './state';
 import { creditFor, timerStatus, type TimerStatus } from './timeTracker';
+import { applyCityTheme } from '../data/cityThemes';
+import { setActiveVariety } from '../data/verbs';
+import { confetti, setSoundEnabled, sfx } from './fx';
 
 // ── Media activity (speech, playback, recording) keeps the timer alive ──
 let mediaCount = 0;
@@ -58,6 +61,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // City theme, Spanish variety and sound follow the learner's settings.
+  const city = state.profile?.city ?? 'madrid';
+  const region = state.profile?.region ?? 'spain';
+  if (typeof document !== 'undefined' && document.documentElement.dataset.city !== city) applyCityTheme(city);
+  setActiveVariety(region);
+  setSoundEnabled(state.settings.sound);
+
   const persist = useCallback((s: AppState) => {
     window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => saveState(s).catch((e) => console.warn('VIVA save failed', e)), 400);
@@ -79,7 +89,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           if (unlocked.length) {
             const now = Date.now();
             next = { ...next, achievements: [...next.achievements, ...unlocked.map((a) => ({ id: a.id, at: now }))] };
-            queueMicrotask(() => unlocked.forEach((a) => pushToast({ kind: 'achievement', title: a.title, body: a.description, achievement: a })));
+            queueMicrotask(() => { sfx.coin(); confetti({ count: 70, y: 80 }); unlocked.forEach((a) => pushToast({ kind: 'achievement', title: a.title, body: a.description, achievement: a })); });
           }
         }
         persist(next);

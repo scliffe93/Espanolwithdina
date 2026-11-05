@@ -1,5 +1,5 @@
 import type { AppState, ErrorCategory, Interest } from '../types';
-import { SCENES } from '../data/story';
+import { scenesForCity } from '../data/story';
 import { VERB_BY_INF } from '../data/verbs';
 import { allVerbMastery, dueCards, thisWeek } from './analytics';
 import { CATEGORY_TIP } from './answer';
@@ -63,7 +63,8 @@ export const rulesCoach: CoachProvider = {
     const context = interest ? INTEREST_CONTEXT[interest]! : 'everyday life in Madrid';
 
     // 1. Story continuation.
-    const nextScene = SCENES.find((s) => !state.story.completedScenes.includes(s.id) && (!s.requires || state.story.completedScenes.includes(s.requires)));
+    const citySc = scenesForCity(p?.city ?? 'madrid');
+    const nextScene = citySc.find((s) => !state.story.completedScenes.includes(s.id) && (!s.requires || state.story.completedScenes.includes(s.requires)));
     if (nextScene) {
       recs.push({
         id: `scene-${nextScene.id}`,
@@ -88,7 +89,7 @@ export const rulesCoach: CoachProvider = {
         body: `${presentGood ? 'You\'ve improved your present-tense conjugations, but y' : 'Y'}ou're still mixing up ser and estar. Let's practise them through the conversation about your apartment with Doña Carmen, then a focused drill.`,
         why: `${serEstar} ser/estar slips in the last 14 days.`,
         cta: 'Practise ser & estar',
-        route: state.story.completedScenes.includes('piso') ? { name: 'verbs', focus: ['ser', 'estar'], mode: 'ser-estar' } : { name: 'scene', id: 'piso' },
+        route: citySc[1] && !state.story.completedScenes.includes(citySc[1].id) && (!citySc[1].requires || state.story.completedScenes.includes(citySc[1].requires)) ? { name: 'scene', id: citySc[1].id } : { name: 'verbs', focus: ['ser', 'estar'], mode: 'ser-estar' },
         priority: 90,
       });
     }
@@ -146,7 +147,7 @@ export const rulesCoach: CoachProvider = {
     // 6. Speaking practice.
     const week = thisWeek(state, now);
     if (week.speakingAttempts < 3 && state.story.completedScenes.length > 0) {
-      const scene = SCENES.find((s) => state.story.completedScenes.includes(s.id)) ?? SCENES[0];
+      const scene = citySc.find((s) => state.story.completedScenes.includes(s.id)) ?? citySc[0];
       recs.push({
         id: 'speaking',
         title: 'Get your voice in the game',

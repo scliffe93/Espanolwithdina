@@ -39,10 +39,17 @@ if (ttsSupported) {
 /** Picks the best Spanish voice for the region, preferring higher-quality voices. */
 export function pickVoice(region: Region): SpeechSynthesisVoice | undefined {
   const voices = loadVoices().filter((v) => v.lang.toLowerCase().startsWith('es'));
-  const want = region === 'mexico' ? ['es-mx', 'es-us', 'es-419'] : ['es-es'];
+  const want: Record<Region, string[]> = {
+    spain: ['es-es'],
+    mexico: ['es-mx', 'es-us', 'es-419'],
+    argentina: ['es-ar', 'es-uy', 'es-419', 'es-us', 'es-mx'],
+    colombia: ['es-co', 'es-419', 'es-us', 'es-mx'],
+  };
+  const order = want[region] ?? ['es-es'];
   const score = (v: SpeechSynthesisVoice) => {
     const lang = v.lang.toLowerCase().replace('_', '-');
-    let s = want.includes(lang) ? 10 : 0;
+    const idx = order.indexOf(lang);
+    let s = idx >= 0 ? 20 - idx * 3 : 0;
     if (/google|natural|neural|premium|enhanced|siri/i.test(v.name)) s += 3;
     if (v.localService) s += 1;
     return s;
@@ -70,7 +77,7 @@ export function speak(text: string, opts: SpeakOptions): Promise<void> {
     const u = new SpeechSynthesisUtterance(text);
     const voice = opts.lang ? undefined : pickVoice(opts.region);
     if (voice) u.voice = voice;
-    u.lang = opts.lang ?? voice?.lang ?? (opts.region === 'mexico' ? 'es-MX' : 'es-ES');
+    u.lang = opts.lang ?? voice?.lang ?? regionLang(opts.region);
     u.rate = opts.rate ?? 0.95;
     u.pitch = 1;
     u.onstart = () => setSpeaking(true);
@@ -157,4 +164,9 @@ export function recognize(
 /** Text for speech: resolves "o/a" display forms to a single spoken form. */
 export function speakable(text: string): string {
   return text.replace(/(\w+)o\/a\b/g, '$1o').replace(/\s*\/\s*/g, ', ');
+}
+
+/** BCP-47 tag for recognition / synthesis in a variety. */
+export function regionLang(region: Region): string {
+  return { spain: 'es-ES', mexico: 'es-MX', argentina: 'es-AR', colombia: 'es-CO' }[region] ?? 'es-ES';
 }

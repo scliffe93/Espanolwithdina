@@ -65,6 +65,12 @@ See [`docs/PLAN.md`](docs/PLAN.md) for the product plan, design system, architec
 
 ## Screenshots
 
+![Six cities, six themes](docs/screenshots/cities.png)
+
+| | |
+|---|---|
+| ![Arcade](docs/screenshots/30-arcade.png) | ![Metro Rush](docs/screenshots/31-game-metro.png) |
+
 | | |
 |---|---|
 | ![Welcome](docs/screenshots/01-welcome-desktop.png) | ![Madrid map](docs/screenshots/09-world-desktop.png) |

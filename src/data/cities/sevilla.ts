@@ -43,7 +43,7 @@ const INVITES: Record<Interest | 'default', { es: string; en: string }> = {
   travel: { es: 'Este fin de semana vamos a Cádiz en tren, a la playa. ¿Te apuntas?', en: 'This weekend we\'re taking the train to Cádiz, to the beach. Want to join?' },
   nightlife: { es: 'El viernes salimos por aquí, por la Alameda. Y en abril tienes que vivir la Feria… ¿Te apuntas el viernes?', en: 'On Friday we\'re going out round here, on the Alameda. And in April you have to experience the Feria… Are you in for Friday?' },
   reading: { es: 'Los domingos leo en el Parque de María Luisa, a la sombra. ¿Te vienes un día con tu libro?', en: 'On Sundays I read in María Luisa Park, in the shade. Will you come one day with your book?' },
-  cinema: { es: 'En verano hay cine de verano al aire libre, por la noche, cuando baja el calor. ¿Vamos el martes?', en: 'In summer there are open-air cinemas at night, when the heat drops. Shall we go on Tuesday?' },
+  cinema: { es: 'En verano hay cines al aire libre por la noche, cuando baja el calor, por la noche, cuando baja el calor. ¿Vamos el martes?', en: 'In summer there are open-air cinemas at night, when the heat drops. Shall we go on Tuesday?' },
   nature: { es: 'El sábado temprano vamos en kayak por el Guadalquivir. ¿Te apuntas?', en: 'Early on Saturday we\'re going kayaking on the Guadalquivir. Want to join?' },
   default: { es: 'El viernes subimos unos amigos a las Setas a ver el atardecer. ¿Te vienes?', en: 'On Friday a few friends are going up the Setas to watch the sunset. Are you coming?' },
 };
@@ -54,8 +54,8 @@ const VOCAB: VocabItem[] = [
   { id: 'sev-parada', es: 'la parada', en: 'the (bus / tram) stop', theme: 'arrival', level: 'A1', gender: 'f', origin: 'From parar, "to stop".' },
   { id: 'sev-patio', es: 'el patio', en: 'the courtyard / patio', theme: 'home', level: 'A1', gender: 'm', trick: 'Same word as in English — but a Sevillian patio is the cool, plant-filled heart of the house, not the garden.', visual: 'A whitewashed courtyard full of geraniums in pots, with tiles on the walls.' },
   { id: 'sev-azulejo', es: 'el azulejo', en: 'the glazed tile', theme: 'home', level: 'A2', gender: 'm', origin: 'From Andalusian Arabic az-zulayj, "polished stone" — not from azul (blue), even though many are blue.' },
-  { id: 'sev-tinto-de-verano', es: 'un tinto de verano', en: 'red wine with lemon soda', theme: 'cafe', level: 'A1', trick: 'Literally "summer red": red wine topped up with lemon soda and ice — the drink of a 40 °C evening.' },
-  { id: 'sev-cana', es: 'una caña', en: 'a small draught beer', theme: 'cafe', level: 'A1', gender: 'f', trick: 'A CAÑA is a CAN-sized beer — small, cold, and on tap.', regionNote: 'In Spain, "una caña" is a small glass of draught beer. In much of Latin America it isn\'t used this way.' },
+  { id: 'sev-tinto-de-verano', es: 'un tinto de verano', gender: 'm', en: 'red wine with lemon soda', theme: 'cafe', level: 'A1', trick: 'Literally "summer red": red wine topped up with lemon soda and ice — the drink of a 40 °C evening.' },
+  { id: 'sev-cana', es: 'una caña', en: 'a small draught beer', theme: 'cafe', level: 'A1', gender: 'f', trick: 'Think of a CAÑA as a slim cane of beer: small, cold and on tap, cold, and on tap.', regionNote: 'In Spain, "una caña" is a small glass of draught beer. In much of Latin America it isn\'t used this way.' },
   { id: 'sev-montadito', es: 'un montadito', en: 'a mini sandwich (tapa on bread)', theme: 'cafe', level: 'A2', gender: 'm', trick: 'The filling is MOUNTED (montado) on a little piece of bread — a montadito.' },
 ];
 
@@ -106,7 +106,7 @@ const story: CityStory = {
             { es: 'Sí, estoy muy caliente.', en: '(Yes, I\'m very… aroused.)', next: 'a3b', quality: 'off', rel: 1, category: 'vocabulary', feedback: 'Careful! For a person, "estoy caliente" usually means sexually aroused. For the heat, say "tengo calor".' },
           ],
         },
-        { id: 'a3b', speaker: 'sev-rocio', es: '¡Jajaja! Querrás decir "tengo calor", ¿no? Tranquilidad, nos pasa a todos los guiris.', en: 'Hahaha! You mean "tengo calor", right? Don\'t worry, it happens to all of us foreigners.', grammar: '"Guiri" is informal Spanish for a foreign tourist. Usually teasing rather than insulting — and here Rocío is including herself to make you feel better.', next: 'a4' },
+        { id: 'a3b', speaker: 'sev-rocio', es: '¡Jajaja! Querrás decir "tengo calor", ¿no? Tranquilidad, les pasa a todos los guiris.', en: 'Hahaha! You mean "tengo calor", right? Don\'t worry, it happens to all foreigners.', grammar: '"Guiri" is informal Spanish for a foreign tourist — usually teasing rather than insulting.', next: 'a4' },
         {
           id: 'a4', speaker: 'sev-rocio',
           es: 'Vale, ¿cómo vamos al centro? Andando son unos veinticinco minutos… pero con este sol y con la maleta, mejor en autobús.',
@@ -231,7 +231,7 @@ const story: CityStory = {
             { es: '¡Quilla! ¿Qué pasa?', en: 'Hey girl! What\'s up?', next: 'p4b', quality: 'off', rel: -5, category: 'register', setFlag: ['register', 'slang'], feedback: '"Quillo / quilla" (from chiquillo / chiquilla, also shortened to "illo / illa") is a very Sevillian way to say "mate" — among friends and people your age. With an older neighbour you\'ve just met, it\'s far too familiar.' },
           ],
         },
-        { id: 'p4', speaker: 'sev-dolores', es: 'Muy bien, gracias, {g:hijo|hija}. ¡Qué {g:educado|educada}! Pero llámame Lola y háblame de tú, que me haces mayor.', en: 'Very well, thank you, dear. How polite! But call me Lola and use "tú" with me — you\'re making me feel old.', grammar: '"Hijo / hija" (lit. son / daughter) is an affectionate way older people address younger ones. Lola is the usual nickname for Dolores. Wait for an older person to invite you to use tú.', next: 'p5' },
+        { id: 'p4', speaker: 'sev-dolores', es: 'Muy bien, gracias, {g:hijo|hija}. ¡Qué {g:educado|educada}! Pero llámame Lola y háblame de tú, que me haces mayor.', en: 'Very well, thank you, dear. How polite! But call me Lola and use "tú" with me — you\'re making me feel old.', variantFlag: 'register', variants: { usted: { es: 'Muy bien, gracias, {g:hijo|hija}. ¡Qué {g:educado|educada}! Pero llámame Lola y háblame de tú, que me haces mayor.', en: 'Very well, thank you, dear. How polite! But call me Lola and use "tú" with me — you\'re making me feel old.' }, tu: { es: 'Muy bien, {g:hijo|hija}. Ya veo que me hablas de tú… ¡Mejor! Llámame Lola, que si no me haces mayor.', en: 'Very well, dear. I see you\'re already using "tú" with me… Even better! Call me Lola, otherwise you\'ll make me feel old.' } }, grammar: '"Hijo / hija" (lit. son / daughter) is an affectionate way older people address younger ones. Lola is the usual nickname for Dolores. Wait for an older person to invite you to use tú.', next: 'p5' },
         { id: 'p4b', speaker: 'sev-dolores', es: 'Ay, ¡qué {g:gracioso|graciosa}! Bueno, bueno… Yo soy Dolores. Encantada.', en: 'Oh, aren\'t you funny! Well, well… I\'m Dolores. Pleased to meet you.', next: 'p5' },
         {
           id: 'p5', speaker: 'sev-dolores',
@@ -246,7 +246,7 @@ const story: CityStory = {
             saveAs: 'homeTown',
             wrong: [
               { pattern: '^\\s*(yo\\s+)?estoy\\s+de', feedback: 'For origin, use ser, not estar: "Soy de…".', category: 'ser-estar' },
-              { pattern: '^\\s*(yo\\s+)?es\\s+de', feedback: 'With yo, ser is "soy": "Soy de…".', category: 'person-agreement' },
+              { pattern: '^\\s*(yo\\s+)?(es|eres)\\s+de', feedback: 'With yo, ser is "soy": "Soy de…".', category: 'person-agreement' },
             ],
             next: 'p6',
           },
@@ -266,7 +266,7 @@ const story: CityStory = {
         {
           id: 'p7', speaker: 'sev-dolores',
           es: 'Pasa, pasa, mira el patio. Las macetas eran de mi madre, y los azulejos son de Triana, de toda la vida. Ahora, con los geranios en flor, está precioso.',
-          en: 'Come in, come in, look at the patio. The plants were my mother\'s, and the tiles are from Triana, from way back. Right now, with the geraniums in bloom, it looks beautiful.',
+          en: 'Come in, come in, look at the patio. The flowerpots were my mother\'s, and the tiles are from Triana, from way back. Right now, with the geraniums in bloom, it looks beautiful.',
           vocab: ['sev-patio', 'sev-azulejo'],
           grammar: 'Ser for origin and possession: son de Triana, eran de mi madre. Estar for how something is right now: está precioso. Triana has made ceramics for centuries — look for the old tile workshops on calle Alfarería.',
           next: 'p8',
@@ -437,7 +437,7 @@ const story: CityStory = {
           variantFlag: 'order',
           variants: {
             tinto: { es: 'Aquí tienes, miarma. El tinto de verano son dos euros con cincuenta.', en: 'Here you go, love. The tinto de verano is two euros fifty.' },
-            cana: { es: 'Aquí tienes, miarma. La caña es un euro con ochenta.', en: 'Here you go, love. The beer is one euro eighty.' },
+            cana: { es: 'Aquí tienes, miarma. La caña, un euro con ochenta.', en: 'Here you go, love. The beer, one euro eighty.' },
             tapa: { es: 'Aquí tienes, miarma. La bebida y la tapa son cinco euros con cincuenta.', en: 'Here you go, love. The drink and the tapa come to five euros fifty.' },
           },
           vocab: ['cuenta'],
@@ -448,7 +448,7 @@ const story: CityStory = {
             { es: 'Aquí tiene, señor.', en: 'Here you are, sir.', next: 'b11', quality: 'ok', rel: 1, category: 'register', feedback: 'Correct and polite — but Curro has been using tú and calling you "miarma". Usted here sounds oddly distant; "toma" or "aquí tienes" fits better.' },
           ],
         },
-        { id: 'b11', speaker: 'sev-curro', es: '¡A ti! Ya sabes dónde estamos. ¡Hasta luego!', en: 'Thank you! You know where to find us. See you!', grammar: '"¡A ti!" (lit. to you) is the quick reply to "gracias" — "thank YOU". "Hasta luego" is used as a general goodbye, even if you won\'t see each other later today.', end: true },
+        { id: 'b11', speaker: 'sev-curro', es: '¡Gracias a ti! Ya sabes dónde estamos. ¡Hasta luego!', en: 'Thank you! You know where to find us. See you!', grammar: '"¡A ti!" (lit. to you) is the quick reply to "gracias" — "thank YOU". "Hasta luego" is used as a general goodbye, even if you won\'t see each other later today.', end: true },
       ]),
     },
   ],

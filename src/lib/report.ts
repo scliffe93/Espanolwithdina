@@ -1,5 +1,6 @@
 import type { AppState, Cefr, ErrorCategory, MemoryTechnique, Skill } from '../types';
 import { SCENE_BY_ID } from '../data/story';
+import { CITY_THEMES } from '../data/cityThemes';
 import { TENSES, VERB_BY_INF } from '../data/verbs';
 import { VOCAB_BY_ID, vocabForm } from '../data/vocab';
 import { allVerbMastery, previousWeek, thisWeek, weekSummary, type VerbMastery, type WeekSummary } from './analytics';
@@ -109,7 +110,7 @@ export function buildTeacherReport(state: AppState, now = Date.now()): TeacherRe
     prev,
     history,
     levels: state.profile?.levels ?? null,
-    region: region === 'mexico' ? 'Mexican Spanish' : 'Spain Spanish',
+    region: `${CITY_THEMES[state.profile?.city ?? 'madrid'].varietyLabel} · ${CITY_THEMES[state.profile?.city ?? 'madrid'].name}`,
     verbsPracticed: practiced,
     tenses: week.tensesPracticed.map((t) => TENSES.find((x) => x.id === t)?.label ?? t),
     newVocab: week.newVocab.map((id) => (VOCAB_BY_ID[id] ? vocabForm(VOCAB_BY_ID[id], region) : id)),

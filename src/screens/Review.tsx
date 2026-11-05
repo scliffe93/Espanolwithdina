@@ -12,6 +12,7 @@ import { navigate } from '../lib/router';
 import { mastery, type Grade } from '../lib/srs';
 import { completeLesson, recordAttempt } from '../lib/state';
 import { useStore } from '../lib/store';
+import { sfx } from '../lib/fx';
 import { TECHNIQUE_LABEL } from '../lib/report';
 import type { ErrorCategory, MemoryTechnique, SrsCard } from '../types';
 
@@ -76,6 +77,7 @@ function ReviewSession({ items, onDone }: { items: Item[]; onDone: () => void })
     }));
     setScore((s) => ({ ok: s.ok + (ok ? 1 : 0), total: s.total + 1 }));
     setRes({ ok, accent, category });
+    if (ok) sfx.correct(); else sfx.wrong();
     setPhase('result');
     say(it.display);
   };
@@ -122,7 +124,7 @@ function ReviewSession({ items, onDone }: { items: Item[]; onDone: () => void })
               {it.regionNote && <p className="mt-3 rounded-2xl bg-azul-50 p-3 text-sm">{it.regionNote}</p>}
               <div className="mt-4 grid gap-2 text-sm">
                 {it.memory.origin && <p className="rounded-2xl bg-olive-50 p-3"><b className="text-olive">Real word origin.</b> {it.memory.origin}</p>}
-                {it.memory.trick && <p className="rounded-2xl bg-saffron-50 p-3"><b className="text-[#8a5a12]">Memory trick (invented).</b> {it.memory.trick}</p>}
+                {it.memory.trick && <p className="rounded-2xl bg-saffron-50 p-3"><b className="text-ink-soft">Memory trick (invented).</b> {it.memory.trick}</p>}
                 {it.memory.visual && <p className="rounded-2xl bg-rosa-50 p-3"><b>Picture this (invented).</b> {it.memory.visual}</p>}
               </div>
               <button className="btn-dark mt-5" onClick={() => { setPhase('ask'); setTimeout(() => inputRef.current?.focus(), 50); }}>I’ve got it — test me</button>

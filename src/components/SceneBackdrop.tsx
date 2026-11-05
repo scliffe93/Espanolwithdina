@@ -2,9 +2,9 @@ import { motion, useReducedMotion } from 'motion/react';
 
 // Illustrated backdrops for each location (pure SVG, no image assets).
 
-export function SceneBackdrop({ id }: { id: string }) {
+export function SceneBackdrop({ id, label }: { id: string; label?: string }) {
   const reduced = useReducedMotion();
-  if (id === 'llegada') {
+  if (id === 'llegada' || id === 'arrival') {
     return (
       <svg viewBox="0 0 800 400" className="absolute inset-0 h-full w-full" preserveAspectRatio="xMidYMid slice" aria-hidden>
         <defs><linearGradient id="ap" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#CFE3F1" /><stop offset="1" stopColor="#F4E7D3" /></linearGradient></defs>
@@ -13,7 +13,7 @@ export function SceneBackdrop({ id }: { id: string }) {
         <path d="M0 40 C100 10 200 70 300 40 C400 10 500 70 600 40 C700 10 760 50 800 40 L800 0 L0 0 Z" fill="#D9A15E" />
         {Array.from({ length: 30 }).map((_, i) => <path key={i} d={`M${i * 28} 0 L${i * 28 + 10} 46`} stroke="#B97D3F" strokeWidth="2" opacity=".5" />)}
         {/* coloured pillars like T4 */}
-        {['#E3A33B', '#E07A55', '#C2593A', '#D98C8C', '#8DA46F'].map((c, i) => (
+        {['#E3A33B', '#E07A55', 'rgb(var(--c-primary))', '#D98C8C', '#8DA46F'].map((c, i) => (
           <path key={i} d={`M${80 + i * 160} 400 L${95 + i * 160} 60 L${110 + i * 160} 60 L${125 + i * 160} 400 Z`} fill={c} opacity=".9" />
         ))}
         {/* big windows */}
@@ -29,14 +29,14 @@ export function SceneBackdrop({ id }: { id: string }) {
       </svg>
     );
   }
-  if (id === 'piso') {
+  if (id === 'piso' || id === 'home') {
     return (
       <svg viewBox="0 0 800 400" className="absolute inset-0 h-full w-full" preserveAspectRatio="xMidYMid slice" aria-hidden>
         <rect width="800" height="400" fill="#F0D6B5" />
         {/* facade with balconies */}
         {[0, 1, 2, 3].map((col) => [0, 1].map((row) => (
           <g key={`${col}-${row}`} transform={`translate(${70 + col * 180} ${40 + row * 140})`}>
-            <rect width="80" height="110" rx="4" fill="#5E7149" opacity=".85" />
+            <rect width="80" height="110" rx="4" style={{ fill: 'rgb(var(--c-tertiary))' }} opacity=".85" />
             <rect x="6" y="6" width="32" height="98" fill="#7E9467" />
             <rect x="42" y="6" width="32" height="98" fill="#7E9467" />
             <rect x="-14" y="90" width="108" height="6" fill="#2E2A27" />
@@ -44,8 +44,8 @@ export function SceneBackdrop({ id }: { id: string }) {
             <rect x="-14" y="116" width="108" height="4" fill="#2E2A27" />
             {[0, 1, 2, 3].map((i) => (
               <motion.g key={i} animate={reduced ? undefined : { rotate: [0, 3, 0] }} transition={{ duration: 3 + i, repeat: Infinity }} style={{ originX: `${i * 26 + 4}px`, originY: '92px' }}>
-                <circle cx={i * 26 + 4} cy="84" r="9" fill="#5E7149" />
-                <circle cx={i * 26} cy="80" r="4" fill="#C2593A" />
+                <circle cx={i * 26 + 4} cy="84" r="9" style={{ fill: 'rgb(var(--c-tertiary))' }} />
+                <circle cx={i * 26} cy="80" r="4" style={{ fill: 'rgb(var(--c-primary))' }} />
                 <circle cx={i * 26 + 8} cy="82" r="4" fill="#D98C8C" />
               </motion.g>
             ))}
@@ -54,7 +54,7 @@ export function SceneBackdrop({ id }: { id: string }) {
         {/* azulejo street sign */}
         <g transform="translate(330 300)">
           <rect width="140" height="42" rx="4" fill="#FBF6EE" stroke="#1F3A5F" strokeWidth="3" />
-          <text x="70" y="27" textAnchor="middle" fill="#1F3A5F" fontFamily="Georgia, serif" fontSize="15" fontStyle="italic">Lavapiés</text>
+          <text x="70" y="27" textAnchor="middle" fill="#1F3A5F" fontFamily="Georgia, serif" fontSize="15" fontStyle="italic">{label ?? 'Lavapiés'}</text>
         </g>
         <rect y="355" width="800" height="45" fill="#C9B497" />
       </svg>
@@ -80,7 +80,7 @@ export function SceneBackdrop({ id }: { id: string }) {
       {/* espresso machine */}
       <g transform="translate(520 120)">
         <rect width="170" height="90" rx="10" fill="#B9BEC4" />
-        <rect x="10" y="10" width="150" height="20" rx="4" fill="#C2593A" />
+        <rect x="10" y="10" width="150" height="20" rx="4" style={{ fill: 'rgb(var(--c-primary))' }} />
         {[30, 80, 130].map((x) => <rect key={x} x={x} y="50" width="14" height="22" rx="3" fill="#2E2A27" />)}
         {!reduced && [0, 1].map((i) => (
           <motion.path key={i} d={`M${60 + i * 50} 0 C${50 + i * 50} -20 ${70 + i * 50} -30 ${60 + i * 50} -50`} stroke="#fff" strokeWidth="5" fill="none" strokeLinecap="round" opacity=".6" animate={{ y: [0, -12], opacity: [0.6, 0] }} transition={{ duration: 2.4, repeat: Infinity, delay: i * 1.1 }} />

@@ -131,7 +131,7 @@ const story: CityStory = {
           variantFlag: 'ride',
           variants: {
             bus: { es: '¡Listo! El bus sale aquí afuera y nos deja en el centro. Allá cogemos el Metro.', en: 'Right! The bus leaves from just outside and drops us in the centre. There we\'ll catch the Metro.' },
-            taxi: { es: '¡De una! Los taxis oficiales están aquí afuera. Nos vamos para el centro y allá cogemos el Metro.', en: 'Sure thing! The official taxis are just outside. We\'ll head to the centre and catch the Metro there.' },
+            taxi: { es: '¡De una! Los taxis oficiales están aquí afuera. Paramos un momentico en el centro y allá le muestro el Metro.', en: 'Sure thing! The official taxis are just outside. We\'ll stop in the centre for a moment and I\'ll show you the Metro.' },
           },
           vocab: ['maleta'],
           grammar: '"Listo" = OK, ready. "De una" = sure, right away. In Colombia "coger" (to catch / take) is perfectly normal — "coger el bus" — unlike in Mexico or Argentina, where it\'s vulgar. "Tomar" is safe everywhere.',
@@ -164,7 +164,7 @@ const story: CityStory = {
         },
         {
           id: 'a9', speaker: 'narrator',
-          es: 'Wilson le sonríe a Valentina. ¿Cómo le das las gracias?',
+          es: 'Wilson te sonríe. ¿Cómo le das las gracias?',
           en: 'Wilson smiles at Valentina. How do you thank him?',
           choices: [
             { es: '¡Muchas gracias, señor! Muy amable.', en: 'Thank you very much, sir! Very kind of you.', next: 'a10', quality: 'great', rel: 5, feedback: 'Polite and warm — perfect with a stranger.' },
@@ -341,7 +341,7 @@ const story: CityStory = {
           en: 'Right, dear, if you need anything, I live right next door. Don\'t be shy, all right?',
           grammar: '"Con toda confianza" = feel free / don\'t hesitate. "¿Oyó?" (from oír, usted form) is a friendly "OK? / you hear?" — you\'ll also hear "¿oíste?" with vos/tú.',
           choices: [
-            { es: 'Muchas gracias. ¿Hay mucho ruido por la noche?', en: 'Thank you very much. Is it noisy at night?', next: 'p11b', quality: 'great', rel: 3 },
+            { es: 'Muchas gracias. ¿Hay mucho ruido en la noche?', en: 'Thank you very much. Is it noisy at night?', next: 'p11b', quality: 'great', rel: 3 },
             { es: 'Mil gracias, doña Gloria. Usted es un amor.', en: 'A thousand thanks, Doña Gloria. You\'re a sweetheart.', next: 'p12', quality: 'great', rel: 6, feedback: '"Ser un amor" = to be a sweetheart. Ser for who someone is.' },
           ],
         },
@@ -398,7 +398,7 @@ const story: CityStory = {
           grammar: '"¿Qué le provoca?" = what do you feel like? Provocar here means "to appeal to", not "to provoke". Paisas order with "¿Me regala…?": regalar literally means "to give as a gift", but here it\'s just a polite "could I have…?" — you still pay!',
           choices: [
             { es: '¿Me regala un tinto, por favor?', en: 'Could I have a black coffee, please?', next: 'c3', quality: 'great', rel: 6, setFlag: ['order', 'tinto'], feedback: 'Super natural — exactly how paisas order.' },
-            { es: 'Buenos días. ¿Me regala un café con leche, por favor?', en: 'Good morning. Could I have a white coffee, please?', next: 'c3', quality: 'great', rel: 5, setFlag: ['order', 'leche'], feedback: 'Perfect. A small milky coffee is also called a "perico" in Colombia.' },
+            { es: 'Buenos días. ¿Me regala un café con leche, por favor?', en: 'Good morning. Could I have a white coffee, please?', next: 'c3', quality: 'great', rel: 5, setFlag: ['order', 'leche'], feedback: 'Perfect. Perfect. If you want a small black coffee with just a splash of milk, ask for a "perico" (or "pintadito").' },
             { es: 'Deme un tinto.', en: 'Give me a black coffee.', next: 'c3', quality: 'ok', rel: 0, setFlag: ['order', 'tinto'], category: 'register', feedback: 'Correct usted command and you\'ll hear it, but without "por favor" it can sound curt. "¿Me regala…?" is softer.' },
             { es: 'Quiero un vino tinto, por favor.', en: '(I\'d like a red wine, please.)', next: 'c2', quality: 'off', category: 'vocabulary', feedback: 'Careful! "Vino tinto" is red wine — at nine in the morning, in a bakery. In Colombia a black coffee is just "un tinto". Try again.' },
             { es: '¿Me regalo un tinto?', en: '(Do I give myself a coffee as a present?)', next: 'c2', quality: 'off', category: 'person-agreement', feedback: '"Regalo" is the yo form (I give). You\'re asking HIM (usted) to give you one: "¿Me regala un tinto?". Try again.' },
@@ -448,7 +448,7 @@ const story: CityStory = {
           id: 'c7', speaker: 'med-manuela',
           es: 'Yo soy Manuela. Soy diseñadora y vivo aquí a dos cuadras. Bueno, ¿y a vos qué te gusta hacer en el tiempo libre?',
           en: 'I\'m Manuela. I\'m a designer and I live two blocks from here. So, what do you like doing in your free time?',
-          grammar: 'With vos, the pronouns are the same as with tú: te, ti, contigo → "¿A vos qué te gusta?". Gustar + infinitive: me gusta bailar. Me encanta = I love.',
+          grammar: 'With vos, the object pronoun is still te (te gusta), but after a preposition you use vos itself: a vos, para vos, con vos (not ti / contigo) → "¿A vos qué te gusta?". Gustar + infinitive: me gusta bailar. Me encanta = I love.',
           choicesFrom: 'interests',
           interestNext: 'c8',
         },

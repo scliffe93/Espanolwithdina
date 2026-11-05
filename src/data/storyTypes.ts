@@ -118,7 +118,7 @@ export const INTEREST_YOU: Record<Interest | 'default', { es: string; en: string
   fitness: { es: 'Voy mucho al gimnasio y me gusta correr.', en: 'I go to the gym a lot and I like running.' },
   music: { es: 'Me encanta la música en directo.', en: 'I love live music.' },
   art: { es: 'Me gustan mucho el arte y los museos.', en: 'I really like art and museums.' },
-  tech: { es: 'Trabajo con ordenadores y me encanta la tecnología.', en: 'I work with computers and I love technology.' },
+  tech: { es: 'Trabajo en tecnología y me encanta todo lo digital.', en: 'I work in tech and I love everything digital.' },
   travel: { es: 'Me encanta viajar y conocer sitios nuevos.', en: 'I love travelling and discovering new places.' },
   nightlife: { es: 'Me gusta salir de noche y bailar.', en: 'I like going out at night and dancing.' },
   reading: { es: 'Me encanta leer.', en: 'I love reading.' },

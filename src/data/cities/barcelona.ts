@@ -460,7 +460,7 @@ const story: CityStory = {
           choices: [
             { es: '¡Me encantaría! ¿A qué hora quedamos?', en: 'I\'d love to! What time shall we meet?', next: 'c9', quality: 'great', rel: 10, feedback: '"Me encantaría" (I\'d love to) + "quedamos" (we meet up). ¡Genial!' },
             { es: '¡Qué guay! ¿Dónde quedamos?', en: 'How cool! Where shall we meet?', next: 'c9', quality: 'great', rel: 8, feedback: '"Guay" = cool — very Spain, and very common among friends.' },
-            { es: 'Lo siento, este finde no puedo, pero la próxima vez, sí.', en: 'Sorry, I can\'t this weekend, but next time, for sure.', next: 'c9', quality: 'great', rel: 4, feedback: 'A perfectly friendly way to decline.' },
+            { es: 'Lo siento, esta vez no puedo, pero la próxima, sí.', en: 'Sorry, I can\'t this time, but next time, for sure.', next: 'c9', quality: 'great', rel: 4, feedback: 'A perfectly friendly way to decline.' },
             { es: '¡Sí! Me gusto mucho la idea.', en: '(Yes! I please the idea a lot.)', next: 'c8', quality: 'off', category: 'person-agreement', feedback: 'With gustar, the thing you like is the subject: la idea → "me gusta". "Me gusto" means "I like myself"! Try again.' },
           ],
         },
@@ -488,8 +488,8 @@ const story: CityStory = {
         },
         {
           id: 'c9e', speaker: 'bcn-dani',
-          es: 'Yo también. Pues igual el plan del finde es casi una cita… ¡Es broma! Bueno, ya veremos.',
-          en: 'Me too. So maybe the weekend plan is almost a date… Just kidding! Well, we\'ll see.',
+          es: 'Yo también. Pues igual el plan es casi una cita… ¡Es broma! Bueno, ya veremos.',
+          en: 'Me too. So maybe the plan is almost a date… Just kidding! Well, we\'ll see.',
           vocab: ['cita'],
           grammar: 'In Spain, "igual" often means "maybe": igual voy = maybe I\'ll go. "Ya veremos" = we\'ll see.',
           next: 'c10',
@@ -515,7 +515,7 @@ const story: CityStory = {
         },
         {
           id: 'c11', speaker: 'bcn-leo',
-          es: '¡A vosotros! Hasta luego, ¡y volved cuando queráis!',
+          es: '¡Gracias a vosotros! Hasta luego, ¡y volved cuando queráis!',
           en: 'Thank you both! See you later, and come back whenever you like!',
           grammar: '"Volved" is the vosotros command of volver and "queráis" the vosotros subjunctive of querer. Vosotros (you all, informal) is used in Spain; Latin America uses ustedes instead.',
           end: true,

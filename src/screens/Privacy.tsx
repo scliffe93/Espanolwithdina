@@ -5,7 +5,7 @@ import { useStore } from '../lib/store';
 export function Privacy() {
   const { state } = useStore();
   return (
-    <div className={state.onboardingDone ? '' : 'min-h-[100dvh] bg-[#F4E7D3] px-5 py-8'}>
+    <div className={state.onboardingDone ? '' : 'min-h-[100dvh] bg-cream-warm px-5 py-8'}>
       <article className="mx-auto max-w-2xl">
         <button className="ctrl mb-6" onClick={() => navigate(state.onboardingDone ? 'settings' : 'welcome')}><Icon name="arrowLeft" size={16} /> Back</button>
         <p className="eyebrow">Privacy & how VIVA works</p>
