@@ -220,10 +220,10 @@ async function playScene(page, id) {
   log('mistake categories', [...new Set(day.mistakes.map((m) => m.category))]);
 
   // City tour (desktop)
-  for (const city of ['madrid', 'barcelona', 'sevilla', 'cdmx', 'buenosaires', 'medellin']) {
+  for (const city of ['madrid', 'valencia', 'barcelona', 'sevilla', 'cdmx', 'buenosaires', 'medellin']) {
     await page.evaluate((c) => new Promise((res) => {
       const r = indexedDB.open('viva');
-      r.onsuccess = () => { const tx = r.result.transaction('kv', 'readwrite'); const st = tx.objectStore('kv'); const g = st.get('state'); g.onsuccess = () => { const v = g.result; v.profile.city = c; v.profile.region = { madrid: 'spain', barcelona: 'spain', sevilla: 'spain', cdmx: 'mexico', buenosaires: 'argentina', medellin: 'colombia' }[c]; st.put(v, 'state'); }; tx.oncomplete = res; };
+      r.onsuccess = () => { const tx = r.result.transaction('kv', 'readwrite'); const st = tx.objectStore('kv'); const g = st.get('state'); g.onsuccess = () => { const v = g.result; v.profile.city = c; v.profile.region = { madrid: 'spain', valencia: 'spain', barcelona: 'spain', sevilla: 'spain', cdmx: 'mexico', buenosaires: 'argentina', medellin: 'colombia' }[c]; st.put(v, 'state'); }; tx.oncomplete = res; };
     }), city);
     await page.goto(`${BASE}#/world`);
     await page.reload();

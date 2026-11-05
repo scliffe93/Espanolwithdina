@@ -38,6 +38,29 @@ function greetingFor(hour: number): string {
   return 'Buenas tardes';
 }
 
+/** Samples evenly spaced points along an SVG path made of M + cubic C segments. */
+function curvePoints(d: string, n: number): [number, number][] {
+  const nums = (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
+  const start: [number, number] = [nums[0], nums[1]];
+  const segs: [number, number][][] = [];
+  let p0 = start;
+  for (let i = 2; i + 5 < nums.length; i += 6) {
+    const seg: [number, number][] = [p0, [nums[i], nums[i + 1]], [nums[i + 2], nums[i + 3]], [nums[i + 4], nums[i + 5]]];
+    segs.push(seg);
+    p0 = seg[3];
+  }
+  const out: [number, number][] = [];
+  for (let k = 0; k < n; k++) {
+    const u = ((k + 0.5) / n) * segs.length;
+    const si = Math.min(segs.length - 1, Math.floor(u));
+    const t = u - si;
+    const [a, b, c, e] = segs[si];
+    const mt = 1 - t;
+    out.push([mt ** 3 * a[0] + 3 * mt ** 2 * t * b[0] + 3 * mt * t ** 2 * c[0] + t ** 3 * e[0], mt ** 3 * a[1] + 3 * mt ** 2 * t * b[1] + 3 * mt * t ** 2 * c[1] + t ** 3 * e[1]]);
+  }
+  return out;
+}
+
 /** Stylised, themed map of the current city. */
 function CityMap({ t, mode }: { t: CityTheme; mode: SkyMode }) {
   const reduced = useReducedMotion();
@@ -75,7 +98,11 @@ function CityMap({ t, mode }: { t: CityTheme; mode: SkyMode }) {
       {t.map.water?.kind === 'sea' && !reduced && [0, 1, 2].map((i) => (
         <motion.path key={i} d={`M${640 + i * 110} ${560 - i * 70} q12 -6 24 0 t24 0`} stroke="#fff" strokeWidth="3" fill="none" opacity=".5" animate={{ x: [0, 20, 0] }} transition={{ duration: 3 + i, repeat: Infinity }} />
       ))}
-      {t.map.water?.kind === 'river' && <path d={t.map.water.path} stroke={water} strokeWidth={t.map.water.width ?? 22} fill="none" strokeLinecap="round" />}
+      {t.map.water2?.kind === 'sea' && <path d={t.map.water2.path} fill={water} />}
+      {t.map.water?.kind === 'river' && <path d={t.map.water.path} stroke={t.map.water.asPark ? (night ? '#2F4A3B' : P.tertiaryLight) : water} strokeWidth={t.map.water.width ?? 22} fill="none" strokeLinecap="round" />}
+      {t.map.water?.asPark && curvePoints(t.map.water.path, 10).map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y + (i % 2 ? 7 : -7)} r="8" fill={night ? '#264034' : P.tertiary} />
+      ))}
       <ellipse cx={t.map.park.cx} cy={t.map.park.cy} rx={t.map.park.rx} ry={t.map.park.ry} fill={night ? '#2F4A3B' : P.tertiaryLight} />
       {Array.from({ length: 8 }).map((_, i) => (
         <circle key={i} cx={t.map.park.cx + Math.cos(i * 0.8) * t.map.park.rx * 0.6} cy={t.map.park.cy + Math.sin(i * 0.8) * t.map.park.ry * 0.55} r="13" fill={night ? '#264034' : P.tertiary} />
@@ -90,6 +117,7 @@ function CityMap({ t, mode }: { t: CityTheme; mode: SkyMode }) {
         if (t.map.mountains === 'valley' && (x < 290 || x > 730)) return null;
         if (t.map.water?.kind === 'sea' && t.id === 'buenosaires' && x > 620 && y < 600 - (x - 620) * 0.2) return null;
         if (t.map.water?.kind === 'sea' && t.id === 'barcelona' && y > 600 - (x * 0.24)) return null;
+        if (t.id === 'valencia' && x > 820) return null;
         const h = 18 + ((i * 7) % 18);
         return <rect key={i} x={x} y={y} width="36" height={h} rx="6" fill={i % 3 ? block : block2} opacity={i % 3 ? 1 : 0.85} />;
       })}

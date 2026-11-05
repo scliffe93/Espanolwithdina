@@ -22,7 +22,8 @@ export type Landmark =
   | 'giralda' | 'torre-oro' | 'setas' | 'plaza-espana'
   | 'angel' | 'latino' | 'bellas-artes' | 'volcano'
   | 'obelisco' | 'congreso' | 'puente-mujer' | 'caminito'
-  | 'coltejer' | 'metrocable' | 'comuna-houses' | 'andes';
+  | 'coltejer' | 'metrocable' | 'comuna-houses' | 'andes'
+  | 'serranos' | 'miguelete' | 'hemisferic' | 'palau-arts';
 
 export interface FoodItem { id: string; es: string; en: string; icon: string; /** with article, singular */ one?: string; /** plural noun phrase */ pl?: string }
 
@@ -42,12 +43,14 @@ export interface CityTheme {
   sky: { day: [string, string]; dusk: [string, string]; night: [string, string] };
   landmarks: Landmark[];
   map: {
-    water?: { kind: 'river' | 'sea'; path: string; width?: number };
+    water?: { kind: 'river' | 'sea'; path: string; width?: number; /** A former riverbed turned park (Valencia's Turia) is drawn green. */ asPark?: boolean };
+    /** A second body of water (e.g. a sea alongside a river). */
+    water2?: { kind: 'river' | 'sea'; path: string; width?: number };
     mountains: 'sierra' | 'volcanoes' | 'valley' | 'coastal-hills' | 'none';
     park: { cx: number; cy: number; rx: number; ry: number; name: string };
     cable?: boolean;
   };
-  pattern: 'tiles' | 'trencadis' | 'azulejo' | 'papel' | 'fileteado' | 'flores';
+  pattern: 'tiles' | 'trencadis' | 'azulejo' | 'papel' | 'fileteado' | 'flores' | 'naranjas';
   transit: { name: string; style: 'train' | 'cable'; colors: string[] };
   foods: FoodItem[];
   available: boolean;
@@ -77,6 +80,35 @@ export const CITY_THEMES: Record<CityId, CityTheme> = {
       { id: 'agua', es: 'agua', en: 'water', icon: '💧', one: 'un agua', pl: 'aguas' },
       { id: 'bocadillo', es: 'bocadillo de calamares', en: 'squid sandwich', icon: '🥪', one: 'un bocadillo de calamares', pl: 'bocadillos de calamares' },
       { id: 'vermut', es: 'vermut', en: 'vermouth', icon: '🍷', one: 'un vermut', pl: 'vermuts' },
+    ],
+    available: true,
+  },
+  valencia: {
+    id: 'valencia', name: 'Valencia', country: 'España', variety: 'spain', varietyLabel: 'Spain Spanish (Valencian flavour)', voice: 'es-ES',
+    tagline: 'Orange groves, the Turia gardens, paella on Sundays and the sea ten minutes away.',
+    greeting: { es: '¡Bienvenido a Valencia!', en: 'Welcome to Valencia!' },
+    vibe: 'Valencia orange, Mediterranean blue, Turia green, white Calatrava curves',
+    flag: ['#AA151B', '#F1BF00', '#F1BF00', '#AA151B'],
+    palette: p({ primary: '#E07A2B', primaryDark: '#B35A17', primaryLight: '#F09A55', primary50: '#FDF0E6', secondary: '#F2C530', secondaryLight: '#F8DA6E', secondary50: '#FEF8DF', tertiary: '#4E8F63', tertiaryLight: '#7DB58C', tertiary50: '#E8F3EB', deep: '#1C5A8A', deepLight: '#3C80B4', deep50: '#E6EFF6', rose: '#D94F6B', rose50: '#FBE7EC', bg: '#FBF8F1', bg100: '#F6F0E2', bg200: '#EEE4CF', bgWarm: '#F7EBD9' }),
+    sky: { day: ['#78BFEA', '#FBF1DF'], dusk: ['#F28C5A', '#F9D9A5'], night: ['#13243E', '#2F4A6A'] },
+    landmarks: ['serranos', 'miguelete', 'hemisferic', 'palau-arts'],
+    map: {
+      water: { kind: 'river', path: 'M120 200 C240 260 330 250 460 300 C560 340 620 420 690 470 C740 510 790 540 860 560', width: 34, asPark: true },
+      water2: { kind: 'sea', path: 'M900 160 L1000 160 L1000 640 L870 640 C850 520 870 400 850 300 C840 240 870 200 900 160 Z' },
+      mountains: 'none',
+      park: { cx: 300, cy: 560, rx: 110, ry: 45, name: 'Albufera' },
+    },
+    pattern: 'naranjas',
+    transit: { name: 'Metrovalencia', style: 'train', colors: ['#E31E24', '#F6A800', '#007A3D', '#0096D6'] },
+    foods: [
+      { id: 'horchata', es: 'horchata con fartons', en: 'tiger-nut milk with sweet buns', icon: '🥛', one: 'una horchata con fartons', pl: 'horchatas con fartons' },
+      { id: 'paella', es: 'paella valenciana', en: 'Valencian paella', icon: '🥘', one: 'una paella valenciana', pl: 'paellas valencianas' },
+      { id: 'agua-valencia', es: 'agua de Valencia', en: 'orange & cava cocktail', icon: '🍹', one: 'un agua de Valencia', pl: 'aguas de Valencia' },
+      { id: 'cafe-tiempo', es: 'café del tiempo', en: 'iced coffee with lemon', icon: '☕', one: 'un café del tiempo', pl: 'cafés del tiempo' },
+      { id: 'clochinas', es: 'clóchinas', en: 'Valencian mussels', icon: '🦪', one: 'una ración de clóchinas', pl: 'raciones de clóchinas' },
+      { id: 'esgarraet', es: 'esgarraet', en: 'roasted pepper & salt cod', icon: '🫑', one: 'un esgarraet', pl: 'esgarraets' },
+      { id: 'bunuelo', es: 'buñuelo de calabaza', en: 'pumpkin fritter', icon: '🍩', one: 'un buñuelo de calabaza', pl: 'buñuelos de calabaza' },
+      { id: 'agua', es: 'agua', en: 'water', icon: '💧', one: 'un agua', pl: 'aguas' },
     ],
     available: true,
   },
@@ -202,7 +234,7 @@ export const CITY_THEMES: Record<CityId, CityTheme> = {
   },
 };
 
-export const CITY_ORDER: CityId[] = ['madrid', 'barcelona', 'sevilla', 'cdmx', 'buenosaires', 'medellin'];
+export const CITY_ORDER: CityId[] = ['madrid', 'valencia', 'barcelona', 'sevilla', 'cdmx', 'buenosaires', 'medellin'];
 
 function hexToRgb(hex: string): string {
   const n = parseInt(hex.slice(1), 16);

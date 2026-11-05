@@ -180,6 +180,49 @@ function LandmarkShape({ id, x, base, t, night }: { id: Landmark; x: number; bas
       </>);
     case 'andes':
       return null; // part of the mountain layer
+    case 'serranos':
+      // Torres de Serranos: twin crenellated gothic towers flanking a gate
+      return g(<>
+        {[-70, 70].map((tx) => (
+          <g key={tx}>
+            <path d={`M${tx - 34} 0 L${tx - 30} -160 L${tx + 30} -160 L${tx + 34} 0 Z`} fill={night ? '#B9AE9A' : '#E8DCC3'} />
+            <path d={`M${tx - 30} -160 L${tx - 30} -176 L${tx - 18} -176 L${tx - 18} -166 L${tx - 6} -166 L${tx - 6} -176 L${tx + 6} -176 L${tx + 6} -166 L${tx + 18} -166 L${tx + 18} -176 L${tx + 30} -176 L${tx + 30} -160 Z`} fill={night ? '#B9AE9A' : '#E8DCC3'} />
+            <path d={`M${tx - 8} -60 l0 -26 a8 8 0 0 1 16 0 l0 26 z`} fill={night ? '#5A5147' : '#C9B89A'} />
+            <path d={`M${tx - 6} -120 l0 -18 a6 6 0 0 1 12 0 l0 18 z`} fill={night ? '#5A5147' : '#C9B89A'} />
+          </g>
+        ))}
+        <rect x="-40" y="-100" width="80" height="100" fill={night ? '#A99E8B' : '#DDD0B5'} />
+        <path d="M-22 0 L-22 -56 A22 22 0 0 1 22 -56 L22 0 Z" fill={night ? '#3A3430' : '#8F8371'} />
+        <path d="M-40 -100 L-40 -112 L-28 -112 L-28 -104 L-14 -104 L-14 -112 L0 -112 L0 -104 L14 -104 L14 -112 L28 -112 L28 -104 L40 -104 L40 -100 Z" fill={night ? '#A99E8B' : '#DDD0B5'} />
+      </>);
+    case 'miguelete':
+      // El Miguelete: octagonal gothic bell tower with a belfry on top
+      return g(<>
+        <path d="M-34 0 L-30 -230 L30 -230 L34 0 Z" fill={night ? '#B9AE9A' : '#E6D9BE'} />
+        <path d="M-30 -230 L-30 -248 L30 -248 L30 -230 Z" fill={night ? '#A99E8B' : '#D9CAA8'} />
+        <path d="M-14 -248 L-14 -286 L14 -286 L14 -248 Z" fill={night ? '#A99E8B' : '#D9CAA8'} />
+        <path d="M-8 -282 l0 -14 a8 8 0 0 1 16 0 l0 14 z" fill={night ? '#5A5147' : '#9C8E74'} />
+        <path d="M-3 -286 L-3 -300 L8 -298 Z" fill={gold} />
+        {[-70, -120, -170].map((y) => <path key={y} d={`M-8 ${y} l0 -22 a8 8 0 0 1 16 0 l0 22 z`} fill={night ? '#5A5147' : '#C0AF8E'} />)}
+        <path d="M-24 -12 L-24 -226 M24 -12 L24 -226" stroke={night ? '#8E8471' : '#CDBE9E'} strokeWidth="2" />
+      </>);
+    case 'hemisferic':
+      // L'Hemisfèric: the white eye-shaped planetarium over its reflecting pool
+      return g(<>
+        <ellipse cx="0" cy="-6" rx="150" ry="14" fill={night ? '#2A4A6E' : P.deepLight} opacity=".55" />
+        <path d="M-120 -30 Q0 -120 120 -30 Q0 -4 -120 -30 Z" fill={night ? '#DCE3E8' : '#FFFFFF'} />
+        <path d="M-100 -36 Q0 -100 100 -36 Q0 -14 -100 -36 Z" fill={night ? '#3C6A9E' : '#9CC8E8'} opacity=".75" />
+        {Array.from({ length: 11 }).map((_, i) => <line key={i} x1={-100 + i * 20} y1={-36 - Math.sin((i / 10) * Math.PI) * 58} x2={-100 + i * 20} y2={-14 - Math.sin((i / 10) * Math.PI) * 6} stroke="#fff" strokeWidth="1.5" opacity=".7" />)}
+        <path d="M-120 -30 Q0 -120 120 -30" fill="none" stroke={night ? '#F2EAD3' : '#FFFFFF'} strokeWidth="5" />
+      </>);
+    case 'palau-arts':
+      // Palau de les Arts: Calatrava's helmet/feather silhouette
+      return g(<>
+        <path d="M-130 0 Q-110 -150 10 -190 Q110 -200 150 -120 L140 -118 Q100 -160 30 -150 Q-70 -120 -90 0 Z" fill={night ? '#DCE3E8' : '#FFFFFF'} />
+        <path d="M-90 0 Q-70 -120 30 -150 Q100 -160 140 -118 Q90 -110 40 -100 Q-30 -80 -40 0 Z" fill={night ? '#2E4E74' : P.deepLight} opacity=".8" />
+        <path d="M-150 -40 Q-60 -220 120 -205 Q140 -200 150 -190 Q0 -200 -140 -30 Z" fill={night ? '#F2EAD3' : '#FFFFFF'} />
+        <ellipse cx="0" cy="-6" rx="160" ry="12" fill={night ? '#2A4A6E' : P.deepLight} opacity=".45" />
+      </>);
   }
 }
 

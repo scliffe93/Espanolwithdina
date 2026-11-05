@@ -8,7 +8,7 @@ import type { ErrorCategory, Interest } from '../types';
 //   {g:masc|fem}      grammatical-gender agreement for the learner
 // ───────────────────────────────────────────────────────────────
 
-export type CityId = 'madrid' | 'barcelona' | 'sevilla' | 'cdmx' | 'buenosaires' | 'medellin';
+export type CityId = 'madrid' | 'valencia' | 'barcelona' | 'sevilla' | 'cdmx' | 'buenosaires' | 'medellin';
 
 export interface CharacterLook {
   skin: string;

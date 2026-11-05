@@ -64,7 +64,7 @@ src/
 - **Content:** scenes are data (`data/story.ts`). New tenses are a `conjugate()` branch plus validated forms.
 
 ## 3b. Cities & arcade (v0.2)
-- `src/data/cityThemes.ts` — six city identities (palette → CSS variables consumed by Tailwind tokens, skyline landmarks, map geography, transit style, local menu). `applyCityTheme()` re-themes the whole app live.
+- `src/data/cityThemes.ts` — seven city identities (palette → CSS variables consumed by Tailwind tokens, skyline landmarks, map geography, transit style, local menu). `applyCityTheme()` re-themes the whole app live.
 - `src/data/cities/*.ts` — one self-registering story file per city (3 chapters each), validated by `tests/stories.test.ts` (graph reachability, cast, vocab, error-choice feedback, placeholders).
 - Varieties: `spain | mexico | argentina | colombia`. Voseo is generated (`voseo()` in `verbs.ts`) and unit-tested; `conjugate()` defaults to the learner's active variety.
 - `src/screens/games/` — GameShell (intro, countdown, HUD, pause, end screen, personal bests) + Metro Rush, Order Up!, ¿Sí o no?, Ser o Estar. All answers go through `recordAttempt` so games feed mastery, mistakes and spaced repetition. Swipe "wrong" cards are only unambiguous errors; ser/estar items with a valid alternative reading are flagged `ambiguous`.
