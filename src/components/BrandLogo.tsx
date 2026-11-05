@@ -67,11 +67,10 @@ export function BrandLogo({ variant = 'rail' }: { variant?: 'rail' | 'bar' | 'he
     const loop = () => {
       t = window.setTimeout(() => {
         if (!alive) return;
-        if (Math.random() < 0.22) wave(1500);
         setExpression('beam');
         window.setTimeout(() => alive && setExpression('smile'), 2000);
         loop();
-      }, 7000 + Math.random() * 6000);
+      }, 12000 + Math.random() * 8000);
     };
     loop();
     return () => { alive = false; window.clearTimeout(t); };
@@ -102,11 +101,11 @@ export function BrandLogo({ variant = 'rail' }: { variant?: 'rail' | 'bar' | 'he
       type="button"
       onClick={greet}
       className="group relative block cursor-pointer rounded-full focus-visible:outline-offset-4"
-      aria-label={`Dina, your Spanish tutor. Tap to hear: ${greeting.es}`}
-      initial={!playEntrance ? false : variant === 'bar' ? { x: -26, opacity: 0, rotate: -12 } : { y: 52, opacity: 0, rotate: -10 }}
-      animate={entered ? { x: 0, y: 0, opacity: 1, rotate: variant === 'bar' ? -6 : -4 } : undefined}
-      transition={{ type: 'spring', stiffness: 260, damping: 14, mass: 0.8 }}
-      whileHover={reduced ? undefined : { y: -3, rotate: 0 }}
+      aria-label={`Dina, your Spanish tutor, with her Maltese Toby. Tap to hear: ${greeting.es}`}
+      initial={!playEntrance ? false : variant === 'bar' ? { y: 14, opacity: 0 } : { y: 24, opacity: 0 }}
+      animate={entered ? { x: 0, y: 0, opacity: 1 } : undefined}
+      transition={{ type: 'tween', duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+      whileHover={reduced ? undefined : { y: -2 }}
       whileTap={reduced ? undefined : { scale: 0.96 }}
     >
       <DinaArt size={size} expression={expression} speaking={speaking} waving={waving} animate={!reduced} />
@@ -128,6 +127,7 @@ export function BrandLogo({ variant = 'rail' }: { variant?: 'rail' | 'bar' | 'he
           <span className="absolute -top-1.5 left-10 h-3 w-3 rotate-45 bg-white" aria-hidden />
           <p className="font-display text-lg font-semibold leading-snug" style={{ color: BRAND.terracotta }} lang="es">{greeting.es}</p>
           <p className="text-sm text-ink-soft">{greeting.en}</p>
+          <p className="mt-1.5 border-t border-ink/5 pt-1.5 text-xs text-ink-soft"><span lang="es">🐾 Toby says <i>“¡guau, guau!”</i></span> — that’s “woof woof” in Spanish.</p>
           {!audioOk && <p className="mt-1 text-xs text-ink-mute">{ttsSupported ? 'No Spanish voice is installed on this device, so the greeting is shown as text.' : 'Audio isn’t available in this browser — here’s what Dina says.'}</p>}
         </motion.div>
       )}
