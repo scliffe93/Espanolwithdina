@@ -20,9 +20,9 @@ Requires Node 18+ (developed on Node 22).
 ## Publish it free with a shareable HTTPS URL
 
 **GitHub Pages (included):**
-1. Merge to `main`.
+1. Push to this branch (or merge to `main`).
 2. In the repo, go to **Settings → Pages → Source** and choose **GitHub Actions**.
-3. `.github/workflows/deploy.yml` tests, builds and publishes to `https://<user>.github.io/<repo>/`.
+3. `.github/workflows/static.yml` tests, builds and publishes on every push to this branch or `main`, to `https://<user>.github.io/<repo>/`.
 
 The build uses relative paths (`base: './'`) and hash routing, so it works on any sub-path without rewrites.
 
