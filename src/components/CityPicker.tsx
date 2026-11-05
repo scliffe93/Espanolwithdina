@@ -9,7 +9,7 @@ import { sfx } from '../lib/fx';
 export function CityPicker({ value, onChange, progress }: { value: CityId; onChange: (c: CityId) => void; progress?: Partial<Record<CityId, number>> }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="radiogroup" aria-label="Choose your city">
-      {CITY_ORDER.map((id, i) => {
+      {CITY_ORDER.filter((id) => CITY_THEMES[id].available).map((id, i) => {
         const t = CITY_THEMES[id];
         const selected = value === id;
         return (

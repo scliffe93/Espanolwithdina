@@ -111,10 +111,10 @@ export function Welcome() {
   const resumed = !!state.profile?.name;
   const [ci, setCi] = useState(0);
   useEffect(() => {
-    const iv = window.setInterval(() => setCi((n) => (n + 1) % CITY_ORDER.length), 3800);
+    const iv = window.setInterval(() => setCi((n) => (n + 1) % CITY_ORDER.filter((c) => CITY_THEMES[c].available).length), 3800);
     return () => window.clearInterval(iv);
   }, []);
-  const showCity = CITY_ORDER[ci];
+  const showCity = CITY_ORDER.filter((c) => CITY_THEMES[c].available)[ci];
   return (
     <div className="relative min-h-[100dvh] overflow-hidden bg-cream-warm transition-colors duration-700" style={{ background: CITY_THEMES[showCity].palette.bgWarm }}>
       <div className="grain pointer-events-none absolute inset-0" />

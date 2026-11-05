@@ -110,7 +110,7 @@ export const CITY_THEMES: Record<CityId, CityTheme> = {
       { id: 'bunuelo', es: 'buñuelo de calabaza', en: 'pumpkin fritter', icon: '🍩', one: 'un buñuelo de calabaza', pl: 'buñuelos de calabaza' },
       { id: 'agua', es: 'agua', en: 'water', icon: '💧', one: 'un agua', pl: 'aguas' },
     ],
-    available: true,
+    available: false, // flipped to true when the Valencia storyline is in
   },
   barcelona: {
     id: 'barcelona', name: 'Barcelona', country: 'España', variety: 'spain', varietyLabel: 'Spain Spanish', voice: 'es-ES',
