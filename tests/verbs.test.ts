@@ -59,3 +59,22 @@ describe('verb data integrity', () => {
     }
   });
 });
+
+import { voseo, personsForRegion } from '../src/data/verbs';
+describe('voseo (Buenos Aires)', () => {
+  it('stresses the ending with no stem change, plus the four exceptions', () => {
+    const want: Record<string, string> = {
+      ser: 'sos', ir: 'vas', dar: 'das', ver: 'ves', estar: 'estás', tener: 'tenés', querer: 'querés', poder: 'podés',
+      dormir: 'dormís', pedir: 'pedís', decir: 'decís', venir: 'venís', hablar: 'hablás', vivir: 'vivís', oír: 'oís',
+      leer: 'leés', jugar: 'jugás', volver: 'volvés', pensar: 'pensás', saber: 'sabés', hacer: 'hacés', salir: 'salís', gustar: 'te gusta',
+    };
+    for (const [inf, f] of Object.entries(want)) expect(voseo(VERB_BY_INF[inf]), inf).toBe(f);
+    expect(conjugate(VERB_BY_INF.tener, 'present', 1, 'argentina')).toBe('tenés');
+    expect(conjugate(VERB_BY_INF.tener, 'present', 1, 'mexico')).toBe('tienes');
+    expect(conjugate(VERB_BY_INF.hablar, 'progressive', 1, 'argentina')).toBe('estás hablando');
+  });
+  it('drops vosotros outside Spain', () => {
+    expect(personsForRegion('spain')).toContain(4);
+    for (const r of ['mexico', 'argentina', 'colombia'] as const) expect(personsForRegion(r)).not.toContain(4);
+  });
+});

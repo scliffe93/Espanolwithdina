@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../components/Icon';
 import { HelpMeRemember, type MemorySource } from '../components/HelpMeRemember';
 import { Bar, PageHeader, ProgressRing, Sheet } from '../components/ui';
-import { PERSONS, PERSONS_EN, ROADMAP_TENSES, TENSES, VERBS, VERB_BY_INF, conjugate, groupLabel, parseExample, personsForRegion, type Tense, type Verb } from '../data/verbs';
+import { personLabel, PERSONS_EN, ROADMAP_TENSES, TENSES, VERBS, VERB_BY_INF, conjugate, groupLabel, parseExample, personsForRegion, type Tense, type Verb } from '../data/verbs';
 import { useSay } from '../hooks/useSpeech';
 import { allVerbMastery } from '../lib/analytics';
 import { CATEGORY_LABEL, CATEGORY_TIP, checkAnswer, classifyVerbError, normalize } from '../lib/answer';
@@ -73,7 +73,7 @@ function Session({ exercises: initial, tense, onExit }: { exercises: Exercise[];
     // Revisit mistakes automatically later in the session, as a production exercise.
     if (!r.correct && card && !requeued.current.has(i) && ex.kind !== 'serEstar') {
       requeued.current.add(i);
-      setQueue((q) => [...q, { kind: 'type', verb: verbInf, tense: card.tense, person: card.person, pronoun: (ex as { pronoun?: string }).pronoun || PERSONS[card.person].split(' ')[0] }]);
+      setQueue((q) => [...q, { kind: 'type', verb: verbInf, tense: card.tense, person: card.person, pronoun: (ex as { pronoun?: string }).pronoun || personLabel(card.person).split(' ')[0] }]);
     }
     if (r.correct && r.sayText) say(r.sayText);
     setResult(r);
@@ -447,9 +447,9 @@ function VerbSheet({ verb, onClose, onPractise }: { verb: Verb | null; onClose: 
       <div className="grid gap-1.5">
         {persons.map((p) => {
           const f = conjugate(verb, tense, p);
-          const pron = verb.pronominal ? '' : PERSONS[p];
+          const pron = verb.pronominal ? '' : personLabel(p);
           return (
-            <button key={p} onClick={() => say(`${verb.pronominal ? '' : PERSONS[p].split(' ')[0]} ${f}`)} className="flex items-center justify-between rounded-xl bg-white px-4 py-2.5 text-left ring-1 ring-ink/5 hover:ring-ink/20">
+            <button key={p} onClick={() => say(`${verb.pronominal ? '' : personLabel(p).split(' ')[0]} ${f}`)} className="flex items-center justify-between rounded-xl bg-white px-4 py-2.5 text-left ring-1 ring-ink/5 hover:ring-ink/20">
               <span className="text-ink-mute">{pron}</span>
               <span className="flex items-center gap-2 font-semibold">{f} <Icon name="volume" size={16} className="text-ink-mute" /></span>
             </button>

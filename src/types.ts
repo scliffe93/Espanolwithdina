@@ -8,7 +8,7 @@ export const CEFR_LEVELS: Cefr[] = ['A1', 'A2', 'B1', 'B2', 'C1'];
 export type Skill = 'vocabulary' | 'grammar' | 'reading' | 'listening' | 'speaking' | 'verbs';
 export const SKILLS: Skill[] = ['vocabulary', 'grammar', 'reading', 'listening', 'speaking', 'verbs'];
 
-export type Region = 'spain' | 'mexico';
+export type Region = 'spain' | 'mexico' | 'argentina' | 'colombia';
 
 export type Activity = 'visual' | 'audio' | 'speaking' | 'writing' | 'stories' | 'games';
 
@@ -61,6 +61,10 @@ export interface LearnerProfile {
   difficulties: Difficulty[];
   hasTeacher: boolean;
   region: Region;
+  /** The city the learner is living in (drives theme, story and variety). */
+  city: import('./data/storyTypes').CityId;
+  /** Cities the learner has lived in (passport stamps). */
+  citiesVisited: import('./data/storyTypes').CityId[];
   /** Free-text notes the learner gave in typed / voice answers, keyed by question. */
   notes: Record<string, string>;
   voiceNotes: VoiceNote[];
@@ -80,6 +84,7 @@ export interface Settings {
   guideVoice: boolean;
   showTranslations: 'always' | 'on-tap';
   speechRate: number; // 0.6–1.1
+  sound: boolean;
 }
 
 /** Spaced-repetition card. Keys: `verb:hablar|present|0` or `vocab:cafe`. */
@@ -124,6 +129,7 @@ export type ErrorCategory =
   | 'vocabulary'
   | 'spelling'
   | 'auxiliary'
+  | 'voseo'
   | 'other';
 
 export interface MistakeRecord {

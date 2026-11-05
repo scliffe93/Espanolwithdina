@@ -25,7 +25,7 @@ export function defaultState(): AppState {
     profile: null,
     onboardingDone: false,
     teacher: { name: '', email: '' },
-    settings: { streaksEnabled: true, guideVoice: true, showTranslations: 'on-tap', speechRate: 0.95 },
+    settings: { streaksEnabled: true, guideVoice: true, showTranslations: 'on-tap', speechRate: 0.95, sound: true },
     srs: {},
     days: {},
     story: { completedScenes: [], relationships: {}, flags: {}, sceneScores: {} },
@@ -47,6 +47,7 @@ export function migrate(raw: Partial<AppState> | undefined | null): AppState {
     teacher: { ...base.teacher, ...(raw.teacher ?? {}) },
     story: { ...base.story, ...(raw.story ?? {}) },
     techniqueStats: { ...base.techniqueStats, ...(raw.techniqueStats ?? {}) },
+    profile: raw.profile ? { ...raw.profile, city: raw.profile.city ?? (raw.profile.region === 'mexico' ? 'cdmx' : 'madrid'), citiesVisited: raw.profile.citiesVisited ?? [] } : null,
     version: STATE_VERSION,
   };
 }

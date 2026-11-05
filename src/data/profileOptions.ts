@@ -94,6 +94,8 @@ export function blankProfile(): LearnerProfile {
     difficulties: [],
     hasTeacher: false,
     region: 'spain',
+    city: 'madrid',
+    citiesVisited: [],
     notes: {},
     voiceNotes: [],
     levels: uniformLevels('A1'),

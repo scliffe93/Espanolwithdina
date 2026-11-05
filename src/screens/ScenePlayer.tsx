@@ -5,7 +5,7 @@ import { Icon } from '../components/Icon';
 import { SceneBackdrop } from '../components/SceneBackdrop';
 import { SpeakControls } from '../components/SpeakControls';
 import { Empty } from '../components/ui';
-import { CHARACTERS, INTEREST_LINES, SCENES, SCENE_BY_ID, type Choice, type SceneNode } from '../data/story';
+import { CHARACTERS, INTEREST_YOU, SCENES, SCENE_BY_ID, type Choice, type SceneNode } from '../data/story';
 import { VOCAB_BY_ID, vocabForm, vocabKey } from '../data/vocab';
 import { useTtsSpeaking } from '../hooks/useSpeech';
 import { normalize, stripAccents, CATEGORY_LABEL } from '../lib/answer';
@@ -68,8 +68,8 @@ export function ScenePlayer({ id }: { id: string }) {
       const picks = (p.interests.length ? p.interests.slice(0, 3) : []) as (Interest | 'default')[];
       const list = [...picks, 'default' as const].filter((v, i, a) => a.indexOf(v) === i).slice(0, 3);
       return [
-        ...list.map<Choice>((k) => ({ es: INTEREST_LINES[k].you.es, en: INTEREST_LINES[k].you.en, next: 'c8', quality: 'great', rel: 6, setFlag: ['interest', k] })),
-        { es: 'Yo gusto el fútbol.', en: '(I please football.)', next: 'c7', quality: 'off', category: 'person-agreement', feedback: 'With gustar, the thing you like is the subject: "Me gusta el fútbol" — literally "football pleases me".' },
+        ...list.map<Choice>((k) => ({ es: INTEREST_YOU[k].es, en: INTEREST_YOU[k].en, next: node.interestNext!, quality: 'great', rel: 6, setFlag: ['interest', k] })),
+        { es: 'Yo gusto el fútbol.', en: '(I please football.)', next: node.id, quality: 'off', category: 'person-agreement', feedback: 'With gustar, the thing you like is the subject: "Me gusta el fútbol" — literally "football pleases me".' },
       ];
     }
     return node.choices ?? [];

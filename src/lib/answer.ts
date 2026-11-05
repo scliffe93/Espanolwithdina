@@ -1,5 +1,5 @@
 import type { ErrorCategory } from '../types';
-import { conjugate, type Tense, type Verb } from '../data/verbs';
+import { conjugate, getActiveVariety, type Tense, type Verb } from '../data/verbs';
 
 /** Lower-case, trim, remove punctuation (keeps accents and ñ). */
 export function normalize(s: string): string {
@@ -59,6 +59,7 @@ export function classifyVerbError(verb: Verb, tense: Tense, person: number, give
   const g = normalize(given);
   const expected = normalize(conjugate(verb, tense, person));
   if (stripAccents(g) === stripAccents(expected)) return 'accents';
+  if (getActiveVariety() === 'argentina' && person === 1 && tense === 'present' && g === normalize(verb.present[1])) return 'voseo';
 
   const sameTenseForms = [0, 1, 2, 3, 4, 5].map((p) => normalize(conjugate(verb, tense, p)));
   if (sameTenseForms.includes(g) || sameTenseForms.map(stripAccents).includes(stripAccents(g))) return 'person-agreement';
@@ -95,6 +96,7 @@ export const CATEGORY_LABEL: Record<ErrorCategory, string> = {
   vocabulary: 'Vocabulary recall',
   spelling: 'Spelling slips',
   auxiliary: 'Auxiliary verb (estar / haber)',
+  voseo: 'Using tú forms instead of vos',
   other: 'Other',
 };
 
@@ -109,5 +111,6 @@ export const CATEGORY_TIP: Record<ErrorCategory, string> = {
   vocabulary: 'Use Help me remember on missed words — the clue you build yourself is what sticks.',
   spelling: 'Slow down on the final letters: most slips are in the ending.',
   auxiliary: 'Progressive uses estar (estoy hablando); perfect uses haber (he hablado).',
+  voseo: 'In Buenos Aires vos takes the stress on the ending and no stem change: vos querés, podés, tenés, sos.',
   other: 'Review the model sentence and say it aloud twice.',
 };

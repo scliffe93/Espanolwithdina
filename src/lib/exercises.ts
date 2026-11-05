@@ -1,5 +1,5 @@
 import type { Activity, AppState, Region } from '../types';
-import { VERBS, VERB_BY_INF, conjugate, parseExample, personsForRegion, verbKey, type Tense, type Verb, type VerbExample } from '../data/verbs';
+import { VERBS, VERB_BY_INF, conjugate, getActiveVariety, parseExample, personsForRegion, verbKey, type Tense, type Verb, type VerbExample } from '../data/verbs';
 import { regularPresent } from './answer';
 
 export type ExKind = 'type' | 'choice' | 'match' | 'build' | 'listen' | 'fix' | 'translate' | 'context' | 'serEstar';
@@ -68,6 +68,8 @@ const PRONOUN_CHOICES: string[][] = [['yo'], ['tú'], ['él', 'ella', 'usted'], 
 const IO_PRONOUN_CHOICES: string[][] = [['a mí'], ['a ti'], ['a él', 'a ella', 'a usted'], ['a nosotros'], ['a vosotros'], ['a ellos', 'a ellas', 'a ustedes']];
 
 export function pronounFor(verb: Verb, person: number, rng: Rng = Math.random): string {
+  const vos = getActiveVariety() === 'argentina' && person === 1;
+  if (vos) return verb.pronominal ? 'a vos' : 'vos';
   const list = (verb.pronominal ? IO_PRONOUN_CHOICES : PRONOUN_CHOICES)[person];
   return list[Math.floor(rng() * list.length)];
 }
@@ -76,6 +78,7 @@ export function pronounFor(verb: Verb, person: number, rng: Rng = Math.random): 
 export function formOptions(verb: Verb, tense: Tense, person: number, region: Region, rng: Rng = Math.random, n = 4): string[] {
   const answer = conjugate(verb, tense, person);
   const pool = new Set<string>();
+  if (tense === 'present' && getActiveVariety() === 'argentina' && person === 1 && !verb.pronominal) pool.add(verb.present[1]); // tú form as a distractor for vos
   if (tense === 'present' && verb.group !== 'regular' && !verb.pronominal) {
     const reg = regularPresent(verb.inf, person);
     if (reg !== answer) pool.add(reg);

@@ -3,7 +3,7 @@ import { useMemo, useRef, useState } from 'react';
 import { HelpMeRemember, type MemorySource } from '../components/HelpMeRemember';
 import { Icon } from '../components/Icon';
 import { Bar, Empty, PageHeader } from '../components/ui';
-import { PERSONS, VERB_BY_INF, conjugate, groupLabel, type Tense } from '../data/verbs';
+import { personLabel, VERB_BY_INF, conjugate, groupLabel, type Tense } from '../data/verbs';
 import { VOCAB_BY_ID, acceptedAnswers, vocabForm } from '../data/vocab';
 import { useSay } from '../hooks/useSpeech';
 import { checkAnswer, classifyVerbError, CATEGORY_TIP } from '../lib/answer';
@@ -27,7 +27,7 @@ interface Item {
   regionNote?: string;
 }
 
-function toItem(card: SrsCard, region: 'spain' | 'mexico'): Item | null {
+function toItem(card: SrsCard, region: import('../types').Region): Item | null {
   if (card.key.startsWith('vocab:')) {
     const v = VOCAB_BY_ID[card.key.slice(6)];
     if (!v) return null;
@@ -42,10 +42,10 @@ function toItem(card: SrsCard, region: 'spain' | 'mexico'): Item | null {
   const verb = VERB_BY_INF[m[1]];
   if (!verb) return null;
   const tense = m[2] as Tense, person = Number(m[3]);
-  if (region === 'mexico' && person === 4) return null;
+  if (region !== 'spain' && person === 4) return null;
   const form = conjugate(verb, tense, person);
   return {
-    key: card.key, prompt: `${verb.pronominal ? '' : PERSONS[person].split(' ')[0] + ' · '}${verb.inf}`, sub: `${verb.en} — ${tense === 'present' ? 'present' : tense === 'progressive' ? 'present progressive' : 'present perfect'}${verb.pronominal ? ` · ${['a mí', 'a ti', 'a él/ella', 'a nosotros', 'a vosotros', 'a ellos'][person]}` : ''}`,
+    key: card.key, prompt: `${verb.pronominal ? '' : personLabel(person).split(' ')[0] + ' · '}${verb.inf}`, sub: `${verb.en} — ${tense === 'present' ? 'present' : tense === 'progressive' ? 'present progressive' : 'present perfect'}${verb.pronominal ? ` · ${['a mí', 'a ti', 'a él/ella', 'a nosotros', 'a vosotros', 'a ellos'][person]}` : ''}`,
     answers: [form], display: form, isNew: false, verb: { inf: verb.inf, tense, person },
     memory: { key: card.key, answer: form, en: verb.en, origin: verb.origin, trick: verb.trick, pattern: `${groupLabel(verb.group)}. ${verb.note ?? ''}` },
   };

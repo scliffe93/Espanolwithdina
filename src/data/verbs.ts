@@ -546,16 +546,49 @@ const ESTAR = VERB_BY_INF.estar.present;
 const HABER = ['he', 'has', 'ha', 'hemos', 'habéis', 'han'];
 const IO_PRONOUNS = ['me', 'te', 'le', 'nos', 'os', 'les'];
 
+type Variety = 'spain' | 'mexico' | 'argentina' | 'colombia';
+let activeVariety: Variety = 'spain';
+/** Set by the app store whenever the learner's variety changes. */
+export function setActiveVariety(v: Variety) {
+  activeVariety = v;
+}
+export function getActiveVariety(): Variety {
+  return activeVariety;
+}
+
+const VOSEO_EXCEPTIONS: Record<string, string> = { ser: 'sos', ir: 'vas', dar: 'das', ver: 'ves' };
+
+/**
+ * Rioplatense voseo (present indicative): stress on the ending and no stem change —
+ * hablás, comés, vivís, tenés, querés, podés, dormís, pedís, decís, oís.
+ */
+export function voseo(verb: Verb): string {
+  if (verb.pronominal) return verb.present[1]; // te gusta
+  if (VOSEO_EXCEPTIONS[verb.inf]) return VOSEO_EXCEPTIONS[verb.inf];
+  const inf = verb.inf.replace('í', 'i');
+  const stem = inf.slice(0, -2);
+  const end = inf.slice(-2);
+  return stem + (end === 'ar' ? 'ás' : end === 'er' ? 'és' : 'ís');
+}
+
 /** Returns the conjugated form for any supported tense and person (0–5). */
-export function conjugate(verb: Verb, tense: Tense, person: number): string {
-  if (tense === 'present') return verb.present[person];
+export function conjugate(verb: Verb, tense: Tense, person: number, variety: Variety = activeVariety): string {
+  const vos = variety === 'argentina' && person === 1;
+  if (tense === 'present') return vos ? voseo(verb) : verb.present[person];
   if (verb.pronominal) {
     // gustar-type: me está gustando / me ha gustado (3rd-person singular agreement).
     const aux = tense === 'progressive' ? `está ${verb.gerund}` : `ha ${verb.participle}`;
     return `${IO_PRONOUNS[person]} ${aux}`;
   }
-  if (tense === 'progressive') return `${ESTAR[person]} ${verb.gerund}`;
-  return `${HABER[person]} ${verb.participle}`;
+  if (tense === 'progressive') return `${ESTAR[person]} ${verb.gerund}`; // vos estás = tú estás
+  return `${HABER[person]} ${verb.participle}`; // vos has = tú has
+}
+
+/** Subject label for a person in the active variety. */
+export function personLabel(person: number, variety: Variety = activeVariety): string {
+  if (person === 1 && variety === 'argentina') return 'vos';
+  if (person === 5 && variety !== 'spain') return 'ellos / ellas / ustedes';
+  return PERSONS[person];
 }
 
 /** Strips the {braces}, returning the plain sentence and the blanked form. */
@@ -578,8 +611,8 @@ export function groupLabel(g: VerbGroup): string {
 }
 
 /** Persons available for the learner's region (Mexico doesn't use vosotros). */
-export function personsForRegion(region: 'spain' | 'mexico'): number[] {
-  return region === 'mexico' ? [0, 1, 2, 3, 5] : [0, 1, 2, 3, 4, 5];
+export function personsForRegion(region: Variety = activeVariety): number[] {
+  return region === 'spain' ? [0, 1, 2, 3, 4, 5] : [0, 1, 2, 3, 5];
 }
 
 export function verbKey(inf: string, tense: Tense, person: number): string {
