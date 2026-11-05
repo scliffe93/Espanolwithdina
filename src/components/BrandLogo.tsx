@@ -95,7 +95,7 @@ export function BrandLogo({ variant = 'rail' }: { variant?: 'rail' | 'bar' | 'he
   };
   useEffect(() => () => window.clearTimeout(bubbleTimer.current), []);
 
-  const size = variant === 'bar' ? 50 : variant === 'hero' ? 118 : 100;
+  const size = variant === 'bar' ? 48 : variant === 'hero' ? 104 : 90;
 
   const dina = (
     <motion.button
@@ -152,8 +152,6 @@ export function BrandLogo({ variant = 'rail' }: { variant?: 'rail' | 'bar' | 'he
   // Geometry: the card's top edge sits at Dina's collarbone so her whole head shows above it.
   const dinaH = (size * 170) / 160;
   const cardTop = Math.round(dinaH * 0.77);
-  const handW = Math.max(5, Math.round(size * 0.065));
-  const hands = [0.17, 0.66].map((fx) => Math.round(size * (1 - fx) - handW * 2)); // offsets from Dina's right edge
   const dinaRight = variant === 'hero' ? 12 : 8;
 
   return (
@@ -171,24 +169,6 @@ export function BrandLogo({ variant = 'rail' }: { variant?: 'rail' | 'bar' | 'he
         <span className="mt-2 block font-display text-[13px] italic leading-snug" style={{ color: BRAND.ink }} lang="es">{TAGLINE_ES}</span>
         <span className="block text-[11px] font-medium uppercase tracking-[0.12em]" style={{ color: BRAND.olive }}>{TAGLINE_EN}</span>
       </button>
-      {/* Her hands curl over the top edge of the card, at shoulder width */}
-      {hands.map((offset, h) => (
-        <motion.div
-          key={h}
-          className="pointer-events-none absolute z-20"
-          style={{ top: cardTop - handW * 0.95, right: dinaRight + offset + handW * 0.5 }}
-          initial={!playEntrance ? false : { opacity: 0, y: 6 }}
-          animate={entered ? { opacity: 1, y: 0 } : undefined}
-          transition={{ delay: 0.25 + h * 0.08 }}
-          aria-hidden
-        >
-          <svg width={handW * 3.3} height={handW * 1.43} viewBox="0 0 44 19">
-            <path d="M2 19 C1 8 6 2 12 2 C16 0 20 0 23 1.5 C27 0 31 0 34 2 C40 2 43 8 42 19 Z" fill="#EBC3A2" />
-            <path d="M12.5 4 L13 15 M22.5 3 L22.5 15 M32 4 L31.5 15" stroke="#D49E7D" strokeWidth="1.3" strokeLinecap="round" />
-            <path d="M5 8 Q22 4 39 8" stroke="#F4D6BE" strokeWidth="1.4" fill="none" opacity=".7" />
-          </svg>
-        </motion.div>
-      ))}
       {speechBubble}
     </div>
   );

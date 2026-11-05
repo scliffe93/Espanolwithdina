@@ -78,32 +78,36 @@ export function DinaArt({
     <svg viewBox="0 0 160 170" width={size} height={(size * 170) / 160} className={className} role="img" aria-label={title} style={{ overflow: 'visible' }}>
       <defs>
         <linearGradient id={`face-${uid}`} x1="0.2" y1="0" x2="0.8" y2="1">
-          <stop offset="0" stopColor="#F2CFB1" />
+          <stop offset="0" stopColor="#F5D6BC" />
           <stop offset="1" stopColor={SKIN} />
         </linearGradient>
         <linearGradient id={`hair-${uid}`} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor={HAIR_LIGHT} />
-          <stop offset="0.55" stopColor={HAIR} />
+          <stop offset="0.5" stopColor={HAIR} />
           <stop offset="1" stopColor="#2A1811" />
         </linearGradient>
-        <pattern id={`lace-${uid}`} width="6" height="6" patternUnits="userSpaceOnUse">
-          <rect width="6" height="6" fill={LACE} />
-          <circle cx="3" cy="3" r="1.3" fill="#B9AA8C" />
+        <radialGradient id={`iris-${uid}`} cx="0.45" cy="0.4" r="0.6">
+          <stop offset="0" stopColor="#9A6440" />
+          <stop offset="1" stopColor={IRIS} />
+        </radialGradient>
+        <pattern id={`lace-${uid}`} width="5" height="5" patternUnits="userSpaceOnUse">
+          <rect width="5" height="5" fill={LACE} />
+          <circle cx="2.5" cy="2.5" r="1.05" fill="#BFB091" />
         </pattern>
       </defs>
 
-      {/* Back hair (shoulder length, falls behind the shoulders) */}
-      <path d="M43 74 C38 42 58 21 83 21 C110 21 126 43 121 76 C123 96 127 118 122 140 C118 150 108 152 102 146 L100 122 L60 122 L57 148 C49 152 39 146 37 132 C35 114 41 94 43 74 Z" fill={`url(#hair-${uid})`} />
+      {/* Back hair: soft, glossy, shoulder length with a gentle wave at the ends */}
+      <path d="M46 76 C41 44 59 23 81 23 C106 23 122 44 117 77 C119 96 123 116 119 134 C121 142 114 148 106 145 C109 138 104 134 101 128 L100 120 L61 120 L59 128 C56 134 51 138 54 145 C46 148 39 142 41 134 C37 116 42 96 46 76 Z" fill={`url(#hair-${uid})`} />
 
-      {/* Shoulders: black knit top + cream crochet shoulder */}
-      <path d="M14 172 C18 144 44 128 80 127 C116 128 142 144 146 172 Z" fill={TOP} />
-      <path d="M103 131 C120 134 134 145 140 166 L129 170 C124 154 113 143 98 139 Z" fill={`url(#lace-${uid})`} />
-      <path d="M103 131 C120 134 134 145 140 166" fill="none" stroke="#CDBE9F" strokeWidth="1.2" strokeDasharray="2 2" />
-      <path d="M64 129 C70 140 90 140 96 129" fill="none" stroke="#3B3532" strokeWidth="2" />
+      {/* Petite shoulders: black knit top with the cream crochet shoulder */}
+      <path d="M26 172 C30 147 52 132 80 131 C108 132 130 147 134 172 Z" fill={TOP} />
+      <path d="M100 134 C114 137 125 147 130 165 L121 169 C117 155 108 146 96 141 Z" fill={`url(#lace-${uid})`} />
+      <path d="M100 134 C114 137 125 147 130 165" fill="none" stroke="#CDBE9F" strokeWidth="1" strokeDasharray="1.6 1.6" />
+      <path d="M67 132 C72 141 88 141 93 132" fill="none" stroke="#3B3532" strokeWidth="1.6" />
 
-      {/* Neck */}
-      <path d="M68 102 L68 131 C74 138 86 138 92 131 L92 102 Z" fill={SKIN_SHADE} />
-      <path d="M68 112 C74 118 86 118 92 112 L92 104 L68 104 Z" fill={SKIN_DEEP} opacity=".35" />
+      {/* Slim neck */}
+      <path d="M71 104 L71 132 C76 138 84 138 89 132 L89 104 Z" fill={SKIN_SHADE} />
+      <path d="M71 110 C76 116 84 116 89 110 L89 104 L71 104 Z" fill={SKIN_DEEP} opacity=".3" />
 
       {/* Head group: gentle tilt */}
       <motion.g
@@ -111,91 +115,96 @@ export function DinaArt({
         animate={animate ? (speaking ? { rotate: [0, 2, -1.5, 1, 0] } : { rotate: [0, -1.6, 0, 1.4, 0] }) : undefined}
         transition={{ duration: speaking ? 2.2 : 7, repeat: Infinity, ease: 'easeInOut' }}
       >
-        {/* Face */}
-        <path d="M52 74 C52 49 64 35 80 35 C97 35 109 49 109 74 C109 97 99 116 80 119 C61 116 52 97 52 74 Z" fill={`url(#face-${uid})`} />
-        {/* Jaw shadow */}
-        <path d="M60 100 C66 112 73 117 80 119 C87 117 94 112 100 100 C94 110 87 114 80 114 C73 114 66 110 60 100 Z" fill={SKIN_SHADE} opacity=".18" />
+        {/* Heart-shaped face with a delicate chin */}
+        <path d="M55 73 C55 50 66 37 80 37 C94 37 105 50 105 73 C105 94 96 111 80 116 C64 111 55 94 55 73 Z" fill={`url(#face-${uid})`} />
+
+        {/* Tiny gold earrings */}
+        <circle cx="55.5" cy="88" r="1.9" fill="#D4AF5A" />
+        <circle cx="104.5" cy="88" r="1.9" fill="#D4AF5A" />
 
         {/* Side strands framing the face */}
-        <path d="M52 58 C45 78 45 100 50 124 C54 112 56 92 57 76 Z" fill={HAIR} />
-        <path d="M108 56 C116 80 117 104 112 126 C107 112 105 92 104 76 Z" fill={HAIR} />
+        <path d="M55 58 C48 78 48 100 53 122 C56 110 58 92 59 76 Z" fill={HAIR} />
+        <path d="M105 56 C112 80 113 102 109 124 C105 110 103 92 102 76 Z" fill={HAIR} />
 
-        {/* Crown + side-swept fringe (sweeps from her right to her left) */}
-        <path d="M49 68 C46 42 62 27 85 27 C106 27 119 43 113 70 C110 56 102 47 92 44 C84 42 76 44 70 48 C62 53 54 60 49 68 Z" fill={`url(#hair-${uid})`} />
-        <path d="M66 46 C80 44 98 49 107 63 C110 68 111 72 110 76 C104 66 96 60 86 57 C78 55 72 52 66 46 Z" fill={HAIR} />
-        <path d="M70 41 C80 36 94 37 102 44" fill="none" stroke={HAIR_SHINE} strokeWidth="1.6" strokeLinecap="round" opacity=".35" />
-        <path d="M78 51 C88 52 98 57 104 65" fill="none" stroke={HAIR_SHINE} strokeWidth="1.1" strokeLinecap="round" opacity=".3" />
+        {/* Crown + soft side-swept fringe */}
+        <path d="M52 68 C49 43 64 29 85 29 C104 29 117 44 111 70 C108 57 101 48 92 45 C84 43 76 45 70 49 C63 54 56 61 52 68 Z" fill={`url(#hair-${uid})`} />
+        <path d="M67 47 C80 45 97 50 105 63 C107 67 108 70 107 74 C102 66 95 60 86 57 C78 55 72 52 67 47 Z" fill={HAIR} />
+        <path d="M71 40 C81 35 95 36 103 44" fill="none" stroke={HAIR_SHINE} strokeWidth="1.8" strokeLinecap="round" opacity=".45" />
+        <path d="M80 50 C89 52 98 57 103 64" fill="none" stroke={HAIR_SHINE} strokeWidth="1.1" strokeLinecap="round" opacity=".35" />
 
-        {/* Eyebrows (natural, gently arched) */}
-        <motion.g animate={{ y: beam ? -1.2 : 0 }} transition={{ type: 'spring', stiffness: 220, damping: 16 }}>
-          <path d="M61 66 Q68 61.5 76 64.5" stroke={HAIR} strokeWidth="2.6" fill="none" strokeLinecap="round" />
-          <path d="M86 64.5 Q94 61.5 101 66" stroke={HAIR} strokeWidth="2.6" fill="none" strokeLinecap="round" />
+        {/* Soft, slim brows */}
+        <motion.g animate={{ y: beam ? -1 : 0 }} transition={{ type: 'spring', stiffness: 220, damping: 16 }}>
+          <path d="M62.5 65.5 Q69 61.8 75.5 64" stroke={HAIR} strokeWidth="1.7" fill="none" strokeLinecap="round" />
+          <path d="M84.5 64 Q91 61.8 97.5 65.5" stroke={HAIR} strokeWidth="1.7" fill="none" strokeLinecap="round" />
         </motion.g>
 
-        {/* Eyes: warm brown, smiling */}
-        {[69, 93].map((x) => (
-          <g key={x} style={{ transformOrigin: `${x}px 74px`, transform: `scaleY(${blink ? 0.08 : eyeSquint})`, transition: 'transform 90ms' }}>
-            <ellipse cx={x} cy="74" rx="5.6" ry="3.9" fill="#FFFDF8" />
-            <circle cx={x + 0.4} cy="74" r="3.1" fill={IRIS} />
-            <circle cx={x + 0.4} cy="74" r="1.4" fill="#1C110B" />
-            <circle cx={x + 1.6} cy="72.8" r="0.9" fill="#fff" />
-            <path d={`M${x - 5.8} 73 Q${x} 68.6 ${x + 5.8} 73`} stroke="#2A1A12" strokeWidth="1.6" fill="none" strokeLinecap="round" />
-          </g>
-        ))}
-        {/* Smile creases under the eyes */}
-        <path d="M63 79.5 Q69 82 75 79.5" stroke={SKIN_DEEP} strokeWidth="1" fill="none" opacity={beam ? 0.7 : 0.35} />
-        <path d="M87 79.5 Q93 82 99 79.5" stroke={SKIN_DEEP} strokeWidth="1" fill="none" opacity={beam ? 0.7 : 0.35} />
+        {/* Large almond eyes with lashes */}
+        {[69.5, 90.5].map((x, i) => {
+          const flick = i === 0 ? -1 : 1;
+          return (
+            <g key={x} style={{ transformOrigin: `${x}px 73.5px`, transform: `scaleY(${blink ? 0.08 : eyeSquint})`, transition: 'transform 90ms' }}>
+              <path d={`M${x - 6.2} 73.8 Q${x} 67.6 ${x + 6.2} 73.8 Q${x} 78.4 ${x - 6.2} 73.8 Z`} fill="#FFFDF8" />
+              <circle cx={x + 0.3} cy="73.6" r="3.5" fill={`url(#iris-${uid})`} />
+              <circle cx={x + 0.3} cy="73.6" r="1.6" fill="#1C110B" />
+              <circle cx={x + 1.6} cy="72.3" r="1" fill="#fff" />
+              <circle cx={x - 1} cy="74.9" r="0.45" fill="#fff" opacity=".8" />
+              <path d={`M${x - 6.6} 73.8 Q${x} 67 ${x + 6.6} 73.8`} stroke="#22140D" strokeWidth="1.7" fill="none" strokeLinecap="round" />
+              <path d={`M${x + 6.2 * flick} 73.2 l${1.4 * flick} -2.1`} stroke="#22140D" strokeWidth="1.1" strokeLinecap="round" />
+            </g>
+          );
+        })}
+        <path d="M64 78.6 Q69.5 80.6 75 78.6" stroke={SKIN_DEEP} strokeWidth=".8" fill="none" opacity={beam ? 0.5 : 0.25} />
+        <path d="M85 78.6 Q90.5 80.6 96 78.6" stroke={SKIN_DEEP} strokeWidth=".8" fill="none" opacity={beam ? 0.5 : 0.25} />
 
-        {/* Nose */}
-        <path d="M81 76 Q79 87 82.5 90 Q81 92.2 77.5 91" stroke={SKIN_DEEP} strokeWidth="1.6" fill="none" strokeLinecap="round" opacity=".8" />
+        {/* Small, refined nose */}
+        <path d="M80.5 77 Q79.4 86 81.6 88.4 Q80.6 89.8 78.2 89.2" stroke={SKIN_DEEP} strokeWidth="1.3" fill="none" strokeLinecap="round" opacity=".7" />
 
-        {/* Cheeks */}
-        <ellipse cx="64" cy="90" rx="6" ry="4" fill="#E58A70" opacity={beam ? 0.28 : 0.16} />
-        <ellipse cx="98" cy="90" rx="6" ry="4" fill="#E58A70" opacity={beam ? 0.28 : 0.16} />
+        {/* Rosy cheeks */}
+        <ellipse cx="64" cy="88" rx="6" ry="3.6" fill="#EE8E86" opacity={beam ? 0.32 : 0.22} />
+        <ellipse cx="96" cy="88" rx="6" ry="3.6" fill="#EE8E86" opacity={beam ? 0.32 : 0.22} />
 
-        {/* Mouth */}
+        {/* Mouth: rosy lips */}
         {speaking && mouth > 0.1 ? (
           <g>
-            <path d={`M67 99 Q81 ${103 + mouth * 11} 95 99 Q81 ${101 + mouth * 2} 67 99 Z`} fill="#7A2C27" />
-            <path d="M69.5 99.6 Q81 102.8 92.5 99.6 L92 101.4 Q81 104.6 70 101.4 Z" fill="#FFFDF8" />
-            <path d="M67 99 Q81 97 95 99" stroke="#B4554C" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+            <path d={`M69 97.5 Q80 ${101 + mouth * 9} 91 97.5 Q80 ${99.5 + mouth * 2} 69 97.5 Z`} fill="#7A2C2E" />
+            <path d="M71 98 Q80 100.6 89 98 L88.6 99.6 Q80 102.2 71.4 99.6 Z" fill="#FFFDF8" />
+            <path d="M69 97.5 Q74 95.4 77.5 96.4 Q80 95.6 82.5 96.4 Q86 95.4 91 97.5" stroke="#C8606A" strokeWidth="1.6" fill="none" strokeLinecap="round" />
           </g>
         ) : beam ? (
           <g>
-            {/* broad, open, toothy smile */}
-            <path d="M63.5 97.5 Q81 120 98.5 97.5 Q81 101.5 63.5 97.5 Z" fill="#7A2C27" />
-            <path d="M66.5 98.4 Q81 102.6 95.5 98.4 L94.4 103.2 Q81 108.4 67.6 103.2 Z" fill="#FFFDF8" />
-            <ellipse cx="81" cy="111" rx="8" ry="2.6" fill="#C8615A" />
-            <path d="M63.5 97.5 Q81 95.4 98.5 97.5" stroke="#B4554C" strokeWidth="1.7" fill="none" strokeLinecap="round" />
-            <path d="M70 113.4 Q81 117.4 92 113.4" stroke="#C0665B" strokeWidth="1.5" fill="none" strokeLinecap="round" opacity=".8" />
+            {/* broad, open smile */}
+            <path d="M66.5 96.5 Q80 115 93.5 96.5 Q80 99.8 66.5 96.5 Z" fill="#7A2C2E" />
+            <path d="M69 97.2 Q80 100.8 91 97.2 L90.1 101.2 Q80 105.6 69.9 101.2 Z" fill="#FFFDF8" />
+            <ellipse cx="80" cy="107.6" rx="6" ry="2" fill="#D7707A" />
+            <path d="M66.5 96.5 Q72 94 77 95.2 Q80 94.2 83 95.2 Q88 94 93.5 96.5" stroke="#C8606A" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+            <path d="M71.5 109.4 Q80 113 88.5 109.4" stroke="#D7707A" strokeWidth="1.7" fill="none" strokeLinecap="round" />
           </g>
         ) : (
           <g>
-            {/* friendly smile, teeth just showing */}
-            <path d="M66 98.5 Q81 111 96 98.5 Q81 101.5 66 98.5 Z" fill="#7A2C27" />
-            <path d="M68.5 99.2 Q81 102.4 93.5 99.2 L92.6 101.8 Q81 105.4 69.4 101.8 Z" fill="#FFFDF8" />
-            <path d="M66 98.5 Q81 96.8 96 98.5" stroke="#B4554C" strokeWidth="1.6" fill="none" strokeLinecap="round" />
-            <path d="M72 107.6 Q81 110.4 90 107.6" stroke="#C0665B" strokeWidth="1.3" fill="none" strokeLinecap="round" opacity=".7" />
+            {/* sweet, friendly smile */}
+            <path d="M68.5 97 Q80 107 91.5 97 Q80 99.6 68.5 97 Z" fill="#7A2C2E" />
+            <path d="M70.6 97.6 Q80 100.4 89.4 97.6 L88.7 99.6 Q80 102.6 71.3 99.6 Z" fill="#FFFDF8" />
+            <path d="M68.5 97 Q73.5 94.8 77.5 95.8 Q80 95 82.5 95.8 Q86.5 94.8 91.5 97" stroke="#C8606A" strokeWidth="1.7" fill="none" strokeLinecap="round" />
+            <path d="M73 104.2 Q80 106.8 87 104.2" stroke="#D7707A" strokeWidth="1.5" fill="none" strokeLinecap="round" opacity=".85" />
           </g>
         )}
       </motion.g>
 
-      {/* Friendly wave */}
+      {/* Dainty wave */}
       {waving && (
         <motion.g
-          style={{ originX: '138px', originY: '172px' }}
-          initial={animate ? { y: 40, opacity: 0, rotate: 0 } : false}
-          animate={animate ? { y: 0, opacity: 1, rotate: [0, 12, -6, 12, -4, 0] } : { y: 0, opacity: 1 }}
-          exit={{ y: 40, opacity: 0 }}
+          style={{ originX: '128px', originY: '170px' }}
+          initial={animate ? { y: 36, opacity: 0, rotate: 0 } : false}
+          animate={animate ? { y: 0, opacity: 1, rotate: [0, 10, -5, 10, -3, 0] } : { y: 0, opacity: 1 }}
           transition={{ duration: 1.5, ease: 'easeInOut' }}
         >
-          <path d="M126 176 C128 160 132 146 138 134" stroke={TOP} strokeWidth="17" strokeLinecap="round" fill="none" />
-          <path d="M131 140 L145 136" stroke="#8A5A3A" strokeWidth="2.2" strokeLinecap="round" />
-          <ellipse cx="141" cy="124" rx="10" ry="11.5" fill={SKIN} />
-          {[-7, -2.4, 2.2, 6.6].map((dx, i) => (
-            <rect key={i} x={140 + dx - 2.2} y={107 - (i === 1 || i === 2 ? 3 : 0)} width="4.4" height="14" rx="2.2" fill={SKIN} />
+          <path d="M120 174 C122 160 125 149 130 139" stroke={TOP} strokeWidth="12" strokeLinecap="round" fill="none" />
+          <path d="M124.5 143.5 L135 140.5" stroke="#8A5A3A" strokeWidth="1.6" strokeLinecap="round" />
+          <ellipse cx="132.5" cy="130.5" rx="6.8" ry="7.8" fill={SKIN} />
+          {[-4.6, -1.6, 1.4, 4.4].map((dx, i) => (
+            <rect key={i} x={132.5 + dx - 1.4} y={118 - (i === 1 || i === 2 ? 2.2 : 0)} width="2.8" height="10" rx="1.4" fill={SKIN} />
           ))}
-          <rect x="128.5" y="118" width="4.4" height="11" rx="2.2" fill={SKIN} transform="rotate(-38 130 123)" />
+          <rect x="124" y="126" width="2.8" height="7.5" rx="1.4" fill={SKIN} transform="rotate(-38 125.4 129.7)" />
         </motion.g>
       )}
     </svg>
