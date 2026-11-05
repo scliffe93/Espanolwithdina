@@ -1,0 +1,17 @@
+// Supabase Edge Function: Learning with Dina accounts & progress.
+// Deploy: supabase functions deploy account --no-verify-jwt
+// Secrets: ALLOWED_ORIGINS (comma-separated, e.g. https://scliffe93.github.io)
+// SUPABASE_DB_URL is provided automatically to Edge Functions.
+import * as hashwasm from 'npm:hash-wasm@4.12.0';
+import postgres from 'npm:postgres@3.4.5';
+import { argon2Hasher, createHandler } from '../_shared/account-core.ts';
+
+const sql = postgres(Deno.env.get('SUPABASE_DB_URL')!, { prepare: false, max: 3 });
+
+const handler = createHandler(
+  { query: (q, params = []) => sql.unsafe(q, params as never[]) as never },
+  argon2Hasher(hashwasm),
+  { allowedOrigins: (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').map((s) => s.trim()).filter(Boolean) },
+);
+
+Deno.serve(handler);

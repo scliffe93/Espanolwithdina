@@ -1,0 +1,5 @@
+# Minimal Supabase CLI config for the Learning with Dina account function.
+# The function authenticates learners itself (username + password sessions),
+# so Supabase's own JWT check is disabled for it.
+[functions.account]
+verify_jwt = false
