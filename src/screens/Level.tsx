@@ -36,7 +36,7 @@ export function LevelChoice() {
         <button className="ctrl mb-6" onClick={() => navigate('onboarding')}><Icon name="arrowLeft" size={16} /> Back</button>
         <p className="eyebrow">Your starting point</p>
         <h1 className="mt-1 text-4xl font-semibold">Where should we begin, {state.profile?.name || 'amigo'}?</h1>
-        <p className="mt-2 max-w-xl text-ink-soft">You can change this any time. VIVA tracks each skill separately, so being stronger at reading than speaking is completely normal.</p>
+        <p className="mt-2 max-w-xl text-ink-soft">You can change this any time. Learning with Dina tracks each skill separately, so being stronger at reading than speaking is completely normal.</p>
 
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           <button className="card group flex flex-col items-start gap-3 p-6 text-left transition hover:-translate-y-0.5 hover:shadow-lift" onClick={() => setLevel('A1', 'zero')}>

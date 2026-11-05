@@ -539,10 +539,10 @@ export function Verbs({ params }: { params: URLSearchParams }) {
           {focus.length ? (
             <div className="flex flex-wrap items-center gap-2">
               {focus.map((f) => <button key={f} className="chip" aria-pressed onClick={() => setFocus(focus.filter((x) => x !== f))}>{f} <Icon name="x" size={14} /></button>)}
-              <button className="ctrl" onClick={() => setFocus([])}>Clear — let VIVA choose</button>
+              <button className="ctrl" onClick={() => setFocus([])}>Clear — let the app choose</button>
             </div>
           ) : (
-            <p className="text-sm text-ink-soft">VIVA picks for you: forms due for review, then weak verbs, then up to two new verbs. Tap verbs below to choose your own.</p>
+            <p className="text-sm text-ink-soft">The app picks for you: forms due for review, then weak verbs, then up to two new verbs. Tap verbs below to choose your own.</p>
           )}
           <div className="mt-5 flex flex-wrap gap-2">
             <button className="btn-primary" onClick={() => start()}><Icon name="play" size={18} filled /> Start 12-exercise session</button>

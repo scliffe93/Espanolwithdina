@@ -1,4 +1,8 @@
-# VIVA — Learn Spanish. Live Spanish.
+# Learning with Dina
+
+**Tu vida en español empieza aquí · Your Spanish Life Starts Here**
+
+*(Built on the VIVA learning engine — internal storage keeps the `viva` name so existing progress and backups keep working.)*
 
 A premium, immersive Spanish-learning **progressive web app** for adults moving abroad. You land in Madrid, meet your guide Lucía, find your flat in Lavapiés, order your first *café con leche* and make friends. Along the way you master the verbs that make Spanish work.
 
@@ -31,6 +35,12 @@ The build uses relative paths (`base: './'`) and hash routing, so it works on an
 - **Netlify Drop:** run `npm run build` and drag the `dist/` folder onto app.netlify.com/drop.
 
 Microphone recording and installing as an app both need HTTPS (or `localhost`), and all of these hosts provide it.
+
+## Dina, your tutor
+
+An illustrated, animated Dina peeks out from behind the **Learning with Dina** logo (desktop sidebar, mobile header, welcome screen): playful entrance when the app opens, natural blinking, occasional broad smiles, a small wave, gentle head movement. Tap her and she greets you — “¡Hola! ¡Bienvenida a Learning with Dina!” (“Bienvenido” if you chose masculine agreement) — in an Argentinian Spanish voice when the device has one (es-AR, then other Latin American voices), with the greeting always shown as text too. Reduced-motion preferences turn the animation off; she still greets on tap.
+
+Speech playback is hardened app-wide: waits for voices to load, keeps utterances referenced (Chrome GC cut-offs), pauses briefly after cancel (Chrome drops), resumes paused engines (Safari), splits long text at sentence boundaries, keeps desktop Chrome alive past its ~15 s limit, and always resolves (never hangs) via a duration-based safety net.
 
 ## What's in the MVP
 

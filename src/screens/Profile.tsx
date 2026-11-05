@@ -211,7 +211,7 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
           </Section>
           <Section title="Why you’re learning"><Chips label="Reasons" options={REASONS} values={p.reasons} onToggle={(v) => toggle('reasons', v)} /></Section>
           <Section title="Social life" hint="Dating unlocks an extra branch in conversations with Marta."><Chips label="Social goals" options={SOCIAL} values={p.socialGoals} onToggle={(v) => toggle('socialGoals', v)} /></Section>
-          <Section title="How you like to learn" hint="Used as a starting point. VIVA also measures which memory techniques actually improve your recall.">
+          <Section title="How you like to learn" hint="Used as a starting point. The app also measures which memory techniques actually improve your recall.">
             <Chips label="Activities" options={ACTIVITIES} values={p.activities} onToggle={(v) => toggle('activities', v)} />
           </Section>
           <Section title="What feels hard"><Chips label="Difficulties" options={DIFFICULTIES} values={p.difficulties} onToggle={(v) => toggle('difficulties', v)} /></Section>
@@ -223,7 +223,7 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
           </Section>
 
           {p.voiceNotes.length > 0 && (
-            <Section title="Your voice notes" hint="Recorded during VIVA Discover. Stored only on this device.">
+            <Section title="Your voice notes" hint="Recorded during Discover. Stored only on this device.">
               <div className="grid gap-2">
                 {p.voiceNotes.map((v) => (
                   <VoiceNoteRow key={v.id} id={v.id} label={v.questionId} transcript={v.transcript} onDelete={async () => {
@@ -263,7 +263,7 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
                 </div>
               </Section>
 
-              <Section title="Your browser’s capabilities" hint="VIVA uses free, built-in browser features. Support varies.">
+              <Section title="Your browser’s capabilities" hint="Learning with Dina uses free, built-in browser features. Support varies.">
                 <ul className="grid gap-1.5 text-sm">
                   <li className="flex justify-between"><span>Speech synthesis (guide voice)</span><b>{ttsSupported ? (hasSpanishVoice() ? 'Spanish voice found' : 'Available — no Spanish voice installed') : 'Not supported'}</b></li>
                   <li className="flex justify-between"><span>Voice recording</span><b>{recorderSupported ? 'Supported' : 'Not supported'}</b></li>
@@ -272,7 +272,7 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
                 {recognitionSupported && <p className="mt-2 text-xs text-ink-mute">Note: in Chrome and Edge, speech recognition audio is processed by the browser vendor’s online service. Recordings themselves are stored only on this device.</p>}
               </Section>
 
-              <Section title="Your data" hint="VIVA has no servers and no account. Everything is stored in this browser (IndexedDB) on this device.">
+              <Section title="Your data" hint="Learning with Dina has no servers and no account. Everything is stored in this browser (IndexedDB) on this device.">
                 <ul className="mb-4 list-disc space-y-1 pl-5 text-sm text-ink-soft">
                   <li>Clearing browser data, private browsing, or some storage-saving settings can erase progress. Export a backup regularly.</li>
                   <li>Progress does not sync between devices. Use export / import to move it.</li>
@@ -295,7 +295,7 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
         )}
       </div>
 
-      <Sheet open={confirmDelete} onClose={() => setConfirmDelete(false)} title="Delete all VIVA data?">
+      <Sheet open={confirmDelete} onClose={() => setConfirmDelete(false)} title="Delete all Learning with Dina data?">
         <p className="text-ink-soft">This permanently removes your profile, progress, story, teacher details and recordings from this device. It cannot be undone. Consider exporting a backup first.</p>
         <label className="mt-4 block text-sm font-medium">Type <b>BORRAR</b> to confirm<input className="input mt-1" value={deleteText} onChange={(e) => setDeleteText(e.target.value)} /></label>
         <button className="btn mt-4 w-full bg-terracotta-dark text-white" disabled={deleteText.trim().toUpperCase() !== 'BORRAR'} onClick={doDelete}>Delete everything</button>

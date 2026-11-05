@@ -1,7 +1,7 @@
 {
-  "name": "VIVA — Learn Spanish. Live Spanish.",
-  "short_name": "VIVA",
-  "description": "Build your new life in Madrid, one conversation at a time.",
+  "name": "Learning with Dina",
+  "short_name": "Dina",
+  "description": "Tu vida en español empieza aquí — Your Spanish Life Starts Here.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -136,7 +136,7 @@ export function reportText(r: TeacherReport, maxVocab = 15): string {
   const lines = [
     `Hi${r.teacherName ? ` ${r.teacherName}` : ''},`,
     '',
-    `Here is my VIVA Spanish progress for ${r.rangeLabel}:`,
+    `Here is my Learning with Dina progress for ${r.rangeLabel}:`,
     '',
     `• Active learning time: ${formatMinutes(w.activeSeconds)}${delta(Math.round(w.activeSeconds / 60), Math.round(r.prev.activeSeconds / 60), ' min')}`,
     `• Study days: ${w.studyDays} of 7`,
@@ -159,7 +159,7 @@ export function reportText(r: TeacherReport, maxVocab = 15): string {
 }
 
 export function reportSubject(r: TeacherReport): string {
-  return `VIVA Spanish progress — ${r.learnerName} — ${r.rangeLabel}`;
+  return `Learning with Dina progress — ${r.learnerName} — ${r.rangeLabel}`;
 }
 
 /** RFC 6068 mailto link with properly encoded subject and body. */

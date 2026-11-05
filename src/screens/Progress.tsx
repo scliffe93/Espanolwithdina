@@ -61,7 +61,7 @@ export function Progress() {
   return (
     <div>
       <PageHeader
-        eyebrow="VIVA Momentum"
+        eyebrow="Momentum"
         title="Your progress"
         subtitle="Every number here comes from what you actually did — active minutes only, never time with the tab just open."
         right={<button className="btn-ghost hidden sm:inline-flex" onClick={() => navigate('recap')}><Icon name="sparkle" size={18} /> Weekly recap</button>}

@@ -194,7 +194,7 @@ async function playScene(page, id) {
   await page.goto(`${BASE}#/teacher`);
   await page.waitForTimeout(500);
   const mail = await page.getByRole('link', { name: /Email my teacher/ }).getAttribute('href');
-  log('mailto ok:', mail.startsWith('mailto:dina@example.com?subject=VIVA%20Spanish') && mail.includes('&body='), `(${mail.length} chars)`);
+  log('mailto ok:', mail.startsWith('mailto:dina@example.com?subject=Learning%20with%20Dina') && mail.includes('&body='), `(${mail.length} chars)`);
   const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /Download PDF report/ }).click()]);
   const pdfPath = `${OUT}/report.pdf`;
   await dl.saveAs(pdfPath);

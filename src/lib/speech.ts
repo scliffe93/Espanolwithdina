@@ -68,33 +68,100 @@ export interface SpeakOptions {
   lang?: string;
 }
 
-/** Speaks text; resolves when finished (or immediately if unsupported). */
-export function speak(text: string, opts: SpeakOptions): Promise<void> {
-  if (!ttsSupported || !text.trim()) return Promise.resolve();
+// Keep live utterances referenced: Chrome can garbage-collect an utterance
+// mid-sentence, which silently cuts speech off and never fires onend.
+const live = new Set<SpeechSynthesisUtterance>();
+let generation = 0;
+const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
+const isChromeDesktop = typeof navigator !== 'undefined' && /chrome|chromium|edg\//i.test(navigator.userAgent) && !isAndroid;
+
+/** Waits briefly for voices to load (they arrive asynchronously in Chrome/Safari). */
+function voicesReady(timeout = 1200): Promise<void> {
+  if (!ttsSupported || loadVoices().length) return Promise.resolve();
+  return new Promise((res) => {
+    const done = () => { window.speechSynthesis.removeEventListener?.('voiceschanged', done); res(); };
+    window.speechSynthesis.addEventListener?.('voiceschanged', done);
+    setTimeout(done, timeout);
+  });
+}
+
+/** Splits long text at sentence/clause boundaries — long utterances get cut off in some engines. */
+export function chunkText(text: string, max = 180): string[] {
+  const t = text.trim();
+  if (t.length <= max) return [t];
+  const parts = t.match(/[^.!?¡¿;:]+[.!?;:]*|[¡¿][^.!?]+[.!?]*/g) ?? [t];
+  const out: string[] = [];
+  let cur = '';
+  for (const p of parts.map((x) => x.trim()).filter(Boolean)) {
+    if ((cur + ' ' + p).trim().length > max && cur) { out.push(cur); cur = p; }
+    else cur = (cur + ' ' + p).trim();
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
+function speakOne(text: string, opts: SpeakOptions, voice: SpeechSynthesisVoice | undefined, gen: number): Promise<void> {
   const synth = window.speechSynthesis;
-  synth.cancel();
   return new Promise((resolve) => {
+    if (gen !== generation) return resolve();
     const u = new SpeechSynthesisUtterance(text);
-    const voice = opts.lang ? undefined : pickVoice(opts.region);
     if (voice) u.voice = voice;
     u.lang = opts.lang ?? voice?.lang ?? regionLang(opts.region);
     u.rate = opts.rate ?? 0.95;
     u.pitch = 1;
-    u.onstart = () => setSpeaking(true);
+    live.add(u);
+    let finished = false;
+    let keepAlive: number | undefined;
+    let safety: number | undefined; // declared first: some engines fire onerror synchronously
     const done = () => {
-      setSpeaking(false);
+      if (finished) return;
+      finished = true;
+      window.clearInterval(keepAlive);
+      window.clearTimeout(safety);
+      live.delete(u);
       resolve();
     };
+    u.onstart = () => setSpeaking(true);
     u.onend = done;
     u.onerror = done;
     if (opts.onBoundary) u.onboundary = (e) => opts.onBoundary!(e.charIndex);
+    if (synth.paused) synth.resume(); // Safari can be left paused after interruptions
     synth.speak(u);
-    // Safety: some engines never fire onend.
-    setTimeout(() => speakingNow && !synth.speaking && done(), Math.max(4000, text.length * 160));
+    // Desktop Chrome stops long utterances after ~15 s unless nudged.
+    if (isChromeDesktop) keepAlive = window.setInterval(() => { if (synth.speaking && !synth.paused) { synth.pause(); synth.resume(); } }, 10_000);
+    // Safety net: resolve even if the engine never fires onstart/onend (estimated duration + margin).
+    const est = Math.max(3500, (text.length * 85) / (u.rate || 1) + 2500);
+    safety = window.setTimeout(function check() {
+      if (synth.speaking && gen === generation) { window.setTimeout(check, 1500); return; }
+      done();
+    }, est);
   });
 }
 
+/** Speaks text; resolves when finished (or immediately if unsupported). Never hangs. */
+export async function speak(text: string, opts: SpeakOptions): Promise<void> {
+  if (!ttsSupported || !text.trim()) return;
+  const synth = window.speechSynthesis;
+  const gen = ++generation;
+  const wasBusy = synth.speaking || synth.pending;
+  synth.cancel();
+  // Chrome may drop an utterance queued immediately after cancel().
+  if (wasBusy) await new Promise((r) => setTimeout(r, 60));
+  await voicesReady();
+  if (gen !== generation) return;
+  const voice = opts.lang ? undefined : pickVoice(opts.region);
+  try {
+    for (const chunk of chunkText(text)) {
+      if (gen !== generation) break;
+      await speakOne(chunk, opts, voice, gen);
+    }
+  } finally {
+    if (gen === generation) setSpeaking(false);
+  }
+}
+
 export function stopSpeaking() {
+  generation++;
   if (ttsSupported) window.speechSynthesis.cancel();
   setSpeaking(false);
 }

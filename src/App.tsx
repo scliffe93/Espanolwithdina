@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, type ReactNode } from 'react';
 import { Icon, type IconName } from './components/Icon';
 import { Toasts } from './components/ui';
+import { BrandLogo } from './components/BrandLogo';
 import { stopSpeaking } from './lib/speech';
 import { navigate, useRoute, type RouteName } from './lib/router';
 import { useStore } from './lib/store';
@@ -56,10 +57,7 @@ function Shell({ children, route }: { children: ReactNode; route: RouteName }) {
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-full focus:bg-ink focus:px-4 focus:py-2 focus:text-cream">Skip to content</a>
       {/* Desktop side rail */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-ink/5 bg-[#F4E7D3]/60 p-5 backdrop-blur lg:flex">
-        <button onClick={() => navigate('world')} className="mb-8 text-left">
-          <span className="font-display text-3xl font-semibold text-terracotta">VIVA</span>
-          <span className="block font-display text-sm italic text-ink-mute">Learn Spanish. Live Spanish.</span>
-        </button>
+        <div className="mb-6"><BrandLogo variant="rail" /></div>
         <nav className="grid gap-1" aria-label="Main">
           {NAV.map((n) => (
             <button key={n.name} onClick={() => navigate(n.name)} aria-current={active === n.name ? 'page' : undefined} className={`relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left font-medium transition ${active === n.name ? 'text-white' : 'text-ink-soft hover:bg-white/70 hover:text-ink'}`}>
@@ -73,7 +71,7 @@ function Shell({ children, route }: { children: ReactNode; route: RouteName }) {
 
       {/* Mobile top bar */}
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-ink/5 bg-cream/85 px-4 py-2.5 backdrop-blur lg:hidden">
-        <button onClick={() => navigate('world')} className="font-display text-2xl font-semibold text-terracotta">VIVA</button>
+        <BrandLogo variant="bar" />
         <TimerPill />
       </header>
 
@@ -124,7 +122,7 @@ export default function App() {
   if (!ready) {
     return (
       <div className="grid min-h-[100dvh] place-items-center bg-[#F4E7D3]">
-        <motion.p className="font-display text-5xl font-semibold" animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.6, repeat: Infinity }}>VIVA</motion.p>
+        <motion.p className="font-display text-5xl font-semibold" animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.6, repeat: Infinity }}>Learning with Dina</motion.p>
       </div>
     );
   }

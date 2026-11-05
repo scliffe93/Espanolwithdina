@@ -95,7 +95,7 @@ export function Toasts() {
               <Icon name={t.achievement ? ACH_ICON[t.achievement.icon] : 'sparkle'} />
             </span>
             <span>
-              <span className="block text-[11px] uppercase tracking-widest text-saffron-light">{t.kind === 'achievement' ? 'Achievement unlocked' : 'VIVA'}</span>
+              <span className="block text-[11px] uppercase tracking-widest text-saffron-light">{t.kind === 'achievement' ? 'Achievement unlocked' : 'Learning with Dina'}</span>
               <span className="block font-semibold">{t.title}</span>
               {t.body && <span className="block text-sm text-cream/75">{t.body}</span>}
             </span>

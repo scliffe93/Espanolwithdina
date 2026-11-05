@@ -54,7 +54,7 @@ function recentMistakes(state: AppState, now: number, days = 14): Map<ErrorCateg
 }
 
 export const rulesCoach: CoachProvider = {
-  name: 'VIVA rules-based coach',
+  name: 'Learning with Dina rules-based coach',
   recommend(state, now) {
     const recs: Recommendation[] = [];
     const p = state.profile;

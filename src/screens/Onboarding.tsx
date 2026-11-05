@@ -9,6 +9,7 @@ import {
 } from '../data/profileOptions';
 import { useTtsSpeaking } from '../hooks/useSpeech';
 import { CityPicker } from '../components/CityPicker';
+import { BrandLogo, TAGLINE_EN, TAGLINE_ES } from '../components/BrandLogo';
 import { CitySkyline } from '../components/CitySkyline';
 import { CITY_ORDER, CITY_THEMES } from '../data/cityThemes';
 import { playUrl, useRecorder } from '../hooks/useRecorder';
@@ -32,7 +33,7 @@ interface Step {
 }
 
 const STEPS: Step[] = [
-  { id: 'name', es: '¡Hola! Soy Lucía, tu guía en VIVA. ¿Cómo te llamas?', en: 'Hi! I\'m Lucía, your VIVA guide. What\'s your name?', kind: 'text', field: 'name', placeholder: 'Your first name', mood: 'wave' },
+  { id: 'name', es: '¡Hola! Soy Lucía, tu guía. ¿Cómo te llamas?', en: 'Hi! I\'m Lucía, your guide. What\'s your name?', kind: 'text', field: 'name', placeholder: 'Your first name', mood: 'wave' },
   { id: 'gender', es: 'En español, algunas palabras cambian: cansado o cansada. ¿Cómo te hablo?', en: 'In Spanish, some words change form: cansado or cansada. Which should I use for you?', kind: 'single', field: 'gender', options: GENDER },
   { id: 'proficiency', es: '¿Cuánto español hablas ahora mismo?', en: 'How much Spanish do you speak right now?', kind: 'single', field: 'proficiencySelf', options: PROFICIENCY },
   { id: 'city', es: '¿Dónde quieres vivir tu nueva vida?', en: 'Where do you want to live your new life? Each city has its own story, people, colours — and its own Spanish.', kind: 'city', mood: 'happy' },
@@ -44,7 +45,7 @@ const STEPS: Step[] = [
   { id: 'minutes', es: '¿Cuánto tiempo tienes al día?', en: 'How much time can you give each day? Little and often wins.', kind: 'single', field: 'dailyMinutes', options: MINUTES.map((m) => ({ value: String(m), label: `${m} min`, hint: m <= 5 ? 'Casual' : m <= 10 ? 'Steady' : m <= 20 ? 'Serious' : 'Intense' })) },
   { id: 'activities', es: '¿Qué tipo de práctica disfrutas?', en: 'Which activities do you enjoy? I\'ll also track what actually helps you remember.', kind: 'multi', field: 'activities', options: ACTIVITIES },
   { id: 'difficulties', es: '¿Qué te cuesta más?', en: 'What do you find hardest?', kind: 'multi', field: 'difficulties', options: DIFFICULTIES, optional: true, mood: 'thinking' },
-  { id: 'teacher', es: 'Última pregunta: ¿tienes profe de español?', en: 'Last one: do you have a Spanish teacher? VIVA can prepare weekly reports for them.', kind: 'teacher' },
+  { id: 'teacher', es: 'Última pregunta: ¿tienes profe de español?', en: 'Last one: do you have a Spanish teacher? Learning with Dina can prepare weekly reports for them.', kind: 'teacher' },
 ];
 
 function VoiceNote({ stepId, onTranscript }: { stepId: string; onTranscript: (t: string) => void }) {
@@ -124,15 +125,20 @@ export function Welcome() {
         </AnimatePresence>
       </div>
       <motion.div className="absolute right-[-60px] top-[-60px] h-72 w-72 rounded-full bg-saffron/60 blur-2xl" animate={{ scale: [1, 1.06, 1] }} transition={{ duration: 8, repeat: Infinity }} />
-      <main className="relative mx-auto flex min-h-[100dvh] max-w-5xl flex-col items-center justify-center gap-10 px-6 pb-72 pt-16 md:flex-row md:justify-between md:pb-56">
+      <header className="relative z-20 mx-auto max-w-5xl px-6 pt-4">
+        <div className="w-[230px]"><BrandLogo variant="hero" /></div>
+      </header>
+      <main className="relative mx-auto flex min-h-[calc(100dvh-220px)] max-w-5xl flex-col items-center justify-center gap-10 px-6 pb-72 pt-8 md:flex-row md:justify-between md:pb-56">
         <div className="max-w-lg text-center md:text-left">
           <p className="eyebrow !text-ink-soft">Tu nueva vida en <AnimatePresence mode="wait"><motion.span key={showCity} className="inline-block font-bold" style={{ color: CITY_THEMES[showCity].palette.primary }} initial={{ y: 8, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -8, opacity: 0 }}>{CITY_THEMES[showCity].name}</motion.span></AnimatePresence></p>
-          <motion.h1 className="mt-3 font-display text-[64px] font-semibold leading-[0.95] sm:text-[88px]" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }}>
-            VIVA
+          <motion.h1 className="mt-3 font-display text-[52px] font-semibold leading-[0.95] sm:text-[72px]" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }}>
+            <span className="block text-[0.45em] font-normal italic text-olive">Learning with</span>
+            <span className="text-terracotta">Dina</span>
           </motion.h1>
-          <motion.p className="mt-3 font-display text-2xl italic text-ink-soft" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}>
-            Learn Spanish. Live Spanish.
+          <motion.p className="mt-3 font-display text-2xl italic text-ink-soft" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} lang="es">
+            {TAGLINE_ES}
           </motion.p>
+          <p className="mt-1 text-sm font-semibold uppercase tracking-[0.14em] text-olive">{TAGLINE_EN}</p>
           <motion.p className="mt-5 text-lg text-ink-soft" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
             Choose your city — Madrid, Barcelona, Sevilla, Ciudad de México, Buenos Aires or Medellín. Land, find your flat, order like a local, make real friends, and master the verbs that make Spanish work.
           </motion.p>
@@ -209,7 +215,7 @@ export function Onboarding() {
             <Icon name={muted ? 'volumeOff' : 'volume'} size={18} />
           </button>
         </div>
-        <p className="eyebrow mt-4 text-center">VIVA Discover</p>
+        <p className="eyebrow mt-4 text-center">Learning with Dina · Discover</p>
 
         <div className={`mt-4 grid flex-1 items-start gap-6 md:gap-10 md:pt-6 ${step.kind === 'city' ? 'md:grid-cols-[180px_1fr]' : 'md:grid-cols-[300px_1fr]'}`}>
           <div className="flex flex-col items-center">
