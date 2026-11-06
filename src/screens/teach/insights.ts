@@ -125,3 +125,27 @@ export function studyAgo(daysSince: number | null): string {
   if (daysSince === 1) return 'yesterday';
   return `${daysSince} days ago`;
 }
+
+export interface HomeworkStats { assigned: number; submitted: number; reviewed: number; onTime: number; late: number; overdue: number; pending: number; avgScore: number | null; completionRate: number | null; byKind: { kind: string; count: number; avgScore: number | null }[] }
+
+/** Completion and scores across a student's homework. */
+export function homeworkStats(homework: Homework[], now = Date.now()): HomeworkStats {
+  const done = homework.filter((h) => h.result);
+  const scored = done.filter((h) => typeof h.result?.score === 'number');
+  const onTime = done.filter((h) => h.result!.completedAt <= h.dueAt).length;
+  const overdue = homework.filter((h) => !h.result && new Date(h.dueAt).getTime() < now).length;
+  const kinds = new Map<string, { count: number; scores: number[] }>();
+  for (const h of homework) {
+    const k = kinds.get(h.activity.kind) ?? { count: 0, scores: [] };
+    k.count++;
+    if (typeof h.result?.score === 'number') k.scores.push(h.result.score);
+    kinds.set(h.activity.kind, k);
+  }
+  return {
+    assigned: homework.length, submitted: done.length, reviewed: homework.filter((h) => h.status === 'reviewed').length,
+    onTime, late: done.length - onTime, overdue, pending: homework.length - done.length,
+    avgScore: scored.length ? scored.reduce((a, h) => a + h.result!.score!, 0) / scored.length : null,
+    completionRate: homework.length ? done.length / homework.length : null,
+    byKind: [...kinds.entries()].map(([kind, k]) => ({ kind, count: k.count, avgScore: k.scores.length ? k.scores.reduce((a, b) => a + b, 0) / k.scores.length : null })).sort((a, b) => b.count - a.count),
+  };
+}

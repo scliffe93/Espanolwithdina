@@ -184,6 +184,35 @@ export function buildReportPdf(r: TeacherReport): jsPDF {
     ? r.techniques.map((t) => `${t.label}: used ${t.used}x${t.delayedRate !== null ? `, ${pct(t.delayedRate)} recalled after 12h+` : ''}`)
     : ['No memory aids used this week.']);
 
+  heading('Four-week consistency');
+  {
+    const c = r.consistency;
+    bullets([
+      `${c.studyDays} study days out of ${c.days}, ${Math.round(c.minutes)} minutes in total (${c.avgMinutesPerStudyDay} min per study day).`,
+      `Longest run of consecutive study days: ${c.longestStreak}.${c.bestWeekday ? ` Most active on ${c.bestWeekday}s.` : ''}`,
+      `Weekly minutes, oldest to newest: ${r.weekly.map((w) => w.minutes).join(' - ')}.`,
+      `Vocabulary learned (cumulative): ${r.weekly.map((w) => w.cumulativeVocab).join(' - ')}. Deck: ${r.deck.mastered} mastered, ${r.deck.learning} in progress, ${r.deck.overdue} overdue.`,
+    ]);
+  }
+  if (r.tenseStats.length) {
+    heading('Tenses');
+    bullets(r.tenseStats.map((t) => `${t.label} (${t.es}): ${t.verbs} verbs practised, accuracy ${pct(t.accuracy)}, ${t.mastered} mastered, ${t.familiar} familiar.`));
+  }
+  if (r.skills.length) {
+    heading('Accuracy by exercise type');
+    bullets(r.skills.slice(0, 8).map((s) => `${s.label}: ${pct(s.accuracy)} of ${s.attempts} attempts.`));
+  }
+  if (r.errors28.length) {
+    heading('Mistakes in the last four weeks');
+    bullets(r.errors28.slice(0, 6).map((e) => `${e.label}: ${e.count}x (previous four weeks: ${e.previous}x)${e.examples.length ? ` - e.g. ${e.examples.slice(0, 2).join('; ')}` : ''}`));
+  }
+  if (r.homework) {
+    heading('Homework');
+    bullets([
+      `${r.homework.submitted} of ${r.homework.assigned} submitted, ${r.homework.onTime} on time, ${r.homework.overdue} overdue${r.homework.avgScore !== null ? `, average score ${pct(r.homework.avgScore)}` : ''}.`,
+      ...r.homework.items.map((h) => `${h.due} - ${h.title} (${h.kind}): ${h.status}${h.score !== null ? `, ${pct(h.score)}` : ''}`),
+    ]);
+  }
   heading('Recommended teaching priorities');
   r.priorities.forEach((pr, i) => {
     const lines = doc.splitTextToSize(safe(pr), W - 2 * M - 10);

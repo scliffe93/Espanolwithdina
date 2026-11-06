@@ -1,5 +1,5 @@
 export interface GameInfo {
-  id: 'metro' | 'order' | 'swipe' | 'serestar';
+  id: 'metro' | 'order' | 'swipe' | 'serestar' | 'penalty' | 'derbi' | 'lineup';
   title: string;
   es: string;
   emoji: string;
@@ -28,5 +28,20 @@ export const GAMES: GameInfo[] = [
     id: 'serestar', title: 'Ser o Estar', es: 'Ser o estar', emoji: '⚖️', bg: 'bg-saffron',
     trains: 'Ser vs estar — the classic hurdle, in a fast falling-block game.',
     how: ['A sentence falls from the sky.', 'Hit SER or ESTAR before it lands.', 'It gets faster as you go!'],
+  },
+  {
+    id: 'penalty', title: 'Penalty Shoot-out', es: 'Tanda de penaltis', emoji: '⚽', bg: 'bg-olive',
+    trains: 'Verb conjugation under pressure — you play for your city’s club against the rival keeper. Every shot is tracked.',
+    how: ['A pronoun and a verb appear.', 'Three forms sit in the goal: left post, centre, right post.', 'Shoot the right form to beat the keeper. Wrong form = saved!'],
+  },
+  {
+    id: 'derbi', title: 'The Derby Quiz', es: 'El derbi', emoji: '🏟️', bg: 'bg-terracotta',
+    trains: 'Football vocabulary the way your region says it (penalti or penal, afición or hinchada), plus your city’s clubs, grounds and nicknames.',
+    how: ['A word or a club question appears.', 'Tap the right answer out of four.', 'Vocabulary answers go into your memory deck.'],
+  },
+  {
+    id: 'lineup', title: 'Line-up', es: 'Once inicial', emoji: '📋', bg: 'bg-azul',
+    trains: 'Listening and word order — match commentary about your city’s clubs, rebuilt word by word.',
+    how: ['Listen to a line of commentary (tap Repeat any time).', 'Tap the words in the right order to line them up.', 'Faster line-ups score more.'],
   },
 ];

@@ -7,7 +7,8 @@ import { CITY_ORDER, CITY_THEMES } from '../data/cityThemes';
 import { scenesForCity } from '../data/story';
 import { TENSES } from '../data/verbs';
 import { ACHIEVEMENTS } from '../lib/achievements';
-import { currentStreak, totalActiveSeconds } from '../lib/analytics';
+import { consistency, currentStreak, dailySeries, errorBreakdown, tenseMastery, totalActiveSeconds, weeklyHistory } from '../lib/analytics';
+import { Heatmap, Sparkline } from '../components/Charts';
 import { levelIndex } from '../lib/assessmentScore';
 import { rulesCoach } from '../lib/coach';
 import { dayKey, weekStart } from '../lib/dates';
@@ -47,6 +48,7 @@ export function Journey() {
   const overall = CEFR_LEVELS[levelsSorted[Math.floor(levelsSorted.length / 2)]];
   const weekAch = state.achievements.filter((a) => a.at >= weekStart().getTime()).map((a) => ACHIEVEMENTS.find((x) => x.id === a.id)).filter(Boolean);
   const report = buildTeacherReport(state);
+  const analytics = { days: dailySeries(state, 28), c: consistency(state, 28), weekly: weeklyHistory(state, 8), errors: errorBreakdown(state, 28), tenses: tenseMastery(state, p.region) };
   const recs = rulesCoach.recommend(state, Date.now()).slice(0, 3);
   const resume = resumeTarget(state);
   const startedCities = CITY_ORDER.filter((c) => c === p.city || scenesForCity(c).some((s) => state.story.completedScenes.includes(s.id)));
@@ -100,7 +102,31 @@ export function Journey() {
 
       <div className="mt-5 grid gap-4 lg:grid-cols-[1.3fr_1fr]">
         {/* Story progression */}
-        <section className="card p-5">
+              {/* Analytics */}
+      <section className="mt-5 grid gap-3 lg:grid-cols-[1fr_1.3fr]">
+        <div className="card p-5">
+          <p className="eyebrow">Últimos 28 días · Consistency</p>
+          <h2 className="mt-1 text-xl font-semibold">{analytics.c.studyDays} study days, {analytics.c.minutes} minutes</h2>
+          <p className="mb-3 text-sm text-ink-mute">Longest run {analytics.c.longestStreak} day{analytics.c.longestStreak === 1 ? '' : 's'}{analytics.c.bestWeekday ? ` · you study most on ${analytics.c.bestWeekday}s` : ''}</p>
+          <Heatmap days={analytics.days} goalMinutes={p.dailyMinutes} title="Your study minutes per day over the last 28 days" />
+        </div>
+        <div className="card p-5">
+          <p className="eyebrow">Últimas 8 semanas · Trends</p>
+          <div className="mt-2 grid gap-4 sm:grid-cols-3">
+            <div><p className="text-[11px] uppercase tracking-wider text-ink-mute">Minutes per week</p><Sparkline points={analytics.weekly.map((w) => ({ label: w.label, value: w.minutes }))} unit=" min" title="Minutes per week" /></div>
+            <div><p className="text-[11px] uppercase tracking-wider text-ink-mute">Accuracy</p><Sparkline points={analytics.weekly.map((w) => ({ label: w.label, value: w.accuracy }))} unit="" percent title="Accuracy per week" color="#5B7F3A" /></div>
+            <div><p className="text-[11px] uppercase tracking-wider text-ink-mute">Words learned</p><Sparkline points={analytics.weekly.map((w) => ({ label: w.label, value: w.cumulativeVocab }))} unit="" title="Cumulative vocabulary" color="#2E5C8A" /></div>
+          </div>
+          {(analytics.errors.length > 0 || analytics.tenses.length > 0) && (
+            <div className="mt-4 grid gap-3 border-t border-ink/5 pt-3 text-sm sm:grid-cols-2">
+              {analytics.errors.length > 0 && <div><p className="text-[11px] uppercase tracking-wider text-ink-mute">Your most common slips</p><ul className="mt-1 grid gap-1">{analytics.errors.slice(0, 4).map((e) => <li key={e.category} className="flex justify-between gap-2"><span>{e.label}</span><span className="tabular-nums text-ink-soft">{e.count}× {e.previous ? (e.count < e.previous ? '↓' : e.count > e.previous ? '↑' : '=') : ''}</span></li>)}</ul></div>}
+              {analytics.tenses.length > 0 && <div><p className="text-[11px] uppercase tracking-wider text-ink-mute">Tenses</p><ul className="mt-1 grid gap-1">{analytics.tenses.map((t) => <li key={t.id} className="flex justify-between gap-2"><span>{t.label}</span><span className="tabular-nums text-ink-soft">{t.verbs} verbs · {t.accuracy !== null ? `${Math.round(t.accuracy * 100)}%` : '—'} · {t.mastered} mastered</span></li>)}</ul></div>}
+            </div>
+          )}
+        </div>
+      </section>
+
+<section className="card p-5">
           <h2 className="text-xl font-semibold">Your storylines</h2>
           <div className="mt-3 grid gap-3">
             {startedCities.map((c) => {

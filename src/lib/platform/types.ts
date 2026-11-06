@@ -52,7 +52,7 @@ export interface HomeworkActivity {
   /** story: a scene id (e.g. 'piso', 'val-piso'). */
   sceneId?: string;
   /** listening / vocabulary: an arcade game. */
-  game?: 'metro' | 'order' | 'swipe' | 'serestar';
+  game?: 'metro' | 'order' | 'swipe' | 'serestar' | 'penalty' | 'derbi' | 'lineup';
   /** vocabulary: review the memory deck. */
   review?: boolean;
   /** written / speaking: the prompt the student answers. */

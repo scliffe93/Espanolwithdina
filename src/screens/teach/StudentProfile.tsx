@@ -20,12 +20,14 @@ import { SKILLS } from '../../types';
 import { BookingForm } from './BookingForm';
 import { HomeworkAssignForm } from './HomeworkAssignForm';
 import { HomeworkReview } from './HomeworkReview';
+import { AnalyticsTab } from './AnalyticsTab';
 import { pct, studentInsight, studyAgo } from './insights';
 import { ActivityList, Avatar, ConfirmButton, DemoChip, ErrorText, Field, HomeworkRow, LessonCard, Loading, Section, Stat, toneFor, useAction, useStudents, useViewZone } from './shared';
 
-type Tab = 'journey' | 'lessons' | 'homework' | 'feedback' | 'activity';
+type Tab = 'journey' | 'analytics' | 'lessons' | 'homework' | 'feedback' | 'activity';
 const TABS: { value: Tab; label: string }[] = [
   { value: 'journey', label: 'Journey' },
+  { value: 'analytics', label: 'Analytics' },
   { value: 'lessons', label: 'Lessons' },
   { value: 'homework', label: 'Homework' },
   { value: 'feedback', label: 'Feedback' },
@@ -48,6 +50,15 @@ export function StudentProfile({ id, params }: { id: string; params: URLSearchPa
   const [booking, setBooking] = useState<{ open: boolean; edit?: Booking }>({ open: false });
   const [assign, setAssign] = useState(false);
   const [review, setReview] = useState<Homework | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const downloadPdf = async () => {
+    if (!state) return;
+    setPdfBusy(true);
+    try {
+      const { downloadReportPdf } = await import('../../lib/pdf');
+      downloadReportPdf(buildTeacherReport(state, Date.now(), { homework: homework.data ?? [] }));
+    } finally { setPdfBusy(false); }
+  };
 
   const tabParam = params.get('tab');
   const tab: Tab = TABS.some((t) => t.value === tabParam) ? (tabParam as Tab) : 'journey';
@@ -105,6 +116,7 @@ export function StudentProfile({ id, params }: { id: string; params: URLSearchPa
       <div className="my-5 overflow-x-auto scrollbar-none"><Segmented label="Profile section" value={tab} onChange={setTab} options={TABS} /></div>
 
       {tab === 'journey' && (state ? <JourneyTab state={state} name={person.firstName} /> : <Empty icon="chart" title={`No learning data for ${person.firstName} yet`} body="Their journey appears here as soon as they complete a chapter, a verb session or a game in the app." />)}
+      {tab === 'analytics' && (state ? <AnalyticsTab state={state} homework={homework.data ?? []} name={person.firstName} onDownload={downloadPdf} busy={pdfBusy} /> : <Empty icon="chart" title={`No learning data for ${person.firstName} yet`} body="Analytics appear once they have used the app." />)}
       {tab === 'lessons' && <LessonsTab bookings={bookings.data} people={people} zone={zone} onEdit={(b) => setBooking({ open: true, edit: b })} onBook={() => setBooking({ open: true })} />}
       {tab === 'homework' && <HomeworkTab homework={homework.data} people={people} zone={zone} onOpen={setReview} onAssign={() => setAssign(true)} />}
       {tab === 'feedback' && <FeedbackTab studentId={id} name={person.firstName} feedback={feedback.data} zone={zone} />}

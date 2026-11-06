@@ -3,7 +3,9 @@ import { SCENE_BY_ID } from '../data/story';
 import { CITY_THEMES } from '../data/cityThemes';
 import { TENSES, VERB_BY_INF } from '../data/verbs';
 import { VOCAB_BY_ID, vocabForm } from '../data/vocab';
-import { allVerbMastery, previousWeek, thisWeek, weekSummary, type VerbMastery, type WeekSummary } from './analytics';
+import { allVerbMastery, consistency, deckHealth, errorBreakdown, previousWeek, skillBreakdown, tenseMastery, thisWeek, weekSummary, weeklyHistory, type Consistency, type ErrorStat, type SkillStat, type TenseStat, type VerbMastery, type WeekPoint, type WeekSummary } from './analytics';
+import type { Homework } from './platform/types';
+import { HOMEWORK_KIND_LABEL } from './platform/types';
 import { CATEGORY_LABEL } from './answer';
 import { addDays, formatMinutes, formatRange, weekStart } from './dates';
 
@@ -38,6 +40,14 @@ export interface TeacherReport {
   techniques: { label: string; used: number; delayedRate: number | null }[];
   scenes: string[];
   priorities: string[];
+  /** Four-week analytics (added for the richer teacher report). */
+  consistency: Consistency;
+  skills: SkillStat[];
+  errors28: ErrorStat[];
+  tenseStats: TenseStat[];
+  weekly: WeekPoint[];
+  deck: { total: number; mastered: number; learning: number; fresh: number; overdue: number };
+  homework?: { assigned: number; submitted: number; onTime: number; overdue: number; avgScore: number | null; items: { title: string; kind: string; due: string; status: string; score: number | null }[] };
   hasData: boolean;
 }
 
@@ -45,7 +55,7 @@ function pct(n: number | null): string {
   return n === null ? '—' : `${Math.round(n * 100)}%`;
 }
 
-export function buildTeacherReport(state: AppState, now = Date.now()): TeacherReport {
+export function buildTeacherReport(state: AppState, now = Date.now(), extras: { homework?: Homework[] } = {}): TeacherReport {
   const week = thisWeek(state, now);
   const prev = previousWeek(state, now);
   const region = state.profile?.region ?? 'spain';
@@ -120,6 +130,20 @@ export function buildTeacherReport(state: AppState, now = Date.now()): TeacherRe
     techniques,
     scenes: week.scenesCompleted.map((id) => SCENE_BY_ID[id]?.title ?? id),
     priorities: priorities.slice(0, 3),
+    consistency: consistency(state, 28, now),
+    skills: skillBreakdown(state),
+    errors28: errorBreakdown(state, 28, now),
+    tenseStats: tenseMastery(state, region),
+    weekly: weeklyHistory(state, 8, now),
+    deck: deckHealth(state, now),
+    homework: extras.homework ? {
+      assigned: extras.homework.length,
+      submitted: extras.homework.filter((h) => h.result).length,
+      onTime: extras.homework.filter((h) => h.result && h.result.completedAt <= h.dueAt).length,
+      overdue: extras.homework.filter((h) => !h.result && new Date(h.dueAt).getTime() < now).length,
+      avgScore: (() => { const sc = extras.homework!.filter((h) => typeof h.result?.score === 'number'); return sc.length ? sc.reduce((a, h) => a + h.result!.score!, 0) / sc.length : null; })(),
+      items: [...extras.homework].sort((a, b) => b.dueAt.localeCompare(a.dueAt)).slice(0, 12).map((h) => ({ title: h.activity.title, kind: HOMEWORK_KIND_LABEL[h.activity.kind], due: h.dueAt.slice(0, 10), status: h.status, score: typeof h.result?.score === 'number' ? h.result.score : null })),
+    } : undefined,
     hasData: week.activeSeconds > 0 || week.exercisesAttempted > 0,
   };
 }
@@ -152,6 +176,12 @@ export function reportText(r: TeacherReport, maxVocab = 15): string {
     lines.push('', 'Recurring errors:');
     for (const e of r.recurringErrors.slice(0, 4)) lines.push(`• ${e.label}: ${e.count}×${e.example ? ` (${e.example})` : ''}`);
   }
+  const c = r.consistency;
+  lines.push('', `Last 4 weeks: ${c.studyDays} study days of ${c.days}, ${formatMinutes(c.minutes * 60)} in total, ${c.avgMinutesPerStudyDay} min per study day, longest run ${c.longestStreak} days${c.bestWeekday ? `, most active on ${c.bestWeekday}s` : ''}.`);
+  if (r.tenseStats.length) lines.push(`Tenses: ${r.tenseStats.map((t) => `${t.label} ${pct(t.accuracy)} (${t.verbs} verbs, ${t.mastered} mastered)`).join('; ')}.`);
+  if (r.skills.length) lines.push(`Accuracy by exercise: ${r.skills.slice(0, 5).map((s) => `${s.label} ${pct(s.accuracy)}`).join('; ')}.`);
+  lines.push(`Vocabulary deck: ${r.deck.mastered} mastered, ${r.deck.learning} in progress, ${r.deck.overdue} overdue for review.`);
+  if (r.homework) lines.push(`Homework: ${r.homework.submitted}/${r.homework.assigned} submitted, ${r.homework.onTime} on time, ${r.homework.overdue} overdue${r.homework.avgScore !== null ? `, average score ${pct(r.homework.avgScore)}` : ''}.`);
   lines.push('', 'Suggested teaching priorities:');
   r.priorities.forEach((p, i) => lines.push(`${i + 1}. ${p}`));
   lines.push('', 'The full PDF report is available if you would like it — I can attach it separately.', '', `Thanks,`, r.learnerName);
