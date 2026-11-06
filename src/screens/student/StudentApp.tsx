@@ -1,8 +1,24 @@
-// STUB — replaced by the student-dashboard implementation.
+import { Calendar } from './Calendar';
+import { FeedbackPage } from './Feedback';
+import { Home } from './Home';
+import { HomeworkPage } from './Homework';
+
+// ───────────────────────────────────────────────────────────────
+// The student side of the teaching platform (route 'student').
+//   student            → My lessons & homework (home)
+//   student/calendar   → upcoming & previous lessons
+//   student/homework   → to do / submitted / reviewed
+//   student/feedback   → everything Dina has written
+//   homework/<id>      → HomeworkRunner (performs written/speaking homework)
+// ───────────────────────────────────────────────────────────────
+
 export function StudentApp({ page, params }: { page?: string; params: URLSearchParams }) {
-  void params;
-  return <div className="card p-6">Student dashboard ({page ?? 'home'}) — coming up.</div>;
+  switch (page) {
+    case 'calendar': return <Calendar />;
+    case 'homework': return <HomeworkPage params={params} />;
+    case 'feedback': return <FeedbackPage />;
+    default: return <Home />;
+  }
 }
-export function HomeworkRunner({ id }: { id: string }) {
-  return <div className="card p-6">Homework runner for {id} — coming up.</div>;
-}
+
+export { HomeworkRunner } from './HomeworkRunner';
