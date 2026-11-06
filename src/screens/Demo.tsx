@@ -67,7 +67,7 @@ export function Demo() {
               <p className="text-xs font-bold uppercase tracking-[0.16em] opacity-80">{r.role}</p>
               <p className="mt-1 font-display text-4xl font-semibold">{r.name}</p>
               <p className="mt-2 max-w-[22ch] text-sm opacity-90">{r.blurb}</p>
-              <span className="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-ink">{busy === r.actor ? 'Opening…' : demoActor === r.actor ? 'Continue' : 'Open'} <Icon name="arrowRight" size={14} /></span>
+              <span className="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-ink">{busy === r.actor ? 'Opening…' : demoActor === r.actor ? 'Continue' : demoActor ? `Switch to ${r.name}` : 'Open'} <Icon name="arrowRight" size={14} /></span>
             </motion.button>
           ))}
         </div>

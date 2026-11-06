@@ -40,7 +40,7 @@ const TEACHER_NAV: NavItem[] = [
   { name: 'teach', sub: 'calendar', label: 'Calendar', es: 'Agenda', icon: 'calendar', mobile: true },
   { name: 'teach', sub: 'students', label: 'Students', es: 'Alumnos', icon: 'user', mobile: true },
   { name: 'teach', sub: 'homework', label: 'Homework', es: 'Deberes', icon: 'book', mobile: true },
-  { name: 'demo', label: 'Demo', es: 'Demo', icon: 'sparkle', mobile: true },
+  { name: 'demo', label: 'Switch person', es: 'Cambiar', icon: 'refresh', mobile: true },
   { name: 'account', label: 'Account', es: 'Cuenta', icon: 'settings', mobile: true },
 ];
 const NAV: NavItem[] = [
@@ -75,7 +75,7 @@ function DemoPill() {
   if (!demoActor || !me) return null;
   return (
     <button onClick={() => navigate('demo')} className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-saffron px-3 py-1.5 text-xs font-bold text-ink shadow-soft" title="Prototype demonstration — switch between Dina, Sam and Anneka" data-testid="demo-pill">
-      <Icon name="sparkle" size={13} /> Demo · {me.firstName} <Icon name="refresh" size={12} />
+      <Icon name="sparkle" size={13} /> Demo · {me.firstName} · Switch <Icon name="refresh" size={12} />
     </button>
   );
 }
@@ -83,7 +83,7 @@ function DemoPill() {
 function Shell({ children, route, routeId }: { children: ReactNode; route: RouteName; routeId?: string }) {
   const { me, demoActor } = usePlatform();
   const teacher = me?.role === 'teacher';
-  const items = teacher ? TEACHER_NAV.filter((n) => (n.name === 'demo' ? !!demoActor : n.name === 'account' ? !demoActor : true)) : me?.role === 'student' ? [{ name: 'student' as RouteName, label: 'My lessons', es: 'Clases', icon: 'calendar' as IconName, mobile: true }, ...NAV.filter((n) => n.name !== 'progress' && n.name !== 'teacher')] : NAV;
+  const items = teacher ? TEACHER_NAV.filter((n) => (n.name === 'demo' ? !!demoActor : n.name === 'account' ? !demoActor : true)) : me?.role === 'student' ? [{ name: 'student' as RouteName, label: 'My lessons', es: 'Clases', icon: 'calendar' as IconName, mobile: true }, ...(demoActor ? [{ name: 'demo' as RouteName, label: 'Switch person', es: 'Cambiar', icon: 'refresh' as IconName, mobile: true }] : []), ...NAV.filter((n) => n.name !== 'progress' && n.name !== 'teacher')] : NAV;
   const sub = routeId?.split('/')[0];
   const isActive = (n: NavItem) => {
     if (teacher) return route === 'teach' ? (n.name === 'teach' && (n.sub ?? '') === (sub && ['calendar', 'students', 'homework'].includes(sub) ? sub : sub === 'student' ? 'students' : '')) : n.name === route;
