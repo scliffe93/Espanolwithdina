@@ -97,7 +97,7 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
   // so dashboards must read the store (fresh) rather than IndexedDB (saved with a short delay).
   const demoStorage = useMemo<DemoStorage>(() => ({
     loadData: loadDemoData,
-    saveData: async (d) => { await saveDemoData(d); },
+    saveData: async (d) => { await saveDemoData(d); setDemoData(d); }, // keep the live view in step with what was saved
     loadStudentState: async (id) => {
       const key = demoStateKey(id);
       if (storeRef.current.storageKey() === key) return storeRef.current.getState();

@@ -74,9 +74,10 @@ function Session({ exercises: initial, tense, onExit }: { exercises: Exercise[];
     );
     setLog((l) => [...l, { verb: verbInf, correct: r.correct, category: r.category, expected: r.expected, given: r.given }]);
     // Revisit mistakes automatically later in the session, as a production exercise.
-    if (!r.correct && card && !requeued.current.has(i) && ex.kind !== 'serEstar') {
+    // Revisit a mistake once; a retry that is also wrong is left for spaced repetition (no endless loops).
+    if (!r.correct && card && !requeued.current.has(i) && ex.kind !== 'serEstar' && !(ex as { retry?: boolean }).retry) {
       requeued.current.add(i);
-      setQueue((q) => [...q, { kind: 'type', verb: verbInf, tense: card.tense, person: card.person, pronoun: (ex as { pronoun?: string }).pronoun || personLabel(card.person).split(' ')[0] }]);
+      setQueue((q) => [...q, { kind: 'type', verb: verbInf, tense: card.tense, person: card.person, pronoun: (ex as { pronoun?: string }).pronoun || personLabel(card.person).split(' ')[0], retry: true } as Exercise]);
     }
     if (r.correct && r.sayText) say(r.sayText);
     if (r.correct) sfx.correct(); else { sfx.wrong(); haptic([30, 30, 30]); }
@@ -513,6 +514,7 @@ export function Verbs({ params }: { params: URLSearchParams }) {
   useEffect(() => {
     if (mode) start({ mode });
     else if (focusParam.length && (params.get('start') || params.toString().includes('focus'))) start({ focus: focusParam });
+    else if (params.get('start')) start({ tense: (params.get('tense') as Tense) || tense });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.toString()]);
 
