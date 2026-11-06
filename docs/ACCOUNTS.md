@@ -48,6 +48,15 @@ Everything in the learner's progress:
 
 ## Setup (about 15 minutes, free)
 
+**Shortcut:** with a Supabase personal access token (dashboard → Account → Access Tokens), one command does steps 1–6 below and prints the API URL:
+
+```bash
+SUPABASE_ACCESS_TOKEN=sbp_... node scripts/supabase-setup.mjs
+```
+
+Then put the URL in `.env.production` (`VITE_LWD_API_URL=https://<ref>.supabase.co/functions/v1/account`) and push, or set it as the `LWD_API_URL` repository variable. Re-running the script is safe.
+
+
 You need a free Supabase account and the Supabase CLI. Nothing here activates a paid plan.
 
 1. **Create a project** at https://supabase.com/dashboard.
