@@ -1,15 +1,20 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import type { Plugin } from 'vite';
 
 /** Production-only Content-Security-Policy: scripts only from this site, network only to this site + the account API. */
 function csp(): Plugin {
+  let apiUrl = '';
   return {
     name: 'lwd-csp',
     apply: 'build',
+    configResolved(config) {
+      // The API address may come from the environment or from .env.production (same sources Vite exposes to the app).
+      apiUrl = process.env.VITE_LWD_API_URL || loadEnv(config.mode, config.envDir ?? process.cwd(), 'VITE_').VITE_LWD_API_URL || '';
+    },
     transformIndexHtml(html) {
       let api = '';
-      try { api = process.env.VITE_LWD_API_URL ? new URL(process.env.VITE_LWD_API_URL).origin : ''; } catch { api = ''; }
+      try { api = apiUrl ? new URL(apiUrl).origin : ''; } catch { api = ''; }
       const policy = [
         "default-src 'self'",
         "script-src 'self'",
