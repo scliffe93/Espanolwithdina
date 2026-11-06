@@ -51,12 +51,12 @@ const INVITES: Record<Interest | 'default', { es: string; en: string }> = {
 };
 
 const VOCAB: VocabItem[] = [
-  { id: 'val-horchata', es: 'la horchata (de chufa)', en: 'tigernut milk, Valencia\'s ice-cold summer drink', theme: 'cafe', level: 'A1', gender: 'f', origin: 'From Latin hordeata, "made with barley" (hordeum): the drink was once made from barley. In Valencian: orxata.', story: 'Local legend says King Jaume I tasted it and cried «Això és or, xata!» (That\'s gold, girl!). A lovely story, but it\'s folklore, not etymology.', regionNote: 'Mexican horchata is a different drink, made from rice and cinnamon. Valencian horchata is made from chufas (tigernuts) grown in Alboraia, just north of the city.' },
+  { id: 'val-horchata', es: 'la horchata (de chufa)', en: 'tigernut milk, Valencia\'s ice-cold summer drink', theme: 'cafe', level: 'A1', gender: 'f', origin: 'From Latin hordeata, "made with barley" (hordeum): the drink was once made from barley. In Valencian: orxata.', story: 'Local legend says King Jaume I tasted it and cried «Açò és or, xata!» (That\'s gold, girl!). A lovely story, but it\'s folklore, not etymology.', regionNote: 'Mexican horchata is a different drink, made from rice and cinnamon. Valencian horchata is made from chufas (tigernuts) grown in Alboraia, just north of the city.' },
   { id: 'val-farton', es: 'el fartón', en: 'a long, soft, sugar-glazed bun for dunking in horchata', theme: 'cafe', level: 'A1', gender: 'm', trick: 'A FARTÓN is FAR TOO long for the glass, so you dunk it end first.', regionNote: 'Menus almost always use the Valencian plural "fartons", even in Spanish. Invented in Alboraia in the 1960s precisely for dunking.' },
   { id: 'val-cafe-del-tiempo', es: 'un café del tiempo', en: 'an espresso served with a glass of ice and a slice of lemon', theme: 'cafe', level: 'A1', gender: 'm', trick: 'A coffee "for the weather" (del tiempo): when the Valencian heat hits, you pour your espresso over the ice yourself, lemon in first.', visual: 'A tiny espresso cup next to a tumbler of ice with a slice of lemon on top.' },
   { id: 'val-agua-de-valencia', es: 'un agua de Valencia', en: 'a cocktail of orange juice, cava, vodka and gin', theme: 'cafe', level: 'A2', gender: 'f', trick: 'The "water" of Valencia is anything but: orange juice, cava and spirits, served in a jug to share.', regionNote: 'Grammar trap: agua is feminine, but it takes "el / un" because it starts with a stressed a: el agua fría, un agua de Valencia. Plural: las aguas.' },
   { id: 'val-esgarraet', es: 'el esgarraet', en: 'roasted red pepper and salt-cod salad', theme: 'cafe', level: 'A2', gender: 'm', origin: 'From Valencian esgarrar, "to tear": the roasted peppers and the cod are torn into strips by hand.', visual: 'Red pepper strips and flakes of cod glistening with olive oil, a clove of garlic on top.' },
-  { id: 'val-che', es: 'che', en: 'hey! / wow! / come on! (Valencian interjection)', theme: 'social', level: 'A2', regionNote: 'Spelt "xe" in Valencian; the most Valencian word there is, for surprise, protest or affection. Argentina and Uruguay have their own "che" (hey / mate): same sound, separate story, so don\'t assume a link.', trick: 'CHEck it out, CHEers, CHE! One syllable, a hundred moods.' },
+  { id: 'val-che', es: 'che', en: 'hey! / wow! / come on! (Valencian interjection)', theme: 'social', level: 'A2', regionNote: 'Spelt "xe" in Valencian; the most Valencian word there is, for surprise, protest or affection. Argentina and Uruguay have their own "che" (hey / mate): whether the two are related is still debated, so don\'t assume a link.', trick: 'CHEck it out, CHEers, CHE! One syllable, a hundred moods.' },
   { id: 'val-finca', es: 'la finca', en: 'the apartment building (in Valencia)', theme: 'home', level: 'A2', gender: 'f', regionNote: 'In Valencia and Catalonia, "la finca" is the everyday word for your block of flats: "¿En qué finca vives?". Elsewhere in Spain a finca is a country estate.', trick: 'The FINCA is the whole FINished block; your piso is just one box inside it.' },
   { id: 'val-mascleta', es: 'la mascletà', en: 'a daytime firecracker display (Fallas)', theme: 'social', level: 'B1', gender: 'f', origin: 'From Valencian masclet, a big firecracker: a mascletà is a volley of them.', visual: 'Thousands of people in the Plaza del Ayuntamiento at 2 pm, mouths open, feeling the bangs in their chest.', regionNote: 'During Fallas (1–19 March) there is one every day at 2 pm sharp in the Plaza del Ayuntamiento. Locals say you don\'t hear it, you feel it.' },
 ];
@@ -97,7 +97,7 @@ const story: CityStory = {
           es: '¡Hola! Tú eres {name}, ¿no? Soy Aitana, tu guía. ¡{g:Bienvenido|Bienvenida} a Valencia! Che, ¡qué alegría!',
           en: 'Hi! You\'re {name}, right? I\'m Aitana, your guide. Welcome to Valencia! Che, how lovely!',
           vocab: ['val-che'],
-          grammar: 'Identity → SER: soy Aitana, eres {name}. "Che" (Valencian "xe") is the Valencian interjection par excellence: hey, wow, come on. Argentina has its own "che": same sound, different story.',
+          grammar: 'Identity → SER: soy Aitana, eres {name}. "Che" (Valencian "xe") is the Valencian interjection par excellence: hey, wow, come on. Argentina has its own "che": whether the two are related is still debated.',
           choices: [
             { es: '¡Hola, Aitana! Sí, soy yo. {g:Encantado|Encantada}.', en: 'Hi, Aitana! Yes, that\'s me. Pleased to meet you.', next: 'a3', quality: 'great', rel: 5, feedback: '¡Perfecto! "Encantado/a" agrees with you, the speaker.' },
             { es: '¡Hola! Sí. ¡Qué ganas tenía de llegar!', en: 'Hi! Yes. I couldn\'t wait to get here!', next: 'a3', quality: 'great', rel: 5, feedback: '"Tener ganas de" = to be looking forward to / to feel like doing something. Very natural.' },
@@ -243,10 +243,10 @@ const story: CityStory = {
         },
         {
           id: 'p2', speaker: 'val-aitana',
-          es: 'Esta es tu finca. Tu piso está en el cuarto y hay ascensor, ¡menos mal! Ah, mira, es Doña Amparo, tu vecina de enfrente.',
+          es: 'Esta es tu finca. Tu piso está en el cuarto y hay ascensor, ¡menos mal! Ah, mira, es doña Amparo, tu vecina de enfrente.',
           en: 'This is your building. Your flat is on the fourth floor and there\'s a lift, thank goodness! Oh, look, it\'s Doña Amparo, your neighbour across the landing.',
           vocab: ['val-finca', 'piso', 'ascensor', 'vecino'],
-          grammar: 'In Valencia (and Catalonia) "la finca" means the apartment block; elsewhere in Spain it\'s a country estate. Está en el cuarto → estar for location. Es Doña Amparo → ser for identity. "¡Menos mal!" = thank goodness.',
+          grammar: 'In Valencia (and Catalonia) "la finca" means the apartment block; elsewhere in Spain it\'s a country estate. Está en el cuarto → estar for location. Es doña Amparo → ser for identity. "¡Menos mal!" = thank goodness.',
           next: 'p3',
         },
         {
@@ -331,9 +331,9 @@ const story: CityStory = {
         },
         {
           id: 'p9', speaker: 'val-amparo',
-          es: 'Y escúchame bien, que esto es importante: la paella es de comida, no de cena. Y la valenciana lleva pollo, conejo, garrofó y ferraura. Nada de chorizo, ¿eh?',
+          es: 'Y escúchame bien, que esto es importante: la paella es para comer, no para cenar. Y la valenciana lleva pollo, conejo, garrofó y ferraura. Nada de chorizo, ¿eh?',
           en: 'And listen carefully, because this matters: paella is for lunch, not dinner. And the Valencian one has chicken, rabbit, garrofó and ferraura beans. No chorizo, OK?',
-          grammar: '"Ser de comida" = to be a lunch thing (la comida = lunch in Spain, around 2 or 3 pm; la cena = dinner). Garrofó is a big flat white bean; ferraura, flat green beans. Chorizo in paella is a crime here, and any other rice dish is just "arroz con cosas" (rice with stuff).',
+          grammar: 'Comer = to have lunch (la comida, around 2 or 3 pm); cenar = to have dinner. "Es para comer, no para cenar" = it\'s a lunch thing. Garrofó is a big flat white bean; ferraura, flat green beans. Chorizo in paella is a crime here, and any other rice dish is just "arroz con cosas" (rice with stuff).',
           choices: [
             { es: 'Entendido: paella al mediodía y sin chorizo. ¿Y aquí se hace los domingos?', en: 'Understood: paella at midday and no chorizo. And is it a Sunday thing here?', next: 'p9b', quality: 'great', rel: 6, feedback: '"Se hace" = people make it / it\'s done. Yes: Sunday paella with the family is a ritual, ideally over a wood fire.' },
             { es: 'Vale. ¿Y dónde como una buena paella?', en: 'OK. And where can I eat a good paella?', next: 'p9b', quality: 'great', rel: 4, feedback: 'Como = I eat (comer). Careful: it also means "like / as". Amparo has opinions on this.' },
@@ -369,7 +369,7 @@ const story: CityStory = {
         },
         {
           id: 'p11', speaker: 'val-amparo',
-          es: 'En marzo son las Fallas. Todos los días a las dos, mascletà en la plaza del Ayuntamiento: cinco minutos de petardos que te tiemblan hasta los huesos. Y en la calle, música, buñuelos y las fallas gigantes… que luego se queman.',
+          es: 'En marzo son las Fallas. Todos los días a las dos, mascletà en la plaza del Ayuntamiento: cinco minutos de petardos que te hacen temblar hasta los huesos. Y en la calle, música, buñuelos y las fallas gigantes… que luego se queman.',
           en: 'In March it\'s Fallas. Every day at two, a mascletà in the Plaza del Ayuntamiento: five minutes of firecrackers that shake you to the bone. And in the street, music, buñuelos and the giant falla sculptures… which are then burnt.',
           vocab: ['val-mascleta'],
           grammar: 'Fallas (1–19 March): the mascletà is a daytime firecracker symphony at 2 pm sharp; the "cremà" on the night of the 19th burns the sculptures. "Buñuelos de calabaza" (pumpkin fritters) with hot chocolate are the festival snack. "Son las Fallas" → ser for events and dates.',
@@ -426,7 +426,7 @@ const story: CityStory = {
         },
         {
           id: 'c2', speaker: 'val-ximo',
-          es: '¡Bon dia, nano! ¿Qué te pongo?',
+          es: '¡Bon dia, {g:nano|nana}! ¿Qué te pongo?',
           en: 'Morning, mate! What can I get you?',
           grammar: '"¿Qué te pongo?" (lit. what do I put for you?) is how bar staff in Spain take orders. "Nano / nana" is Valencian for mate / pal: warm, informal and used constantly here.',
           choices: [
@@ -439,7 +439,7 @@ const story: CityStory = {
         },
         {
           id: 'c2b', speaker: 'val-ximo',
-          es: 'Che, ¿a las diez de la mañana? Eso es para la tarde, nano: zumo de naranja, cava, vodka y ginebra. Te pongo una horchata con fartons y luego hablamos.',
+          es: 'Che, ¿a las diez de la mañana? Eso es para la tarde, {g:nano|nana}: zumo de naranja, cava, vodka y ginebra. Te pongo una horchata con fartons y luego hablamos.',
           en: 'Che, at ten in the morning? That\'s for the evening, mate: orange juice, cava, vodka and gin. I\'ll get you a horchata with fartons and we\'ll talk later.',
           vocab: ['val-che', 'val-agua-de-valencia', 'val-horchata'],
           grammar: '"A las diez de la mañana" = at ten in the morning: a + las + hour. "Te pongo" (present) for something about to happen, like "I\'ll get you".',
@@ -455,7 +455,7 @@ const story: CityStory = {
             { es: 'Sí, un esgarraet, por favor. ¿Qué lleva?', en: 'Yes, an esgarraet, please. What\'s in it?', next: 'c3b', quality: 'great', rel: 5, setFlag: ['order', 'esgarraet'], feedback: '"¿Qué lleva?" (what does it carry?) = what\'s in it? The way to ask about any dish.' },
             { es: 'Unas clóchinas, ¡que es sábado!', en: 'Some clóchinas: it\'s Saturday!', next: 'c4', quality: 'great', rel: 5, setFlag: ['order', 'clochinas'], feedback: '"Que" = because / after all. "Es sábado" → ser for days and dates.' },
             { es: 'No, gracias. Así está bien.', en: 'No, thanks. That\'s fine as it is.', next: 'c4', quality: 'great', rel: 2 },
-            { es: 'Sí, un esgarraet. ¿Qué llevas?', en: '(Yes, an esgarraet. What are you wearing / carrying?)', next: 'c3', quality: 'off', category: 'person-agreement', feedback: '"Llevas" asks what HE is carrying or wearing. The dish is the subject: "¿Qué lleva?". Try again.' },
+            { es: 'Sí, un esgarraet. ¿Qué llevas?', en: '(Yes, an esgarraet. What are you wearing / carrying?)', next: 'c3', quality: 'off', category: 'person-agreement', feedback: '"Llevas" is the tú form: it asks what YOU (Ximo) are carrying or wearing. The dish is the subject: "¿Qué lleva?". Try again.' },
           ],
         },
         {
@@ -472,8 +472,8 @@ const story: CityStory = {
           en: 'Hey, you\'re not from round here, are you? But you speak really well. Do you live in the neighbourhood?',
           grammar: '"Oye" (from oír) = hey, listen. A negative statement plus "¿verdad?" is a friendly way to check a guess.',
           choices: [
-            { es: 'Sí, acabo de llegar. Vivo en la finca de Doña Amparo.', en: 'Yes, I\'ve just arrived. I live in Doña Amparo\'s building.', next: 'c5', quality: 'great', rel: 7, feedback: '"Acabar de" + infinitive = to have just done something. And naming Amparo opens every door in Russafa.' },
-            { es: 'Gracias, pero solo hablo un poco. Llegué esta semana.', en: 'Thanks, but I only speak a little. I arrived this week.', next: 'c5', quality: 'great', rel: 4, feedback: 'Llegué: preterite of llegar (the g becomes gu to keep the hard sound).' },
+            { es: 'Sí, acabo de llegar. Vivo en la finca de doña Amparo.', en: 'Yes, I\'ve just arrived. I live in Doña Amparo\'s building.', next: 'c5', quality: 'great', rel: 7, feedback: '"Acabar de" + infinitive = to have just done something. And naming Amparo opens every door in Russafa.' },
+            { es: 'Gracias, pero solo hablo un poco. Llegué la semana pasada.', en: 'Thanks, but I only speak a little. I arrived last week.', next: 'c5', quality: 'great', rel: 4, feedback: 'Llegué: preterite of llegar (the g becomes gu to keep the hard sound).' },
             { es: 'Sí, acabo de llegar y todavía no conoco a nadie.', en: '(Yes, I\'ve just arrived and I don\'t knows anyone yet.)', next: 'c4', quality: 'off', category: 'irregular-yo', feedback: 'Conocer has an irregular yo form with -zc-: "conozco". "Todavía no conozco a nadie". Try again.' },
             { es: 'Sí, vivo aquí desde una semana.', en: '(Yes, I live here since a week.)', next: 'c4', quality: 'off', category: 'other', feedback: 'Duration needs "desde hace": "Vivo aquí desde hace una semana". Or simply: "Llegué hace una semana". Try again.' },
           ],
