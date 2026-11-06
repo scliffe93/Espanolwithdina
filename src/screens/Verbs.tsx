@@ -13,6 +13,7 @@ import { navigate } from '../lib/router';
 import { completeLesson, recordAttempt } from '../lib/state';
 import { useStore } from '../lib/store';
 import { confetti, haptic, sfx } from '../lib/fx';
+import { useHomeworkCompletion } from '../lib/platform/homework';
 import type { ErrorCategory } from '../types';
 import type { Grade } from '../lib/srs';
 
@@ -48,6 +49,7 @@ function Session({ exercises: initial, tense, onExit }: { exercises: Exercise[];
   const [log, setLog] = useState<{ verb: string; correct: boolean; category?: ErrorCategory; expected: string; given: string }[]>([]);
   const [done, setDone] = useState(false);
   const requeued = useRef(new Set<number>());
+  const hw = useHomeworkCompletion();
   const ex = queue[i];
 
   useEffect(() => setHintUsed(false), [i]);
@@ -87,6 +89,11 @@ function Session({ exercises: initial, tense, onExit }: { exercises: Exercise[];
     else {
       update((s) => completeLesson(s));
       setDone(true);
+      if (hw.isHomework) {
+        const correct = log.filter((l) => l.correct).length;
+        const cats = [...new Set(log.filter((l) => !l.correct && l.category).map((l) => CATEGORY_LABEL[l.category!]))];
+        hw.submit({ score: log.length ? correct / log.length : 0, attempts: log.length, correct, summary: `${correct}/${log.length} correct${cats.length ? ` · ${cats.slice(0, 2).join(', ').toLowerCase()}` : ''}` });
+      }
       sfx.win();
       if (log.filter((l) => l.correct).length / Math.max(1, log.length) >= 0.7) confetti({ count: 120 });
     }
@@ -118,6 +125,7 @@ function Session({ exercises: initial, tense, onExit }: { exercises: Exercise[];
           <p className="mt-4 text-sm text-ink-mute">Missed forms are scheduled to come back in your review deck.</p>
           <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
             {missedVerbs.length > 0 && <button className="btn-primary" onClick={() => navigate(`verbs?focus=${missedVerbs.join(',')}&tense=${tense}&start=1&t=${Date.now()}`)}><Icon name="refresh" size={18} /> Practise my mistakes</button>}
+            {hw.isHomework && <button className="btn-dark" onClick={hw.backToHomework}><Icon name="check" size={18} /> Homework done — back to my homework</button>}
             <button className="btn-ghost" onClick={onExit}>Verb gym</button>
             <button className="btn-ghost" onClick={() => navigate('world')}><Icon name="map" size={18} /> Madrid</button>
           </div>

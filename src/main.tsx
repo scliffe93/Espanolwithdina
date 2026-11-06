@@ -3,13 +3,16 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { StoreProvider } from './lib/store';
 import { AccountProvider } from './lib/account';
+import { PlatformProvider } from './lib/platform/context';
 import './index.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <StoreProvider>
       <AccountProvider>
-        <App />
+        <PlatformProvider>
+          <App />
+        </PlatformProvider>
       </AccountProvider>
     </StoreProvider>
   </StrictMode>,

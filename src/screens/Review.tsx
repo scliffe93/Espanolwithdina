@@ -13,6 +13,7 @@ import { mastery, type Grade } from '../lib/srs';
 import { completeLesson, recordAttempt } from '../lib/state';
 import { useStore } from '../lib/store';
 import { sfx } from '../lib/fx';
+import { useHomeworkCompletion } from '../lib/platform/homework';
 import { TECHNIQUE_LABEL } from '../lib/report';
 import type { ErrorCategory, MemoryTechnique, SrsCard } from '../types';
 
@@ -62,6 +63,7 @@ function ReviewSession({ items, onDone }: { items: Item[]; onDone: () => void })
   const [hint, setHint] = useState(false);
   const [score, setScore] = useState({ ok: 0, total: 0 });
   const inputRef = useRef<HTMLInputElement>(null);
+  const hw = useHomeworkCompletion();
   const it = items[i];
 
   const check = (given: string) => {
@@ -88,6 +90,7 @@ function ReviewSession({ items, onDone }: { items: Item[]; onDone: () => void })
     setHint(false);
     if (i + 1 >= items.length) {
       update((s) => completeLesson(s));
+      if (hw.isHomework) hw.submit({ score: score.total ? (score.ok + 1) / (score.total + 1) : 0, attempts: score.total + 1, correct: score.ok + 1, summary: `${score.ok + 1}/${score.total + 1} recalled` });
       setI(items.length);
       return;
     }
@@ -101,7 +104,7 @@ function ReviewSession({ items, onDone }: { items: Item[]; onDone: () => void })
         <p className="eyebrow">Review complete</p>
         <h2 className="mt-1 text-3xl font-semibold">{score.ok} / {score.total} recalled</h2>
         <p className="mt-2 text-ink-soft">Each item is now scheduled for the moment it’s about to fade. Come back tomorrow for the next round.</p>
-        <div className="mt-5 flex justify-center gap-2"><button className="btn-primary" onClick={onDone}>Done</button><button className="btn-ghost" onClick={() => navigate('world')}>Madrid</button></div>
+        <div className="mt-5 flex justify-center gap-2">{hw.isHomework && <button className="btn-dark" onClick={hw.backToHomework}><Icon name="check" size={18} /> Homework done</button>}<button className="btn-primary" onClick={onDone}>Done</button><button className="btn-ghost" onClick={() => navigate('world')}>Madrid</button></div>
       </div>
     );
   }

@@ -15,6 +15,7 @@ import { addToDeck, completeScene, recordMistake, updateDay } from '../lib/state
 import { useStore } from '../lib/store';
 import { CITY_THEMES } from '../data/cityThemes';
 import { useAccount } from '../lib/account';
+import { useHomeworkCompletion } from '../lib/platform/homework';
 import { confetti, haptic, sfx } from '../lib/fx';
 import { render, type TemplateCtx } from '../lib/template';
 import type { Interest } from '../types';
@@ -37,6 +38,7 @@ export function ScenePlayer({ id }: { id: string }) {
   const scene = SCENE_BY_ID[id];
   const { state, update } = useStore();
   const account = useAccount();
+  const hw = useHomeworkCompletion();
   const p = state.profile!;
   const [nodeId, setNodeId] = useState(scene?.start ?? '');
   const [history, setHistory] = useState<Line[]>([]);
@@ -204,6 +206,7 @@ export function ScenePlayer({ id }: { id: string }) {
       return n;
     });
     setFinished(true);
+    if (hw.isHomework) hw.submit({ score, attempts: total, correct: stats.great + stats.ok, summary: `${stats.great} natural, ${stats.ok} OK, ${stats.off} learning moments` });
     sfx.win();
     confetti({ count: 150 });
   };
@@ -244,6 +247,7 @@ export function ScenePlayer({ id }: { id: string }) {
                 <span><b>Keep this progress safe.</b> Create a free account (just a username and password) to continue on any device.</span>
               </button>
             )}
+            {hw.isHomework && <button className="btn-dark mt-5 w-full" onClick={hw.backToHomework}><Icon name="check" size={18} /> Homework done — back to my homework</button>}
             <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
               <button className="btn-primary" onClick={() => navigate(`verbs?focus=${scene.verbs.slice(0, 4).join(',')}`)}><Icon name="dumbbell" size={18} /> Practise this chapter’s verbs</button>
               {nextScene ? (

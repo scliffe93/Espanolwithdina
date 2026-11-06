@@ -9,7 +9,7 @@
 export const API_URL = ((import.meta.env.VITE_LWD_API_URL as string | undefined) ?? '').replace(/\/+$/, '');
 export const cloudConfigured = !!API_URL;
 
-export interface CloudUser { id: string; username: string; firstName: string }
+export interface CloudUser { id: string; username: string; firstName: string; /** Set by the teaching platform backend; absent on plain learner accounts. */ role?: 'student' | 'teacher' }
 export interface Session { token: string; user: CloudUser; remember: boolean; expiresAt: string }
 
 export class ApiError extends Error {

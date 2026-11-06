@@ -12,7 +12,9 @@ interface Round { id: number; verb: Verb; person: number; pronoun: string; optio
 
 function useVerbPool(): Verb[] {
   const { state } = useStore();
+  const focus = (new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('focus') ?? '').split(',').filter(Boolean);
   return useMemo(() => {
+    if (focus.length) { const f = VERBS.filter((v) => focus.includes(v.inf)); if (f.length) return f; }
     const started = VERBS.filter((v) => Object.keys(state.srs).some((k) => k.startsWith(`verb:${v.inf}|`)));
     const base = [...VERBS].sort((a, b) => a.frequencyRank - b.frequencyRank).slice(0, 16);
     const pool = [...new Set([...started, ...base])];

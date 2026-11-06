@@ -49,6 +49,9 @@ const PATHS: Record<string, string> = {
   info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-11v6m0-9h.01',
   eye: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
   refresh: 'M20 11a8 8 0 0 0-14.7-4.3M4 4v4h4m-4 5a8 8 0 0 0 14.7 4.3M20 20v-4h-4',
+  calendar: 'M4 6h16v14H4zM4 10h16M8 3v4m8-4v4M8 14h2m2 0h2m2 0h2',
+  video: 'M3 7h12v10H3zM15 10l6-3v10l-6-3',
+  send: 'M4 12l16-8-6 16-3-6-7-2Z',
 };
 
 export type IconName = keyof typeof PATHS;

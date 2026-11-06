@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 export type RouteName =
   | 'welcome' | 'onboarding' | 'level' | 'assessment' | 'dna'
-  | 'world' | 'scene' | 'verbs' | 'review' | 'progress' | 'teacher' | 'recap' | 'settings' | 'privacy' | 'games' | 'game' | 'account' | 'journey';
+  | 'world' | 'scene' | 'verbs' | 'review' | 'progress' | 'teacher' | 'recap' | 'settings' | 'privacy' | 'games' | 'game' | 'account' | 'journey' | 'demo' | 'teach' | 'student' | 'homework';
 
 export interface ParsedRoute {
   name: RouteName;
@@ -14,7 +14,8 @@ export interface ParsedRoute {
 
 export function parseHash(hash: string): ParsedRoute {
   const [path, q] = hash.replace(/^#\/?/, '').split('?');
-  const [name, id] = path.split('/');
+  const [name, ...rest] = path.split('/');
+  const id = rest.length ? rest.join('/') : undefined;
   return { name: (name || 'world') as RouteName, id, params: new URLSearchParams(q ?? '') };
 }
 

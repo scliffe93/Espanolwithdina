@@ -7,6 +7,7 @@ import { completeLesson, recordAttempt, updateDay, type AttemptInput } from '../
 import { useStore } from '../../lib/store';
 import type { ErrorCategory } from '../../types';
 import { GAMES, type GameInfo } from './registry';
+import { useHomeworkCompletion } from '../../lib/platform/homework';
 
 export interface Hud {
   score: number;
@@ -53,6 +54,9 @@ export function GameShell({ id, duration = 60, lives: startLives = 3, children }
   const setH = (h: Hud) => { hudRef.current = h; setHud(h); };
   const record = state.games[id];
   const [newBest, setNewBest] = useState(false);
+  const hw = useHomeworkCompletion();
+  const logRef = useRef(log);
+  logRef.current = log;
 
   // countdown
   useEffect(() => {
@@ -79,7 +83,12 @@ export function GameShell({ id, duration = 60, lives: startLives = 3, children }
     setNewBest(isBest);
     if (isBest) { sfx.win(); confetti({ count: 140 }); haptic([30, 40, 30]); } else sfx.lose();
     update((s) => completeLesson({ ...s, games: { ...s.games, [id]: { best, plays: (prev?.plays ?? 0) + 1, lastAt: Date.now(), bestCombo: Math.max(prev?.bestCombo ?? 0, bestCombo) } } }));
-  }, [id, update, state.games, bestCombo]);
+    if (hw.isHomework) {
+      const l = logRef.current;
+      const correct = l.filter((x) => x.correct).length;
+      hw.submit({ score: l.length ? correct / l.length : 0, attempts: l.length, correct, summary: `${info.title}: ${h.score} points · ${correct}/${l.length} correct · best streak ${bestCombo}` });
+    }
+  }, [id, update, state.games, bestCombo, hw, info.title]);
 
   useEffect(() => {
     if (phase === 'play' && (hud.timeLeft <= 0 || hud.lives <= 0)) finish();
@@ -224,6 +233,7 @@ export function GameShell({ id, duration = 60, lives: startLives = 3, children }
               )}
               <div className="flex flex-wrap gap-2 p-5 pt-3">
                 <button className="btn-primary" onClick={restart} autoFocus><Icon name="refresh" size={18} /> Play again</button>
+                {hw.isHomework && <button className="btn-dark" onClick={hw.backToHomework}><Icon name="check" size={18} /> Homework done</button>}
                 <button className="btn-ghost" onClick={() => navigate('games')}>Arcade</button>
                 {mistakes.some((m) => m.category) && <button className="btn-ghost" onClick={() => navigate('review')}>Review</button>}
               </div>
