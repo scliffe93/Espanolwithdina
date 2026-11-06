@@ -1,6 +1,6 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { DinaArt, dinaGreeting, type DinaExpression } from './Dina';
+import { DINA_CARD_LINE, DINA_VIEWBOX, DinaArt, dinaGreeting, type DinaExpression } from './Dina';
 import { hasSpanishVoice, speak, ttsSupported } from '../lib/speech';
 import { useStore } from '../lib/store';
 import { navigate } from '../lib/router';
@@ -141,7 +141,7 @@ export function BrandLogo({ variant = 'rail' }: { variant?: 'rail' | 'bar' | 'he
           <Wordmark compact />
         </button>
         {/* Dina peeks up from behind the header's lower edge, right beside the wordmark */}
-        <div className="relative -my-2.5 h-[56px] w-[50px] overflow-hidden">
+        <div className="relative -my-2.5 w-[52px] overflow-hidden" style={{ height: Math.round(((48 * DINA_VIEWBOX.h) / DINA_VIEWBOX.w) * DINA_CARD_LINE) + 6 }}>
           <div className="absolute -bottom-3 left-0">{dina}</div>
         </div>
         {speechBubble}
@@ -150,8 +150,8 @@ export function BrandLogo({ variant = 'rail' }: { variant?: 'rail' | 'bar' | 'he
   }
 
   // Geometry: the card's top edge sits at Dina's collarbone so her whole head shows above it.
-  const dinaH = (size * 170) / 160;
-  const cardTop = Math.round(dinaH * 0.77);
+  const dinaH = (size * DINA_VIEWBOX.h) / DINA_VIEWBOX.w;
+  const cardTop = Math.round(dinaH * DINA_CARD_LINE);
   const dinaRight = variant === 'hero' ? 12 : 8;
 
   return (
