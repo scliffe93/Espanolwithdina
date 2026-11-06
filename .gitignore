@@ -7,3 +7,4 @@ screenshots-tmp
 screenshots/
 /.data
 src/components/dina-candidates/
+tsconfig.tsbuildinfo
