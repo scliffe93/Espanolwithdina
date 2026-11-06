@@ -4,7 +4,7 @@ import { ACHIEVEMENTS, newlyUnlocked, type AchievementDef } from './achievements
 import { GUEST_KEY, accountKey, hasKey, loadState, saveState } from './db';
 import { api, cloudConfigured, loadSession } from './cloud';
 import { migrate } from './state';
-import { onSpeakingChange } from './speech';
+import { onSpeakingChange, setPreferredVoice } from './speech';
 import { addActiveSeconds, defaultState } from './state';
 import { creditFor, timerStatus, type TimerStatus } from './timeTracker';
 import { applyCityTheme } from '../data/cityThemes';
@@ -93,6 +93,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   if (typeof document !== 'undefined' && document.documentElement.dataset.city !== city) applyCityTheme(city);
   setActiveVariety(region);
   setSoundEnabled(state.settings.sound);
+  setPreferredVoice(state.settings.voiceURI || null);
 
   const persist = useCallback((s: AppState) => {
     window.clearTimeout(saveTimer.current);

@@ -32,8 +32,8 @@ async function tapDina(page, label) {
   await page.getByRole('button', { name: /Dina, your Spanish tutor/ }).first().click();
   await page.getByRole('status').filter({ hasText: 'Learning with Dina' }).first().waitFor({ timeout: 4000 });
   const bubble = await page.getByRole('status').filter({ hasText: 'Learning with Dina' }).first().innerText();
-  await page.waitForFunction(() => !window.speechSynthesis || window.__spoken.length > 0, null, { timeout: 4000 }).catch(() => {});
-  const spoken = await page.evaluate(() => window.__spoken);
+  await page.waitForFunction(() => !window.speechSynthesis || window.__spoken.some((s) => s.text.trim()), null, { timeout: 5000 }).catch(() => {});
+  const spoken = await page.evaluate(() => window.__spoken.filter((s) => s.text.trim())); // ignore the silent warm-up utterance
   await page.evaluate(() => { window.__spoken = window.speechSynthesis ? [] : window.__spoken; });
   log(`${label}: bubble →`, JSON.stringify(bubble.split('\n')[0]), '| speech →', JSON.stringify(spoken.at(-1) ?? null));
   return { bubble, spoken };

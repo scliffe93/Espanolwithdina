@@ -16,7 +16,7 @@ export function WelcomeBack() {
   const fem = state.profile?.gender === 'f' || state.profile?.gender === 'x' || !state.profile;
   const text = welcome?.isNew ? greeting.replace('Bienvenido', fem ? 'Bienvenida' : 'Bienvenido') : greeting;
   useEffect(() => {
-    if (welcome) speak(text, { region: 'argentina', rate: 0.95 }).catch(() => undefined);
+    if (welcome) speak(text, { region: 'argentina', rate: 0.95, auto: true }).catch(() => undefined);
   }, [welcome, text]);
   const target = state.onboardingDone ? resumeTarget(state) : { href: 'onboarding', label: 'Set up your Spanish life with Lucía' };
   return (

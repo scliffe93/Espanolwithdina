@@ -37,24 +37,73 @@ if (ttsSupported) {
 }
 
 /** Picks the best Spanish voice for the region, preferring higher-quality voices. */
+const VOICE_PREFERENCE: Record<Region, string[]> = {
+  spain: ['es-es'],
+  mexico: ['es-mx', 'es-us', 'es-419'],
+  argentina: ['es-ar', 'es-uy', 'es-419', 'es-us', 'es-mx'],
+  colombia: ['es-co', 'es-419', 'es-us', 'es-mx'],
+};
+
+/** Higher = more natural / better match. Online "natural" voices beat the robotic defaults. */
+function voiceScore(v: SpeechSynthesisVoice, order: string[]): number {
+  const lang = v.lang.toLowerCase().replace('_', '-');
+  const idx = order.indexOf(lang);
+  let s = idx >= 0 ? 20 - idx * 3 : lang.startsWith('es') ? 2 : 0;
+  const n = v.name.toLowerCase();
+  if (/natural|neural|premium|enhanced|siri/.test(n)) s += 8;
+  if (/google/.test(n)) s += 6;
+  if (/mónica|monica|paulina|jorge|juan|diego|lucía|lucia|elvira|alvaro|dalia|abril|elena|sabina|laura|pablo|helena/.test(n)) s += 3;
+  if (/espeak|compact|novelty|bad news|zarvox|whisper|bubbles|cellos|trinoids|good news|jester|organ|superstar|wobble/.test(n)) s -= 15;
+  if (v.localService && !/google/.test(n)) s += 1;
+  return s;
+}
+
+/** Picks the best Spanish voice for the region (or the learner's chosen voice). */
 export function pickVoice(region: Region): SpeechSynthesisVoice | undefined {
-  const voices = loadVoices().filter((v) => v.lang.toLowerCase().startsWith('es'));
-  const want: Record<Region, string[]> = {
-    spain: ['es-es'],
-    mexico: ['es-mx', 'es-us', 'es-419'],
-    argentina: ['es-ar', 'es-uy', 'es-419', 'es-us', 'es-mx'],
-    colombia: ['es-co', 'es-419', 'es-us', 'es-mx'],
+  const voices = loadVoices();
+  if (preferredVoiceURI) {
+    const chosen = voices.find((v) => v.voiceURI === preferredVoiceURI || v.name === preferredVoiceURI);
+    if (chosen) return chosen;
+  }
+  const order = VOICE_PREFERENCE[region] ?? ['es-es'];
+  return voices.filter((v) => v.lang.toLowerCase().startsWith('es')).sort((a, b) => voiceScore(b, order) - voiceScore(a, order))[0];
+}
+
+let preferredVoiceURI: string | null = null;
+/** Set from settings: a voice the learner chose in the voice picker. */
+export function setPreferredVoice(uri: string | null) {
+  preferredVoiceURI = uri;
+}
+
+/** All Spanish voices on this device, best first (for the settings picker). */
+export function spanishVoices(region: Region = 'spain'): SpeechSynthesisVoice[] {
+  const order = VOICE_PREFERENCE[region] ?? ['es-es'];
+  return loadVoices().filter((v) => v.lang.toLowerCase().startsWith('es')).sort((a, b) => voiceScore(b, order) - voiceScore(a, order));
+}
+
+// Browsers refuse to speak until the page has received a tap or key press, and
+// iOS requires speak() to be called inside that gesture. We remember whether a
+// gesture has happened, "unlock" the engine on the first one, and replay the
+// line that was waiting (e.g. a character's opening line) at that moment.
+let interacted = false;
+let pendingAuto: { text: string; opts: SpeakOptions } | null = null;
+export function hasInteracted(): boolean {
+  return interacted;
+}
+if (typeof window !== 'undefined') {
+  const unlock = () => {
+    interacted = true;
+    ['pointerdown', 'keydown', 'touchstart'].forEach((e) => window.removeEventListener(e, unlock, true));
+    if (ttsSupported) {
+      try {
+        const synth = window.speechSynthesis;
+        if (synth.paused) synth.resume();
+        if (!synth.speaking && !pendingAuto) synth.speak(new SpeechSynthesisUtterance(' ')); // warms the engine (silent)
+      } catch { /* ignore */ }
+      if (pendingAuto) { const p = pendingAuto; pendingAuto = null; speak(p.text, p.opts); }
+    }
   };
-  const order = want[region] ?? ['es-es'];
-  const score = (v: SpeechSynthesisVoice) => {
-    const lang = v.lang.toLowerCase().replace('_', '-');
-    const idx = order.indexOf(lang);
-    let s = idx >= 0 ? 20 - idx * 3 : 0;
-    if (/google|natural|neural|premium|enhanced|siri/i.test(v.name)) s += 3;
-    if (v.localService) s += 1;
-    return s;
-  };
-  return voices.sort((a, b) => score(b) - score(a))[0];
+  ['pointerdown', 'keydown', 'touchstart'].forEach((e) => window.addEventListener(e, unlock, { capture: true, passive: true }));
 }
 
 export function hasSpanishVoice(): boolean {
@@ -66,6 +115,8 @@ export interface SpeakOptions {
   rate?: number;
   onBoundary?: (charIndex: number) => void;
   lang?: string;
+  /** The app started this (not a tap). Before the first user gesture it is held and played on that gesture. */
+  auto?: boolean;
 }
 
 // Keep live utterances referenced: Chrome can garbage-collect an utterance
@@ -139,25 +190,54 @@ function speakOne(text: string, opts: SpeakOptions, voice: SpeechSynthesisVoice 
 }
 
 /** Speaks text; resolves when finished (or immediately if unsupported). Never hangs. */
-export async function speak(text: string, opts: SpeakOptions): Promise<void> {
-  if (!ttsSupported || !text.trim()) return;
+export function speak(text: string, opts: SpeakOptions): Promise<void> {
+  if (!ttsSupported || !text.trim()) return Promise.resolve();
   const synth = window.speechSynthesis;
   const gen = ++generation;
+  if (!interacted && opts.auto) {
+    // Browsers won't play this yet; keep the latest automatic line for the first tap.
+    pendingAuto = { text, opts };
+    return Promise.resolve();
+  }
+  pendingAuto = null;
   const wasBusy = synth.speaking || synth.pending;
   synth.cancel();
-  // Chrome may drop an utterance queued immediately after cancel().
-  if (wasBusy) await new Promise((r) => setTimeout(r, 60));
-  await voicesReady();
-  if (gen !== generation) return;
-  const voice = opts.lang ? undefined : pickVoice(opts.region);
-  try {
-    for (const chunk of chunkText(text)) {
-      if (gen !== generation) break;
-      await speakOne(chunk, opts, voice, gen);
+  const voicesLoaded = loadVoices().length > 0;
+  const isApple = /iphone|ipad|ipod|macintosh/i.test(navigator.userAgent);
+  // Start synchronously whenever we can: iOS only honours speak() inside the tap that triggered it.
+  const needDelay = wasBusy && isChromeDesktop && !isApple;
+  const run = async () => {
+    if (needDelay) await new Promise((r) => setTimeout(r, 60)); // Chrome drops an utterance queued right after cancel()
+    if (!voicesLoaded) await voicesReady();
+    if (gen !== generation) return;
+    const voice = opts.lang ? undefined : pickVoice(opts.region);
+    try {
+      for (const chunk of chunkText(text)) {
+        if (gen !== generation) break;
+        await speakOne(chunk, opts, voice, gen);
+      }
+    } finally {
+      if (gen === generation) setSpeaking(false);
     }
-  } finally {
-    if (gen === generation) setSpeaking(false);
+  };
+  if (!needDelay && voicesLoaded) {
+    // Fast path: the first utterance is queued before this function returns (keeps the gesture context).
+    const voice = opts.lang ? undefined : pickVoice(opts.region);
+    const chunks = chunkText(text);
+    const first = speakOne(chunks[0], opts, voice, gen);
+    return (async () => {
+      try {
+        await first;
+        for (const chunk of chunks.slice(1)) {
+          if (gen !== generation) break;
+          await speakOne(chunk, opts, voice, gen);
+        }
+      } finally {
+        if (gen === generation) setSpeaking(false);
+      }
+    })();
   }
+  return run();
 }
 
 export function stopSpeaking() {

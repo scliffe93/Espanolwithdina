@@ -12,7 +12,7 @@ import {
 } from '../data/profileOptions';
 import { deleteRecording, exportData, getRecording, importData, recordingCount, wipeAll } from '../lib/db';
 import { navigate } from '../lib/router';
-import { hasSpanishVoice, recognitionSupported, speak, ttsSupported } from '../lib/speech';
+import { hasSpanishVoice, recognitionSupported, spanishVoices, speak, ttsSupported } from '../lib/speech';
 import { defaultState } from '../lib/state';
 import { useStore } from '../lib/store';
 import { recorderSupported, playUrl } from '../hooks/useRecorder';
@@ -96,6 +96,37 @@ function VoiceNoteRow({ id, label, transcript, onDelete }: { id: string; label: 
         {url && <button className="ctrl !px-2.5" onClick={() => playUrl(url)} aria-label={`Play voice note: ${label}`}><Icon name="play" size={16} /></button>}
         <button className="ctrl !px-2.5" onClick={onDelete} aria-label={`Delete voice note: ${label}`}><Icon name="trash" size={16} /></button>
       </div>
+    </div>
+  );
+}
+
+function VoicePicker() {
+  const { state, update } = useStore();
+  const region = state.profile?.region ?? 'spain';
+  const [voices, setVoices] = useState(() => spanishVoices(region));
+  useEffect(() => {
+    const refresh = () => setVoices(spanishVoices(region));
+    refresh();
+    window.speechSynthesis?.addEventListener?.('voiceschanged', refresh);
+    return () => window.speechSynthesis?.removeEventListener?.('voiceschanged', refresh);
+  }, [region]);
+  const ua = navigator.userAgent;
+  const tip = /iphone|ipad|macintosh/i.test(ua)
+    ? 'Tip: in iOS / macOS Settings → Accessibility → Spoken Content → Voices → Spanish, download “Mónica”, “Paulina” or “Jorge” (Enhanced/Premium) for a much more natural voice.'
+    : /edg\//i.test(ua)
+      ? 'Tip: Edge includes “Microsoft … Online (Natural)” Spanish voices — choose one of those.'
+      : /chrome/i.test(ua)
+        ? 'Tip: in Chrome, “Google español” / “Google español de Estados Unidos” are the most natural (they need an internet connection).'
+        : 'Tip: voice quality depends on the voices installed on your device; Chrome, Edge and Apple devices have the most natural ones.';
+  if (!ttsSupported) return null;
+  return (
+    <div className="grid gap-1">
+      <label className="font-medium" htmlFor="voice-pick">Spanish voice</label>
+      <select id="voice-pick" className="input" value={state.settings.voiceURI ?? ''} onChange={(e) => update((s) => ({ ...s, settings: { ...s.settings, voiceURI: e.target.value || undefined } }))}>
+        <option value="">Best available (automatic){voices[0] ? ` — ${voices[0].name}` : ''}</option>
+        {voices.map((v) => <option key={v.voiceURI} value={v.voiceURI}>{v.name} · {v.lang}{/natural|neural|premium|enhanced|google|siri/i.test(v.name) ? ' ★' : ''}</option>)}
+      </select>
+      <span className="text-xs text-ink-mute">{voices.length ? `${voices.length} Spanish voice${voices.length === 1 ? '' : 's'} on this device (★ = more natural). ` : 'No Spanish voice found on this device. '}{tip}</span>
     </div>
   );
 }
@@ -268,6 +299,7 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
                     <span><span className="font-medium">English translations</span><span className="block text-sm text-ink-mute">In conversations.</span></span>
                     <Segmented label="Translations" value={state.settings.showTranslations} onChange={(v) => update((s) => ({ ...s, settings: { ...s.settings, showTranslations: v } }))} options={[{ value: 'on-tap', label: 'On tap' }, { value: 'always', label: 'Always' }]} />
                   </div>
+                  <VoicePicker />
                   <label className="grid gap-1">
                     <span className="font-medium">Speech speed: {state.settings.speechRate.toFixed(2)}×</span>
                     <input type="range" min={0.6} max={1.1} step={0.05} value={state.settings.speechRate} className="accent-terracotta" onChange={(e) => update((s) => ({ ...s, settings: { ...s.settings, speechRate: Number(e.target.value) } }))} />

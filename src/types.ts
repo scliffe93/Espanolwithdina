@@ -85,6 +85,8 @@ export interface Settings {
   showTranslations: 'always' | 'on-tap';
   speechRate: number; // 0.6–1.1
   sound: boolean;
+  /** voiceURI of a voice the learner picked for Spanish (empty = best available). */
+  voiceURI?: string;
 }
 
 /** Spaced-repetition card. Keys: `verb:hablar|present|0` or `vocab:cafe`. */

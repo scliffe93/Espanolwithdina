@@ -182,7 +182,7 @@ export function Onboarding() {
 
   useEffect(() => {
     if (step.kind === 'text' && step.field) setText(String(profile[step.field] ?? ''));
-    if (!muted && ttsSupported) speak(step.es, { region: profile.region, rate: 0.95 });
+    if (!muted && ttsSupported) speak(step.es, { region: profile.region, rate: 0.95, auto: true });
     return () => stopSpeaking();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [i]);

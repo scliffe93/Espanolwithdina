@@ -87,7 +87,7 @@ export function ScenePlayer({ id }: { id: string }) {
     setInputText('');
     setInputMsg(null);
     setHeard(null);
-    if (state.settings.guideVoice && node.speaker !== 'narrator') speak(r(lineText.es, 'speech'), { region: p.region, rate: state.settings.speechRate });
+    if (state.settings.guideVoice && node.speaker !== 'narrator') speak(r(lineText.es, 'speech'), { region: p.region, rate: state.settings.speechRate, auto: true });
     window.setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 80);
     return () => stopSpeaking();
   }, [nodeId, finished]); // eslint-disable-line react-hooks/exhaustive-deps
