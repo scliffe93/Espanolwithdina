@@ -80,9 +80,9 @@ function DemoPill() {
 }
 
 function Shell({ children, route, routeId }: { children: ReactNode; route: RouteName; routeId?: string }) {
-  const { me } = usePlatform();
+  const { me, demoActor } = usePlatform();
   const teacher = me?.role === 'teacher';
-  const items = teacher ? TEACHER_NAV : me?.role === 'student' ? [{ name: 'student' as RouteName, label: 'My lessons', es: 'Clases', icon: 'calendar' as IconName, mobile: true }, ...NAV.filter((n) => n.name !== 'progress' && n.name !== 'teacher')] : NAV;
+  const items = teacher ? TEACHER_NAV.filter((n) => n.name !== 'demo' || demoActor) : me?.role === 'student' ? [{ name: 'student' as RouteName, label: 'My lessons', es: 'Clases', icon: 'calendar' as IconName, mobile: true }, ...NAV.filter((n) => n.name !== 'progress' && n.name !== 'teacher')] : NAV;
   const sub = routeId?.split('/')[0];
   const isActive = (n: NavItem) => {
     if (teacher) return route === 'teach' ? (n.name === 'teach' && (n.sub ?? '') === (sub && ['calendar', 'students', 'homework'].includes(sub) ? sub : sub === 'student' ? 'students' : '')) : n.name === route;

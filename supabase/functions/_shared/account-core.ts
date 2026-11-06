@@ -31,6 +31,8 @@ export interface Config {
   allowedOrigins: string[];
   now?: () => number;
   maxBodyBytes?: number;
+  /** Usernames that are the teacher (case-insensitive). Everyone else is a student. */
+  teacherUsernames?: string[];
 }
 
 const MIN = 60_000;
@@ -117,6 +119,14 @@ function validateFirstName(n: string): string | null {
   return null;
 }
 
+const WORDS = ['casa', 'sol', 'playa', 'café', 'libro', 'gato', 'perro', 'lluvia', 'montaña', 'río', 'pan', 'luna', 'mar', 'flor', 'calle', 'verde', 'azul', 'rojo', 'feliz', 'tarde', 'noche', 'amigo', 'ciudad', 'camino', 'fiesta', 'música', 'tren', 'puerta', 'jardín', 'niebla', 'viento', 'nube'];
+
+/** A readable temporary password, e.g. "playa jardín luna 47" (three words from 32 + two digits ≈ 21 bits; the student changes it). */
+export function temporaryPassword(): string {
+  const r = randomBytes(4);
+  return `${WORDS[r[0] % WORDS.length]} ${WORDS[r[1] % WORDS.length]} ${WORDS[r[2] % WORDS.length]} ${10 + (r[3] % 90)}`;
+}
+
 class HttpError extends Error {
   constructor(public status: number, public code: string, message: string, public extra: Record<string, unknown> = {}) {
     super(message);
@@ -125,7 +135,7 @@ class HttpError extends Error {
 
 // ── handler ─────────────────────────────────────────────────────
 
-interface UserRow { id: string; username: string; first_name: string; password_hash: string; recovery_hash: string }
+interface UserRow { id: string; username: string; first_name: string; password_hash: string; recovery_hash: string; role: 'student' | 'teacher' }
 
 export function createHandler(db: Db, hasher: Hasher, config: Config) {
   const now = config.now ?? (() => Date.now());
@@ -166,15 +176,25 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
     if (!m) throw new HttpError(401, 'unauthorised', 'Please log in.');
     const tokenHash = await sha256Hex(m[1]);
     const rows = await db.query<UserRow>(
-      'select u.id, u.username, u.first_name, u.password_hash, u.recovery_hash from public.lwd_sessions s join public.lwd_users u on u.id = s.user_id where s.token_hash = $1 and s.expires_at > $2',
+      'select u.id, u.username, u.first_name, u.password_hash, u.recovery_hash, u.role from public.lwd_sessions s join public.lwd_users u on u.id = s.user_id where s.token_hash = $1 and s.expires_at > $2',
       [tokenHash, iso(now())],
     );
     if (!rows[0]) throw new HttpError(401, 'unauthorised', 'Your session has expired. Please log in again.');
     await db.query('update public.lwd_sessions set last_used_at = $2 where token_hash = $1', [tokenHash, iso(now())]);
-    return { user: rows[0], tokenHash };
+    return { user: await promote(rows[0]), tokenHash };
   }
 
-  const publicUser = (u: UserRow) => ({ id: u.id, username: u.username, firstName: u.first_name });
+  const publicUser = (u: UserRow) => ({ id: u.id, username: u.username, firstName: u.first_name, role: u.role });
+
+  /** The configured teacher username(s) get the teacher role the first time they are seen. */
+  const teachers = new Set((config.teacherUsernames ?? []).map(normaliseUsername).filter(Boolean));
+  async function promote(u: UserRow): Promise<UserRow> {
+    if (u.role !== 'teacher' && teachers.has(normaliseUsername(u.username))) {
+      await db.query("update public.lwd_users set role = 'teacher' where id = $1", [u.id]);
+      return { ...u, role: 'teacher' };
+    }
+    return u;
+  }
 
   async function body(req: Request): Promise<Record<string, unknown>> {
     const text = await req.text();
@@ -213,10 +233,10 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
       let user: UserRow;
       try {
         const rows = await db.query<UserRow>(
-          'insert into public.lwd_users (username, username_norm, first_name, password_hash, recovery_hash, created_at, password_changed_at) values ($1, $2, $3, $4, $5, $6, $6) returning id, username, first_name, password_hash, recovery_hash',
+          'insert into public.lwd_users (username, username_norm, first_name, password_hash, recovery_hash, created_at, password_changed_at) values ($1, $2, $3, $4, $5, $6, $6) returning id, username, first_name, password_hash, recovery_hash, role',
           [username, norm, firstName, await hasher.hash(password), await sha256Hex(normaliseRecoveryCode(recoveryCode)), iso(now())],
         );
-        user = rows[0];
+        user = await promote(rows[0]);
       } catch (e) {
         if (String((e as Error).message).includes('unique') || String((e as { code?: string }).code) === '23505') throw new HttpError(409, 'username_taken', 'That username is already taken — try another.');
         throw e;
@@ -232,8 +252,8 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
       const password = str(b.password);
       const remember = b.remember === true;
       await throttle(`login:user:${norm}`, `login:ip:${ip}`);
-      const rows = norm ? await db.query<UserRow>('select id, username, first_name, password_hash, recovery_hash from public.lwd_users where username_norm = $1', [norm]) : [];
-      const user = rows[0];
+      const rows = norm ? await db.query<UserRow>('select id, username, first_name, password_hash, recovery_hash, role from public.lwd_users where username_norm = $1', [norm]) : [];
+      const user = rows[0] && (await promote(rows[0]));
       const ok = user ? await hasher.verify(password, user.password_hash) : (await hasher.verify(password, await dummy()), false);
       if (!ok) {
         await fail(`login:user:${norm}`, `login:ip:${ip}`);
@@ -250,8 +270,8 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
       const code = normaliseRecoveryCode(str(b.recoveryCode));
       const newPassword = str(b.newPassword);
       await throttle(`recover:user:${norm}`, `recover:ip:${ip}`);
-      const rows = norm ? await db.query<UserRow>('select id, username, first_name, password_hash, recovery_hash from public.lwd_users where username_norm = $1', [norm]) : [];
-      const user = rows[0];
+      const rows = norm ? await db.query<UserRow>('select id, username, first_name, password_hash, recovery_hash, role from public.lwd_users where username_norm = $1', [norm]) : [];
+      const user = rows[0] && (await promote(rows[0]));
       const codeHash = await sha256Hex(code);
       if (!user || code.length !== 16 || codeHash !== user.recovery_hash) {
         await fail(`recover:user:${norm}`, `recover:ip:${ip}`);
@@ -336,7 +356,130 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
         await fail(`login:user:${normaliseUsername(user.username)}`, `login:ip:${ip}`);
         throw new HttpError(401, 'bad_credentials', 'Your password is incorrect.');
       }
-      await db.query('delete from public.lwd_users where id = $1', [user.id]); // cascades to sessions and progress
+      await db.query('delete from public.lwd_users where id = $1', [user.id]); // cascades to sessions, progress and platform records
+      return { status: 204 };
+    }
+
+    // ── teaching platform ──
+    // One teacher (the configured username) and her students (every other account).
+    // Records: bookings, homework, feedback and activity, stored as JSON per row and
+    // scoped by role: a student reads/writes only rows where student_id = self (and
+    // may only log activity or submit homework); the teacher reads all and writes all.
+    const isTeacher = user.role === 'teacher';
+    const KINDS = ['booking', 'homework', 'feedback', 'activity'];
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const parseRow = (r: { data: unknown }) => (typeof r.data === 'string' ? JSON.parse(r.data) : r.data) as Record<string, unknown>;
+    const studentExists = async (id: string) => UUID.test(id) && (await db.query("select 1 from public.lwd_users where id = $1 and role = 'student'", [id])).length > 0;
+    const qs = new URL(req.url).searchParams;
+
+    if (path === 'platform/people' && method === 'GET') {
+      const rows = isTeacher
+        ? await db.query<{ id: string; username: string; first_name: string }>("select id, username, first_name from public.lwd_users where role = 'student' order by lower(first_name), username_norm")
+        : [{ id: user.id, username: user.username, first_name: user.first_name }];
+      return { status: 200, json: { people: rows.map((r) => ({ id: r.id, username: r.username, firstName: r.first_name, role: r.id === user.id ? user.role : 'student' })) } };
+    }
+
+    if (path === 'platform/students' && method === 'POST') {
+      // The teacher creates a student's account and passes on the login details (the student can change the password later).
+      if (!isTeacher) throw new HttpError(403, 'forbidden', 'Only the teacher can add students.');
+      const b = await body(req);
+      const username = str(b.username).trim();
+      const firstName = str(b.firstName).trim();
+      const generated = !str(b.password);
+      const password = generated ? temporaryPassword() : str(b.password);
+      const err = validateUsername(username) ?? validateFirstName(firstName) ?? validatePassword(password, username);
+      if (err) throw new HttpError(400, 'invalid', err);
+      const norm = normaliseUsername(username);
+      if ((await db.query('select 1 from public.lwd_users where username_norm = $1', [norm])).length) throw new HttpError(409, 'username_taken', 'That username is already taken — try another.');
+      const recoveryCode = newRecoveryCode();
+      let made: UserRow;
+      try {
+        made = (await db.query<UserRow>(
+          "insert into public.lwd_users (username, username_norm, first_name, password_hash, recovery_hash, created_at, password_changed_at, role) values ($1, $2, $3, $4, $5, $6, $6, 'student') returning id, username, first_name, password_hash, recovery_hash, role",
+          [username, norm, firstName, await hasher.hash(password), await sha256Hex(normaliseRecoveryCode(recoveryCode)), iso(now())],
+        ))[0];
+      } catch (e) {
+        if (String((e as Error).message).includes('unique') || String((e as { code?: string }).code) === '23505') throw new HttpError(409, 'username_taken', 'That username is already taken — try another.');
+        throw e;
+      }
+      return { status: 201, json: { user: publicUser(made), recoveryCode, ...(generated ? { password } : {}) } };
+    }
+
+    const progressOf = path.match(/^platform\/progress\/([0-9a-f-]{36})$/i);
+    if (progressOf && method === 'GET') {
+      const sid = progressOf[1];
+      if (sid !== user.id && !isTeacher) throw new HttpError(403, 'forbidden', 'You can only see your own progress.');
+      if (sid !== user.id && !(await studentExists(sid))) throw new HttpError(404, 'not_found', 'Unknown student.');
+      const rows = await db.query<{ data: unknown; updated_at: string | Date }>('select data, updated_at from public.lwd_progress where user_id = $1', [sid]);
+      const r = rows[0];
+      return { status: 200, json: r ? { data: parseRow(r), updatedAt: new Date(r.updated_at).toISOString() } : { data: null, updatedAt: null } };
+    }
+
+    if (path === 'platform/records' && method === 'GET') {
+      const kind = qs.get('kind') ?? '';
+      if (!KINDS.includes(kind)) throw new HttpError(400, 'invalid', 'Unknown record kind.');
+      const sid = qs.get('studentId');
+      if (sid && !UUID.test(sid)) throw new HttpError(400, 'invalid', 'Bad student id.');
+      const params: unknown[] = [kind];
+      let where = 'kind = $1';
+      if (!isTeacher) { params.push(user.id); where += ` and student_id = $${params.length}`; }
+      else if (sid) { params.push(sid); where += ` and student_id = $${params.length}`; }
+      const rows = await db.query<{ data: unknown }>(`select data from public.lwd_platform where ${where} order by updated_at desc limit 2000`, params);
+      return { status: 200, json: { records: rows.map(parseRow) } };
+    }
+
+    if (path === 'platform/records' && method === 'PUT') {
+      const b = await body(req);
+      const kind = str(b.kind);
+      const id = str(b.id);
+      const studentId = str(b.studentId) || user.id;
+      if (!KINDS.includes(kind)) throw new HttpError(400, 'invalid', 'Unknown record kind.');
+      if (!/^[A-Za-z0-9_-]{8,64}$/.test(id)) throw new HttpError(400, 'invalid', 'Bad record id.');
+      if (!UUID.test(studentId)) throw new HttpError(400, 'invalid', 'Bad student id.');
+      if (!b.data || typeof b.data !== 'object' || Array.isArray(b.data)) throw new HttpError(400, 'invalid', 'Missing record data.');
+      if (!isTeacher) {
+        if (kind !== 'activity' || studentId !== user.id) throw new HttpError(403, 'forbidden', 'Only the teacher can do that.');
+      } else if (!(await studentExists(studentId))) throw new HttpError(404, 'not_found', 'Unknown student.');
+      const rec: Record<string, unknown> = { ...(b.data as Record<string, unknown>), id, studentId };
+      if (kind !== 'activity') rec.teacherId = user.id; // never trust the client's teacherId
+      if (kind === 'booking' && rec.status === 'scheduled') {
+        const start = Date.parse(str(rec.startsAt));
+        const dur = Number(rec.durationMin);
+        if (!Number.isFinite(start) || !(dur > 0)) throw new HttpError(400, 'invalid', 'Choose a date, time and duration.');
+        const others = await db.query<{ data: unknown }>("select data from public.lwd_platform where kind = 'booking' and teacher_id = $1 and id <> $2", [user.id, id]);
+        for (const o of others) {
+          const d = parseRow(o);
+          if (d.status !== 'scheduled') continue;
+          const s2 = Date.parse(str(d.startsAt));
+          if (start < s2 + Number(d.durationMin) * MIN && s2 < start + dur * MIN) throw new HttpError(409, 'overlap', 'That time overlaps another lesson.', { clash: d });
+        }
+      }
+      const rows = await db.query<{ id: string }>(
+        'insert into public.lwd_platform (id, kind, teacher_id, student_id, data, updated_at) values ($1, $2, $3, $4, $5::jsonb, $6) on conflict (id) do update set data = excluded.data, updated_at = excluded.updated_at where public.lwd_platform.kind = excluded.kind and public.lwd_platform.student_id = excluded.student_id returning id',
+        [id, kind, isTeacher ? user.id : null, studentId, JSON.stringify(rec), iso(now())],
+      );
+      if (!rows[0]) throw new HttpError(409, 'conflict', 'That record id is already used for something else.');
+      return { status: 200, json: { record: rec } };
+    }
+
+    if (path === 'platform/homework/submit' && method === 'POST') {
+      const b = await body(req);
+      const result = b.result as Record<string, unknown> | undefined;
+      if (!result || typeof result !== 'object' || Array.isArray(result)) throw new HttpError(400, 'invalid', 'Missing result.');
+      const rows = await db.query<{ data: unknown; student_id: string }>("select data, student_id from public.lwd_platform where id = $1 and kind = 'homework'", [str(b.id)]);
+      const row = rows[0];
+      if (!row) throw new HttpError(404, 'not_found', 'Homework not found.');
+      if (!isTeacher && row.student_id !== user.id) throw new HttpError(403, 'forbidden', 'This homework belongs to someone else.');
+      const cur = parseRow(row);
+      const next = { ...cur, status: cur.status === 'reviewed' ? 'reviewed' : 'submitted', result: { ...result, completedAt: str(result.completedAt) || iso(now()) } };
+      await db.query('update public.lwd_platform set data = $2::jsonb, updated_at = $3 where id = $1', [str(b.id), JSON.stringify(next), iso(now())]);
+      return { status: 200, json: { record: next } };
+    }
+
+    if (path === 'platform/records/delete' && method === 'POST') {
+      const b = await body(req);
+      if (!isTeacher) throw new HttpError(403, 'forbidden', 'Only the teacher can do that.');
+      await db.query("delete from public.lwd_platform where id = $1 and kind in ('homework', 'feedback')", [str(b.id)]);
       return { status: 204 };
     }
 

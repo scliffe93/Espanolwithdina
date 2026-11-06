@@ -99,6 +99,20 @@ export const api = {
     request<{ version: number; updatedAt: string }>('progress', { method: 'PUT', token, body: { data, baseVersion, deviceId: deviceId() }, keepalive }),
 };
 
+export interface PlatformPerson { id: string; username: string; firstName: string; role: 'student' | 'teacher' }
+export type PlatformKind = 'booking' | 'homework' | 'feedback' | 'activity';
+
+/** Teaching platform endpoints (same Edge Function). Every call is scoped server-side to the signed-in person's role. */
+export const platformApi = {
+  people: (token: string) => request<{ people: PlatformPerson[] }>('platform/people', { token }),
+  progress: (token: string, studentId: string) => request<{ data: unknown; updatedAt: string | null }>(`platform/progress/${encodeURIComponent(studentId)}`, { token }),
+  records: <T>(token: string, kind: PlatformKind, studentId?: string) => request<{ records: T[] }>(`platform/records?kind=${kind}${studentId ? `&studentId=${encodeURIComponent(studentId)}` : ''}`, { token }),
+  put: <T>(token: string, kind: PlatformKind, id: string, studentId: string, data: T) => request<{ record: T }>('platform/records', { method: 'PUT', token, body: { kind, id, studentId, data } }),
+  submitHomework: <T>(token: string, id: string, result: unknown) => request<{ record: T }>('platform/homework/submit', { token, body: { id, result } }),
+  remove: (token: string, id: string) => request<void>('platform/records/delete', { method: 'POST', token, body: { id } }),
+  addStudent: (token: string, input: { username: string; firstName: string; password?: string }) => request<{ user: PlatformPerson; recoveryCode: string; password?: string }>('platform/students', { token, body: input }),
+};
+
 /** Client-side mirror of the server's password rules (the server is authoritative). */
 export function passwordProblem(pw: string, username: string): string | null {
   if (pw.length < 8) return 'Use at least 8 characters.';

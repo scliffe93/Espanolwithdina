@@ -1,6 +1,19 @@
-# Learning with Dina — teaching platform (prototype)
+# Learning with Dina — teaching platform
 
-A teacher dashboard for Dina and individual dashboards for her students, built into the existing app. The prototype runs entirely in the browser (demo mode) so it can be shown to Dina without any server.
+A teacher dashboard for Dina and individual dashboards for her students, built into the existing app. It runs in two modes:
+
+- **Real accounts** (once Supabase is configured as in `docs/ACCOUNTS.md`): Dina logs in with her own account and is the teacher; every other account is her student. Lessons, homework, feedback and activity are saved on the server and appear on every device each person logs in on.
+- **Demonstration** (always available, no server): Dina, Sam and Anneka with sample data in this browser's IndexedDB.
+
+## Real accounts
+
+- **Who is the teacher**: the account(s) named in the `TEACHER_USERNAMES` secret of the Edge Function (default `dina`). Dina registers (or logs in) with that username and gets the teacher dashboard: Today, Calendar, Students, Homework.
+- **Adding students**: Students → **Add a student** creates the student's account (first name, username, optional password). The login details and recovery code are shown once for Dina to pass on; the student can change the password in their settings. Anyone who registers on the app themselves also appears in Dina's list (one teacher, all learners are her students).
+- **What is saved where**: bookings, homework (with results), feedback and the activity feed live in the `lwd_platform` table; each learner's progress stays in `lwd_progress` and keeps syncing as before. The server scopes every request by role — a student only ever receives their own rows, the teacher her students' — and Row Level Security with no policies keeps the public API keys out entirely (`supabase/migrations/20261107000000_lwd_platform.sql`, `supabase/functions/_shared/account-core.ts`, `src/lib/platform/cloudBackend.ts`).
+- **Overlap prevention** is enforced on the server as well as in the app.
+- **Offline**: the learning app keeps working offline; the lessons/homework screens need a connection and say so.
+- **Entry points**: the welcome screen link, `#/demo` (the platform landing page: log in, or try the demo), and the "My lessons" item in a student's menu.
+- **Tests**: `tests/platform-api.test.ts` (6 tests on real Postgres) and `scripts/platform-real-e2e.cjs` (12 browser checks of the whole flow).
 
 ## Try the demo
 
@@ -25,7 +38,7 @@ The 9-step demonstration (Dina → Sam → book → assign → as Sam see both �
 | Booking rules | Real: overlap prevention, time-zone-aware scheduling (stored in UTC, shown in each viewer's zone, scheduling zone remembered). |
 | Reminders | Real, but **in-app only**: 24 h / 1 h lesson reminders and homework deadlines appear while the app is open. Nothing can notify someone when the app is closed — that would need a separate notification service (not added; none activated). |
 | Real learner accounts | Existing username/password accounts and cross-device sync are unchanged (see `docs/ACCOUNTS.md`). |
-| Teacher role for real accounts (cloud) | **Not implemented yet** — see below. |
+| Teacher role for real accounts (cloud) | **Implemented** (see "Real accounts" above); needs the Supabase setup in `docs/ACCOUNTS.md`. |
 
 ## Architecture
 
@@ -35,14 +48,13 @@ The 9-step demonstration (Dina → Sam → book → assign → as Sam see both �
 - `src/lib/platform/homework.ts` — maps homework to real activities (`?hw=<id>`) and records completion.
 - `src/lib/platform/time.ts` — time-zone helpers (no library).
 - `src/screens/teach/*` — Dina's screens. `src/screens/student/*` — student screens and the written/speaking homework runner. `src/screens/Demo.tsx` — the switcher.
-- `src/lib/platform/cloudBackend.ts` — placeholder for the real-account implementation.
+- `src/lib/platform/cloudBackend.ts` — the real-account implementation over the Edge Function's `platform/*` endpoints.
 
 ## Before real students can use it
 
-1. **Cloud teacher role** (not built; the demo doesn't need it): a migration adding `role`/`teacher_id` to `lwd_users` and tables for bookings, homework, feedback and activity; endpoints on the account Edge Function with server-side authorisation (students only their rows, teacher only her students); `src/lib/platform/cloudBackend.ts` implemented over those endpoints; tests on PGlite like `tests/account-api.test.ts`. Estimated: one focused session. The UI already works against the `PlatformBackend` interface, so no screen changes are needed.
-2. Dina's real account: register the username `Dina` as the teacher (via a `TEACHER_USERNAMES` secret in that design) with a strong password and her recovery code.
-3. Supabase project configured as in `docs/ACCOUNTS.md` (free tier; nothing paid activated).
-4. Optional: a notification service for reminders when the app is closed (would be a separate, possibly paid, service — not added).
+1. Supabase project configured as in `docs/ACCOUNTS.md` (free tier; nothing paid activated), including the `TEACHER_USERNAMES` secret and the `LWD_API_URL` repository variable for the GitHub Pages build.
+2. Dina registers the username `dina` with a strong password and keeps her recovery code; then adds her students from the Students page.
+3. Optional: a notification service for reminders when the app is closed (would be a separate, possibly paid, service — not added).
 
 ## Costs
 

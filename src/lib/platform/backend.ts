@@ -39,6 +39,8 @@ export interface PlatformBackend {
   deleteFeedback(id: string): Promise<void>;
   activity(opts?: { studentId?: string; limit?: number }): Promise<ActivityEvent[]>;
   logActivity(type: ActivityType, label: string, studentId?: string): Promise<void>;
+  /** Real accounts only: the teacher creates a student's account and gets the login details to pass on. */
+  addStudent?(input: { username: string; firstName: string; password?: string }): Promise<{ user: Person; recoveryCode: string; password?: string }>;
 }
 
 export const uid = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`);

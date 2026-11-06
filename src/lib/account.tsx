@@ -167,6 +167,25 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store.ready, session?.user.id]);
 
+  // Keep the signed-in person's details fresh (first name, teaching role) — e.g. a session saved before the platform existed.
+  useEffect(() => {
+    const s = session;
+    if (!s) return;
+    let alive = true;
+    api.me(s.token).then(({ user }) => {
+      const cur = sessionRef.current;
+      if (!alive || !cur || cur.token !== s.token) return;
+      if (user.role !== cur.user.role || user.firstName !== cur.user.firstName) {
+        const next: Session = { ...cur, user: { ...cur.user, ...user } };
+        saveSession(next);
+        sessionRef.current = next;
+        setSession(next);
+      }
+    }).catch(() => undefined);
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.token]);
+
   // Reconnect / tab focus / leaving the page.
   useEffect(() => {
     const online = () => { if (sessionRef.current) pull(); };

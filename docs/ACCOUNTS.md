@@ -59,7 +59,7 @@ You need a free Supabase account and the Supabase CLI. Nothing here activates a 
    supabase login
    supabase link --project-ref <your-project-ref>   # shown in Project Settings → General
    ```
-3. **Create the tables** (applies `supabase/migrations/20261106000000_lwd_accounts.sql`):
+3. **Create the tables** (applies every file in `supabase/migrations/`: accounts, and the teaching platform's `lwd_platform` table + `role` column):
    ```bash
    supabase db push
    ```
@@ -68,6 +68,11 @@ You need a free Supabase account and the Supabase CLI. Nothing here activates a 
    supabase secrets set ALLOWED_ORIGINS=https://scliffe93.github.io
    ```
    Add more origins separated by commas, e.g. a custom domain.
+   Then name the teacher's account (default `dina`; comma-separate several):
+   ```bash
+   supabase secrets set TEACHER_USERNAMES=dina
+   ```
+   Whoever registers or logs in with that username is the teacher; everyone else is a student. See `docs/PLATFORM.md`.
 5. **Deploy the account function**. It handles its own login, so Supabase's JWT check is off:
    ```bash
    supabase functions deploy account --no-verify-jwt
@@ -98,13 +103,14 @@ If the function logs show database connection errors, set `LWD_DB_URL` to the **
 ## Running it locally
 
 ```bash
-npx tsx server/dev-server.ts 8787 memory          # account API on http://localhost:8787/account (Postgres in WASM)
+TEACHER_USERNAMES=dina npx tsx server/dev-server.ts 8787 memory   # account API on http://localhost:8787/account (Postgres in WASM)
 VITE_LWD_API_URL=http://localhost:8787/account npm run dev
 ```
 
 ## Tests
 
-- `npm test` runs the unit tests, which include **18 account-API security tests** on a real Postgres engine (PGlite) with the production migration and **5 merge tests**.
+- `npm test` runs the unit tests, which include **18 account-API security tests** and **6 teaching-platform API tests** on a real Postgres engine (PGlite) with the production migrations, and **5 merge tests**.
+- `node scripts/platform-real-e2e.cjs <outDir>` is the real-account platform test (12 checks): Dina registers as the teacher, adds a student, books a lesson (an overlap is refused), assigns homework; the student logs in on another browser with the temporary password and sees both; everything survives a reload.
 - `node scripts/accounts-e2e.cjs` is the cross-device test. It needs the API on :8787 and an API-configured build on :4173. It covers:
   - signing up on a phone with existing progress
   - logging in on a fresh laptop and continuing learning

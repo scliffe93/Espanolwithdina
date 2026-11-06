@@ -2,7 +2,8 @@ import { motion } from 'motion/react';
 import { useState } from 'react';
 import { Icon } from '../../components/Icon';
 import { PageHeader } from '../../components/ui';
-import { usePlatformQuery } from '../../lib/platform/context';
+import { usePlatform, usePlatformQuery } from '../../lib/platform/context';
+import { AddStudentForm } from './AddStudentForm';
 import { fmtDateTime } from '../../lib/platform/time';
 import { BookingForm } from './BookingForm';
 import { HomeworkAssignForm } from './HomeworkAssignForm';
@@ -17,6 +18,9 @@ export function Students() {
   const bookings = usePlatformQuery((b) => b.bookings({ from: new Date(Date.now() - 86_400_000).toISOString() }));
   const [booking, setBooking] = useState<string | null>(null);
   const [assign, setAssign] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const { backend } = usePlatform();
+  const canAdd = !!backend?.addStudent;
   const people = students.data?.people ?? [];
   const progress = students.data?.progress ?? {};
   const ready = students.data && homework.data && bookings.data;
@@ -24,7 +28,15 @@ export function Students() {
   return (
     <div>
       <PageHeader eyebrow="Alumnos" title="Students" subtitle={<span className="inline-flex flex-wrap items-center gap-2">How each learner is doing this week, from their own app activity. <DemoChip /></span>} />
-      {!ready ? <Loading label="Loading students…" /> : (
+      {canAdd && (
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <button type="button" className="btn-dark !py-2.5" onClick={() => setAdding(true)} data-testid="add-student"><Icon name="user" size={16} /> Add a student</button>
+          <span className="text-sm text-ink-mute">Creates their login; anyone who registers on the app themselves appears here too.</span>
+        </div>
+      )}
+      {!ready ? <Loading label="Loading students…" /> : people.length === 0 ? (
+        <div className="card p-6 text-sm text-ink-soft">No students yet. {canAdd ? 'Add your first student above, or ask them to create an account in the app.' : ''}</div>
+      ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {people.map((p, idx) => {
             const i = studentInsight(p, progress[p.id] ?? null, homework.data ?? [], bookings.data ?? []);
@@ -61,6 +73,7 @@ export function Students() {
         </div>
       )}
       <BookingForm open={!!booking} onClose={() => setBooking(null)} people={people} prefill={{ studentId: booking ?? undefined }} viewZone={zone} />
+      {canAdd && <AddStudentForm open={adding} onClose={() => setAdding(false)} />}
       <HomeworkAssignForm open={!!assign} onClose={() => setAssign(null)} people={people} progress={progress} initialStudentIds={assign ? [assign] : undefined} viewZone={zone} />
     </div>
   );
