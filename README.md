@@ -36,6 +36,10 @@ The build uses relative paths (`base: './'`) and hash routing, so it works on an
 
 Microphone recording and installing as an app both need HTTPS (or `localhost`), and all of these hosts provide it.
 
+## Teaching platform (prototype)
+
+A teacher dashboard for Dina and dashboards for her students — lessons (week/month calendar, bookings with overlap prevention and time zones), homework assigned from the real curriculum and completed inside the app, feedback, reminders and per-student learning journeys. Try it from **Teacher demo** on the welcome screen (`#/demo`) as Dina, Sam or Anneka — no password in the demo; everything persists in the browser. See [`docs/PLATFORM.md`](docs/PLATFORM.md) for what is real vs sample data and what's needed before real students use it.
+
 ## Accounts & cross-device progress
 
 Optional free accounts with a username and password (no email). Progress saves automatically, works offline, and continues on any device. There's also a **My Learning Journey** page and a personal welcome-back greeting. See [`docs/ACCOUNTS.md`](docs/ACCOUNTS.md) for the security design, Supabase setup steps (about 15 minutes, free tier) and costs. Until the account server is configured, the app runs local-only exactly as before.
