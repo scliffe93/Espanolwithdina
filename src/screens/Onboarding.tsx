@@ -154,7 +154,7 @@ export function Welcome() {
             )}
           </motion.div>
           <p className="mt-4 text-sm text-ink-mute">{cloudConfigured ? 'Free. Start right away — create an account any time to save your progress on every device.' : 'Free. No account needed. Everything stays on this device.'}</p>
-          <button className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-olive underline-offset-4 hover:underline" onClick={() => navigate('demo')}><Icon name="calendar" size={15} /> {cloudConfigured ? 'Lessons with Dina: teacher & student dashboards (and a demo)' : 'Teacher demo: Dina’s dashboard, Sam and Anneka'}</button>
+          <button className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-olive underline-offset-4 hover:underline" onClick={() => navigate('home')}><Icon name="calendar" size={15} /> {cloudConfigured ? 'Lessons with Dina: log in, teacher & student dashboards' : 'Teacher demo: Dina’s dashboard, Sam and Anneka'}</button>
         </div>
         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2, type: 'spring' }} className="shrink-0">
           <Character look={CHARACTERS.lucia.look} mood="wave" size={260} label="Lucía, your guide, waving hello" />

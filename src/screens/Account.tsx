@@ -64,8 +64,10 @@ export function RecoveryCodeCard({ code, onDone, title = 'Your recovery code' }:
 function SignedOut() {
   const acc = useAccount();
   const { state } = useStore();
-  const [mode, setMode] = useState<'login' | 'register' | 'recover'>(state.onboardingDone || acc.guestHasProgress ? 'register' : 'login');
-  const [username, setUsername] = useState('');
+  const presetUser = new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('user') ?? '';
+  const presetMode = new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('mode');
+  const [mode, setMode] = useState<'login' | 'register' | 'recover'>(presetUser || presetMode === 'login' ? 'login' : presetMode === 'register' ? 'register' : state.onboardingDone || acc.guestHasProgress ? 'register' : 'login');
+  const [username, setUsername] = useState(presetUser);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [firstName, setFirstName] = useState(state.profile?.name ?? '');

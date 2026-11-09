@@ -103,7 +103,7 @@ async function newDevice(browser, kind) {
 
   // ── A. Phone: existing guest progress → create account (migration) ──
   const phone = await newDevice(browser, 'phone');
-  await phone.page.goto(BASE);
+  await phone.page.goto(BASE + '#/welcome');
   await seedGuest(phone.page);
   await phone.page.goto(`${BASE}#/world`);
   await phone.page.reload();
@@ -140,7 +140,7 @@ async function newDevice(browser, kind) {
 
   // ── B. Laptop: log in on a brand-new device and continue ──
   const laptop = await newDevice(browser, 'laptop');
-  await laptop.page.goto(BASE);
+  await laptop.page.goto(BASE + '#/welcome');
   await laptop.page.waitForTimeout(800);
   await laptop.page.screenshot({ path: `${OUT}/62-welcome-login-button.png` });
   await laptop.page.getByRole('button', { name: /I already have an account/ }).click();

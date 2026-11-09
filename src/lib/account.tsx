@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AppState } from '../types';
-import { ApiError, api, cloudConfigured, loadSession, saveSession, type Session } from './cloud';
+import { ApiError, api, cloudConfigured, loadSession, rememberAccount, saveSession, type Session } from './cloud';
 import { GUEST_KEY, accountKey, deleteKey, deleteSyncMeta, hasKey, loadState, loadSyncMeta, saveState, saveSyncMeta, type SyncMeta } from './db';
 import { hasProgress, mergeStates } from './merge';
 import { defaultState, migrate } from './state';
@@ -181,6 +181,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         sessionRef.current = next;
         setSession(next);
       }
+      rememberAccount({ ...cur.user, ...user });
     }).catch(() => undefined);
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -210,6 +211,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   // ── account actions ─────────────────────────────────────────
   const adopt = useCallback(async (s: Session, state: AppState, m: SyncMeta) => {
     saveSession(s);
+    rememberAccount(s.user);
     setSession(s);
     sessionRef.current = s;
     meta.current = m;

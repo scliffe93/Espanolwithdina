@@ -86,7 +86,7 @@ function DemoPill() {
 function Shell({ children, route, routeId }: { children: ReactNode; route: RouteName; routeId?: string }) {
   const { me, demoActor } = usePlatform();
   const teacher = me?.role === 'teacher';
-  const items = teacher ? TEACHER_NAV.filter((n) => (n.name === 'demo' ? !!demoActor : n.name === 'account' ? !demoActor : true)) : me?.role === 'student' ? [{ name: 'student' as RouteName, label: 'My lessons', es: 'Clases', icon: 'calendar' as IconName, mobile: true }, ...(demoActor ? [{ name: 'demo' as RouteName, label: 'Switch person', es: 'Cambiar', icon: 'refresh' as IconName, mobile: true }] : []), ...NAV.filter((n) => n.name !== 'progress' && n.name !== 'teacher')] : NAV;
+  const items = teacher ? TEACHER_NAV.filter((n) => (n.name === 'demo' ? !!demoActor : n.name === 'account' ? !demoActor : true)) : me?.role === 'student' ? [{ name: 'student' as RouteName, label: 'My lessons', es: 'Clases', icon: 'calendar' as IconName, mobile: true }, ...(demoActor ? [{ name: 'demo' as RouteName, label: 'Switch person', es: 'Cambiar', icon: 'refresh' as IconName, mobile: true }] : []), ...NAV.filter((n) => n.name !== 'progress' && n.name !== 'teacher')] : [...NAV, { name: 'home' as RouteName, label: 'Lessons with Dina', es: 'Clases', icon: 'calendar' as IconName, mobile: true }];
   const sub = routeId?.split('/')[0];
   const isActive = (n: NavItem) => {
     if (teacher) return route === 'teach' ? (n.name === 'teach' && (n.sub ?? '') === (sub && ['calendar', 'students', 'homework'].includes(sub) ? sub : sub === 'student' ? 'students' : '')) : n.name === route;
@@ -158,7 +158,7 @@ export default function App() {
   // Route guards
   useEffect(() => {
     if (!ready) return;
-    const pre: RouteName[] = ['welcome', 'onboarding', 'level', 'assessment', 'dna', 'privacy', 'account', 'demo', 'teach', 'student', 'homework'];
+    const pre: RouteName[] = ['home', 'welcome', 'onboarding', 'level', 'assessment', 'dna', 'privacy', 'account', 'demo', 'teach', 'student', 'homework'];
     if (!state.onboardingDone && !pre.includes(route.name)) navigate('welcome');
     if (state.onboardingDone && ['welcome', 'onboarding', 'level', 'dna'].includes(route.name)) navigate('world');
   }, [ready, state.onboardingDone, route.name]);
@@ -187,7 +187,7 @@ export default function App() {
       case 'dna': screen = <ProfileScreen onboarding />; break;
       case 'privacy': screen = <Privacy />; break;
       case 'account': screen = <Account />; break;
-      case 'demo': screen = <Demo />; break;
+      case 'demo': case 'home': screen = <Demo />; break;
       case 'teach': case 'student': case 'homework':
         // The demo can be used before onboarding (Dina has no learner profile of her own).
         return <><Toasts /><WelcomeBack /><Shell route={route.name} routeId={route.id}><PlatformScreen route={route.name} id={route.id} params={route.params} /></Shell></>;
@@ -207,7 +207,7 @@ export default function App() {
     case 'privacy': screen = <Privacy />; break;
     case 'assessment': screen = <Assessment />; break;
     case 'games': screen = <Arcade />; break;
-    case 'demo': screen = <Demo />; break;
+    case 'demo': case 'home': screen = <Demo />; break;
     case 'teach': case 'student': case 'homework': screen = <PlatformScreen route={route.name} id={route.id} params={route.params} />; break;
     case 'account': screen = <Account />; break;
     case 'journey': screen = <Journey />; break;

@@ -48,7 +48,7 @@ async function tapDina(page, label) {
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
-  await page.goto(BASE);
+  await page.goto(BASE + '#/welcome');
   await page.waitForTimeout(250);
   await page.screenshot({ path: `${OUT}/50-dina-entrance-start.png`, clip: { x: 0, y: 0, width: 520, height: 330 } });
   await page.waitForTimeout(2200);
@@ -73,7 +73,7 @@ async function tapDina(page, label) {
   await m.addInitScript(speechStub);
   const mp = await m.newPage();
   mp.on('pageerror', (e) => errors.push(`mobile: ${e.message}`));
-  await mp.goto(BASE);
+  await mp.goto(BASE + '#/welcome');
   await mp.evaluate(seed, profile);
   await mp.goto(`${BASE}#/world`);
   await mp.reload();
@@ -89,7 +89,7 @@ async function tapDina(page, label) {
   await r.addInitScript(speechStub);
   const rp = await r.newPage();
   rp.on('pageerror', (e) => errors.push(`reduced: ${e.message}`));
-  await rp.goto(BASE);
+  await rp.goto(BASE + '#/welcome');
   await rp.waitForTimeout(150);
   const op = await rp.getByRole('button', { name: /Dina, your Spanish tutor/ }).first().evaluate((el) => getComputedStyle(el).opacity);
   log('reduced motion: visible immediately (opacity', op + ')');
@@ -100,7 +100,7 @@ async function tapDina(page, label) {
   await n.addInitScript(noSpeech);
   const np = await n.newPage();
   np.on('pageerror', (e) => errors.push(`no-tts: ${e.message}`));
-  await np.goto(BASE);
+  await np.goto(BASE + '#/welcome');
   await np.waitForTimeout(1500);
   const nb = await tapDina(np, 'no-audio');
   log('text alternative shown:', nb.bubble.includes('Audio isn’t available'));

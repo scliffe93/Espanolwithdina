@@ -4,7 +4,7 @@ import { DinaArt } from '../components/Dina';
 import { Icon } from '../components/Icon';
 import { PageHeader, Sheet } from '../components/ui';
 import { useAccount } from '../lib/account';
-import { cloudConfigured } from '../lib/cloud';
+import { cloudConfigured, forgetAccount, knownAccounts, type KnownAccount } from '../lib/cloud';
 import { usePlatform, type DemoActor } from '../lib/platform/context';
 import { navigate } from '../lib/router';
 import { useStore } from '../lib/store';
@@ -15,13 +15,17 @@ const ROLES: { actor: Exclude<DemoActor, null>; name: string; role: string; blur
   { actor: 'anneka', name: 'Anneka', role: 'Student · Valencia · A1', blurb: 'Her next lesson, homework, feedback from Dina and learning journey.', to: 'student', tone: 'bg-olive text-white' },
 ];
 
-/** Teaching platform landing: real accounts open their own dashboard; anyone can try the demonstration (Dina, Sam, Anneka). */
+/**
+ * The front page: continue as whoever is signed in, pick a person who has used this device,
+ * create an account or log in, learn without an account, or try the demonstration.
+ */
 export function Demo() {
   const { switchDemo, resetDemo, demoActor, demoAvailable } = usePlatform();
   const account = useAccount();
   const { state } = useStore();
   const [busy, setBusy] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [known, setKnown] = useState<KnownAccount[]>(() => knownAccounts());
 
   const enter = async (actor: Exclude<DemoActor, null>, to: string) => {
     setBusy(actor);
@@ -32,30 +36,65 @@ export function Demo() {
 
   const role = account.session?.user.role;
   const signedIn = !!account.session;
+  const others = known.filter((k) => k.username.toLowerCase() !== account.session?.user.username.toLowerCase());
+  const standalone = !state.onboardingDone && !demoActor && !role;
 
   return (
-    <div className={state.onboardingDone || demoActor ? '' : 'min-h-[100dvh] bg-cream-warm px-5 py-8'}>
+    <div className={standalone ? 'min-h-[100dvh] bg-cream-warm px-5 py-8' : ''}>
       <div className="mx-auto max-w-4xl">
-        <PageHeader eyebrow="Clases con Dina" title="Lessons with Dina" subtitle={signedIn ? 'Your lessons, homework and feedback are saved to your account and appear on every device you log in on.' : cloudConfigured ? 'Book lessons, get homework from the real curriculum and see Dina’s feedback — all saved to your account. Or try the demonstration below.' : 'Online accounts aren’t configured for this copy of the app yet, so the platform runs as a demonstration on this device.'} />
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="min-w-0 flex-1">
+            <PageHeader eyebrow="Clases con Dina" title="Lessons with Dina" subtitle={cloudConfigured ? 'Your lessons, homework and feedback, saved to your account and ready on every device.' : 'Online accounts aren’t configured for this copy of the app yet, so the platform runs as a demonstration on this device.'} />
+          </div>
+          <div className="hidden shrink-0 sm:block" aria-hidden><DinaArt size={120} expression="beam" /></div>
+        </div>
+
         {signedIn && (
-          <div className="card mb-6 flex flex-wrap items-center gap-4 p-5" data-testid="platform-signed-in">
+          <section className="card mb-4 flex flex-wrap items-center gap-4 p-5" data-testid="platform-signed-in">
             <div className="min-w-0 flex-1 text-sm">
               <p className="font-semibold">Signed in as @{account.session?.user.username}{role === 'teacher' ? ' · teacher' : role === 'student' ? ' · student' : ''}</p>
-              <p className="text-ink-soft">{role === 'teacher' ? 'Your real students, lessons and homework. Add students from the Students page.' : role ? 'Your next lesson, homework and Dina’s feedback.' : 'Checking your account…'}</p>
+              <p className="text-ink-soft">{role === 'teacher' ? 'Your real students, lessons and homework.' : role ? 'Your next lesson, homework and Dina’s feedback.' : 'Checking your account…'}</p>
             </div>
-            {role && <button className="btn-primary" onClick={() => navigate(role === 'teacher' ? 'teach' : 'student')}>{role === 'teacher' ? 'Open the teacher dashboard' : 'Open my lessons'} <Icon name="arrowRight" size={16} /></button>}
-          </div>
+            {role && <button className="btn-primary" onClick={() => navigate(role === 'teacher' ? 'teach' : 'student')} data-testid="continue-signed-in">{role === 'teacher' ? 'Open the teacher dashboard' : 'Open my lessons'} <Icon name="arrowRight" size={16} /></button>}
+            <button className="ctrl" onClick={() => navigate('account')}>Account</button>
+          </section>
         )}
-        {!signedIn && cloudConfigured && (
-          <div className="card mb-6 flex flex-wrap items-center gap-4 p-5">
-            <div className="min-w-0 flex-1 text-sm">
-              <p className="font-semibold">Dina’s students: log in to see your lessons</p>
-              <p className="text-ink-soft">Use the username and password Dina gave you (or create an account — Dina will see you in her list). Your learning progress syncs too.</p>
+
+        {cloudConfigured && (
+          <section className="card mb-4 p-5">
+            <h2 className="eyebrow mb-3">{others.length ? 'Who is this?' : 'Teacher and students'}</h2>
+            {others.length > 0 && (
+              <ul className="mb-4 grid gap-2 sm:grid-cols-2" data-testid="known-accounts">
+                {others.map((k) => (
+                  <li key={k.username} className="flex items-center gap-3 rounded-2xl bg-cream-100 p-3">
+                    <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full font-display text-xl font-semibold text-white ${k.role === 'teacher' ? 'bg-terracotta' : 'bg-azul'}`} aria-hidden>{k.firstName.slice(0, 1).toUpperCase()}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold">{k.firstName} <span className="font-normal text-ink-mute">@{k.username}</span></p>
+                      <p className="text-xs text-ink-mute">{k.role === 'teacher' ? 'Teacher' : 'Student'} · enter password to continue</p>
+                    </div>
+                    <button type="button" className="btn-dark !py-2" onClick={() => navigate(`account?user=${encodeURIComponent(k.username)}`)} data-testid={`known-${k.username}`}>Log in <Icon name="arrowRight" size={14} /></button>
+                    <button type="button" className="ctrl !px-2" aria-label={`Forget ${k.firstName} on this device`} title="Forget on this device" onClick={() => { forgetAccount(k.username); setKnown(knownAccounts()); }}><Icon name="x" size={14} /></button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <button className="btn-primary" onClick={() => navigate('account?mode=register')} data-testid="create-account"><Icon name="user" size={16} /> Create a new account</button>
+              <button className="btn-ghost" onClick={() => navigate('account?mode=login')} data-testid="log-in">Log in</button>
             </div>
-            <button className="btn-primary" onClick={() => navigate('account')}><Icon name="user" size={16} /> Log in / create account</button>
-          </div>
+            <p className="mt-3 text-xs text-ink-mute">Students: use the username and password Dina gave you, or create an account and Dina will see you in her list. Your learning progress syncs too.</p>
+          </section>
         )}
-        {!demoAvailable && (
+
+        <section className="card mb-6 flex flex-wrap items-center gap-4 p-5">
+          <div className="min-w-0 flex-1 text-sm">
+            <p className="font-semibold">Learn on your own</p>
+            <p className="text-ink-soft">Choose your city and start the storyline, verbs and games without an account. You can add one later and keep your progress.</p>
+          </div>
+          <button className="ctrl" onClick={() => navigate(state.onboardingDone ? 'world' : 'welcome')} data-testid="learn-solo">{state.onboardingDone ? 'Back to my city' : 'Start learning'} <Icon name="arrowRight" size={14} /></button>
+        </section>
+
+        {!demoAvailable && !demoActor && (
           <div className="card mb-4 p-4 text-sm">The demonstration uses separate, fictional accounts (Dina, Sam and Anneka) — log out from your account page to open it.</div>
         )}
         {(demoAvailable || demoActor) && <>
@@ -72,10 +111,10 @@ export function Demo() {
           ))}
         </div>
         <div className="card mt-5 p-5 text-sm text-ink-soft">
-          <p><b className="text-ink">About the demonstration data.</b> Dina, Sam and Anneka are fictional. Their lessons, homework and feedback are sample data, and their learning statistics are computed from sample study sessions replayed through the app’s real tracking — so every number on the dashboards is genuinely calculated, just over invented activity. Real learner accounts are kept completely separate and never see demo data.</p>
+          <p><b className="text-ink">About the demonstration data.</b> Dina, Sam and Anneka are fictional. Their lessons, homework and feedback are sample data, and their learning statistics are computed from sample study sessions replayed through the app’s real tracking — so every number on the dashboards is genuinely calculated, just over invented activity. Real accounts are kept completely separate and never see demo data.</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button className="ctrl" onClick={() => setConfirmReset(true)}><Icon name="refresh" size={15} /> Reset demo data</button>
-            {demoActor && <button className="ctrl" onClick={async () => { await switchDemo(null); navigate(state.onboardingDone ? 'world' : 'welcome'); }}><Icon name="x" size={15} /> Leave the demo</button>}
+            {demoActor && <button className="ctrl" onClick={async () => { await switchDemo(null); navigate('home'); }}><Icon name="x" size={15} /> Leave the demo</button>}
           </div>
         </div>
         </>}

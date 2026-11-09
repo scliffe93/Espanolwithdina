@@ -12,7 +12,7 @@ A teacher dashboard for Dina and individual dashboards for her students, built i
 - **What is saved where**: bookings, homework (with results), feedback and the activity feed live in the `lwd_platform` table; each learner's progress stays in `lwd_progress` and keeps syncing as before. The server scopes every request by role — a student only ever receives their own rows, the teacher her students' — and Row Level Security with no policies keeps the public API keys out entirely (`supabase/migrations/20261107000000_lwd_platform.sql`, `supabase/functions/_shared/account-core.ts`, `src/lib/platform/cloudBackend.ts`).
 - **Overlap prevention** is enforced on the server as well as in the app.
 - **Offline**: the learning app keeps working offline; the lessons/homework screens need a connection and say so.
-- **Entry points**: the welcome screen link, `#/demo` (the platform landing page: log in, or try the demo), and the "My lessons" item in a student's menu.
+- **Front page**: the app opens on *Lessons with Dina* (`#/home`): continue as whoever is signed in, quick-pick anyone who has used this device (password still required), create an account or log in, learn without an account, or try the demo. `#/demo` is an alias.
 - **Tests**: `tests/platform-api.test.ts` (6 tests on real Postgres) and `scripts/platform-real-e2e.cjs` (12 browser checks of the whole flow).
 
 ## Try the demo

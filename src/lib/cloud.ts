@@ -113,6 +113,22 @@ export const platformApi = {
   addStudent: (token: string, input: { username: string; firstName: string; password?: string }) => request<{ user: PlatformPerson; recoveryCode: string; password?: string }>('platform/students', { token, body: input }),
 };
 
+const KNOWN_KEY = 'lwd-known-accounts';
+export interface KnownAccount { username: string; firstName: string; role?: 'student' | 'teacher'; at: number }
+/** Accounts that have signed in on this device (no secrets: just who, for the quick-pick on the front page). */
+export function knownAccounts(): KnownAccount[] {
+  try { const v = JSON.parse(window.localStorage.getItem(KNOWN_KEY) ?? '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
+}
+export function rememberAccount(u: CloudUser) {
+  try {
+    const rest = knownAccounts().filter((k) => k.username.toLowerCase() !== u.username.toLowerCase());
+    window.localStorage.setItem(KNOWN_KEY, JSON.stringify([{ username: u.username, firstName: u.firstName, role: u.role, at: Date.now() }, ...rest].slice(0, 8)));
+  } catch { /* storage unavailable */ }
+}
+export function forgetAccount(username: string) {
+  try { window.localStorage.setItem(KNOWN_KEY, JSON.stringify(knownAccounts().filter((k) => k.username.toLowerCase() !== username.toLowerCase()))); } catch { /* ignore */ }
+}
+
 /** Client-side mirror of the server's password rules (the server is authoritative). */
 export function passwordProblem(pw: string, username: string): string | null {
   if (pw.length < 8) return 'Use at least 8 characters.';

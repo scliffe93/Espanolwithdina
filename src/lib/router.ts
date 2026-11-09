@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 // Minimal hash router — works on any static host without rewrites.
 
 export type RouteName =
-  | 'welcome' | 'onboarding' | 'level' | 'assessment' | 'dna'
+  | 'home' | 'welcome' | 'onboarding' | 'level' | 'assessment' | 'dna'
   | 'world' | 'scene' | 'verbs' | 'review' | 'progress' | 'teacher' | 'recap' | 'settings' | 'privacy' | 'games' | 'game' | 'account' | 'journey' | 'demo' | 'teach' | 'student' | 'homework';
 
 export interface ParsedRoute {
@@ -16,7 +16,7 @@ export function parseHash(hash: string): ParsedRoute {
   const [path, q] = hash.replace(/^#\/?/, '').split('?');
   const [name, ...rest] = path.split('/');
   const id = rest.length ? rest.join('/') : undefined;
-  return { name: (name || 'world') as RouteName, id, params: new URLSearchParams(q ?? '') };
+  return { name: (name || 'home') as RouteName, id, params: new URLSearchParams(q ?? '') };
 }
 
 export function navigate(to: string) {

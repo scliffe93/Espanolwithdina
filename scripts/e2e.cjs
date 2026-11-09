@@ -41,7 +41,7 @@ async function playScene(page, id) {
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   page.on('console', (m) => m.type() === 'error' && errors.push(`console: ${m.text()}`));
 
-  await page.goto(BASE);
+  await page.goto(BASE + '#/welcome');
   await page.getByRole('button', { name: /Start my Spanish life/ }).waitFor();
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${OUT}/01-welcome-desktop.png` });
@@ -235,7 +235,7 @@ async function playScene(page, id) {
   const m = await browser.newContext({ ...require('playwright').devices['iPhone 13'] });
   const mp = await m.newPage();
   mp.on('pageerror', (e) => errors.push(`mobile pageerror: ${e.message}`));
-  await mp.goto(BASE);
+  await mp.goto(BASE + '#/welcome');
   await mp.waitForTimeout(1500);
   await mp.screenshot({ path: `${OUT}/20-welcome-mobile.png` });
   // copy state into the mobile context via import of exported state
