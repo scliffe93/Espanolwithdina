@@ -3,7 +3,7 @@ import { SCENE_BY_ID } from '../../data/story';
 import { VERB_BY_INF } from '../../data/verbs';
 import { useRoute, navigate } from '../router';
 import { usePlatform } from './context';
-import type { Homework, HomeworkActivity, HomeworkKind, HomeworkResult } from './types';
+import type { ActivityType, Homework, HomeworkActivity, HomeworkKind, HomeworkResult } from './types';
 
 // ───────────────────────────────────────────────────────────────
 // Homework ↔ the existing curriculum.
@@ -88,5 +88,10 @@ export function useHomeworkCompletion() {
       return false;
     }
   }, [id, backend, bump]);
-  return { homeworkId: id, isHomework: !!id && !!backend, submit, backToHomework: () => navigate('student/homework') };
+  /** Records a learning event (chapter, game, practice, review) in the student's activity feed, which the teacher and admin see. No-op for guests, the teacher and homework runs (submit already logs those). */
+  const log = useCallback((type: ActivityType, label: string) => {
+    if (!backend || backend.actor.role !== 'student' || id) return;
+    backend.logActivity(type, label).then(() => bump()).catch(() => undefined);
+  }, [backend, id, bump]);
+  return { homeworkId: id, isHomework: !!id && !!backend, submit, log, backToHomework: () => navigate('student/homework') };
 }

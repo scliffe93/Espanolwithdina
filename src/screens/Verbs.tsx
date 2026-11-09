@@ -90,6 +90,7 @@ function Session({ exercises: initial, tense, onExit }: { exercises: Exercise[];
     else {
       update((s) => completeLesson(s));
       setDone(true);
+      if (!hw.isHomework) hw.log('practice', `Verb session: ${log.filter((l) => l.correct).length}/${log.length} correct (${tense})`);
       if (hw.isHomework) {
         const correct = log.filter((l) => l.correct).length;
         const cats = [...new Set(log.filter((l) => !l.correct && l.category).map((l) => CATEGORY_LABEL[l.category!]))];

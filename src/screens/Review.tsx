@@ -91,6 +91,7 @@ function ReviewSession({ items, onDone }: { items: Item[]; onDone: () => void })
     if (i + 1 >= items.length) {
       update((s) => completeLesson(s));
       if (hw.isHomework) hw.submit({ score: score.total ? (score.ok + 1) / (score.total + 1) : 0, attempts: score.total + 1, correct: score.ok + 1, summary: `${score.ok + 1}/${score.total + 1} recalled` });
+      else hw.log('review', `Memory review: ${score.ok + 1}/${score.total + 1} recalled`);
       setI(items.length);
       return;
     }

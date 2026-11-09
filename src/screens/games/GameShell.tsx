@@ -83,6 +83,7 @@ export function GameShell({ id, duration = 60, lives: startLives = 3, children }
     setNewBest(isBest);
     if (isBest) { sfx.win(); confetti({ count: 140 }); haptic([30, 40, 30]); } else sfx.lose();
     update((s) => completeLesson({ ...s, games: { ...s.games, [id]: { best, plays: (prev?.plays ?? 0) + 1, lastAt: Date.now(), bestCombo: Math.max(prev?.bestCombo ?? 0, bestCombo) } } }));
+    if (!hw.isHomework) hw.log('game', `${info.title}: ${h.score} points${isBest ? ' (new best)' : ''}`);
     if (hw.isHomework) {
       const l = logRef.current;
       const correct = l.filter((x) => x.correct).length;

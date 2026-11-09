@@ -159,6 +159,16 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
     if (account.session && demoActor) switchDemo(null);
   }, [account.session, demoActor, switchDemo]);
 
+  // One "logged in" line per session for students, so the teacher and admin see who is active.
+  const loggedToken = useRef<string | null>(null);
+  useEffect(() => {
+    const s = account.session;
+    if (!s || s.user.role !== 'student' || loggedToken.current === s.token) return;
+    loggedToken.current = s.token;
+    const me: Person = { id: s.user.id, username: s.user.username, firstName: s.user.firstName, role: s.user.role };
+    createCloudBackend(s, me).logActivity('login', 'Logged in').catch(() => undefined);
+  }, [account.session]);
+
   const value = useMemo<PlatformValue>(() => {
     let backend: PlatformBackend | null = null;
     let me: Person | null = null;

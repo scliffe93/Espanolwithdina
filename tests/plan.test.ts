@@ -53,6 +53,7 @@ describe('weekly plan generator', () => {
   it('plans the coming week when the lesson is late in the week', () => {
     expect(planWeekFor(Date.UTC(2026, 10, 10, 12))).toBe('2026-11-09'); // Tuesday → this week
     expect(planWeekFor(Date.UTC(2026, 10, 13, 12))).toBe('2026-11-16'); // Friday → next week
-    expect(dueFor('2026-11-09', 3).slice(0, 10)).toBe('2026-11-11');
+    expect(dueFor('2026-11-09', 3, Date.UTC(2026, 10, 8, 12)).slice(0, 10)).toBe('2026-11-11');
+    expect(dueFor('2026-11-09', 1, Date.UTC(2026, 10, 9, 22)).slice(0, 10)).toBe('2026-11-10'); // never already overdue
   });
 });

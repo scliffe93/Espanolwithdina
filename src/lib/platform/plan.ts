@@ -86,9 +86,12 @@ export function planWeekFor(now = Date.now()): string {
   return dayKey(dow >= 4 ? new Date(start.getTime() + 7 * 86_400_000) : start);
 }
 
-/** Due date for a plan day (1 = Monday) at 20:00 local time. */
-export function dueFor(planWeek: string, day: number): string {
+/** Due date for a plan day (1 = Monday) at 20:00 local time, never earlier than tomorrow evening. */
+export function dueFor(planWeek: string, day: number, now = Date.now()): string {
   const d = new Date(planWeek + 'T20:00:00');
   d.setDate(d.getDate() + Math.max(0, day - 1));
-  return d.toISOString();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(20, 0, 0, 0);
+  return (d.getTime() < tomorrow.getTime() ? tomorrow : d).toISOString();
 }

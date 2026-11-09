@@ -207,6 +207,7 @@ export function ScenePlayer({ id }: { id: string }) {
     });
     setFinished(true);
     if (hw.isHomework) hw.submit({ score, attempts: total, correct: stats.great + stats.ok, summary: `${stats.great} natural, ${stats.ok} OK, ${stats.off} learning moments` });
+    else hw.log('chapter', `Chapter completed: ${scene.title} (${Math.round(score * 100)}%)`);
     sfx.win();
     confetti({ count: 150 });
   };
