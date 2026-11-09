@@ -1,6 +1,7 @@
 import type { AppState } from '../../types';
 import type { ActivityEvent, ActivityType, Booking, BookingInput, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, PlatformData, Person } from './types';
 import { overlaps } from './time';
+import { followUpFor, type AdaptHomework } from '../../../supabase/functions/_shared/adapt';
 
 // ───────────────────────────────────────────────────────────────
 // The teaching platform API, as seen by the UI. Two implementations:
@@ -29,13 +30,13 @@ export interface PlatformBackend {
   updateBooking(id: string, patch: Partial<BookingInput> & { status?: Booking['status'] }): Promise<Booking>;
   cancelBooking(id: string): Promise<Booking>;
   homework(opts?: { studentId?: string }): Promise<Homework[]>;
-  assignHomework(input: { studentIds: string[]; activity: HomeworkActivity; instructions: string; dueAt: string }): Promise<Homework[]>;
+  assignHomework(input: { studentIds: string[]; activity: HomeworkActivity; instructions: string; dueAt: string; plan?: Homework['plan'] }): Promise<Homework[]>;
   updateHomework(id: string, patch: { instructions?: string; dueAt?: string; activity?: HomeworkActivity }): Promise<Homework>;
   deleteHomework(id: string): Promise<void>;
   submitHomework(id: string, result: HomeworkResult): Promise<Homework>;
   reviewHomework(id: string, feedback: string): Promise<Homework>;
   feedback(studentId?: string): Promise<Feedback[]>;
-  addFeedback(input: { studentId: string; kind: FeedbackKind; body: string }): Promise<Feedback>;
+  addFeedback(input: { studentId: string; kind: FeedbackKind; body: string; debrief?: Feedback['debrief'] }): Promise<Feedback>;
   deleteFeedback(id: string): Promise<void>;
   activity(opts?: { studentId?: string; limit?: number }): Promise<ActivityEvent[]>;
   logActivity(type: ActivityType, label: string, studentId?: string): Promise<void>;
@@ -160,13 +161,13 @@ export class DemoBackend implements PlatformBackend {
     return list.sort((a, b) => a.dueAt.localeCompare(b.dueAt));
   }
 
-  async assignHomework(input: { studentIds: string[]; activity: HomeworkActivity; instructions: string; dueAt: string }) {
+  async assignHomework(input: { studentIds: string[]; activity: HomeworkActivity; instructions: string; dueAt: string; plan?: Homework['plan'] }) {
     this.assertTeacher();
     if (!input.studentIds.length) throw new PlatformError('invalid', 'Choose at least one student.');
     if (!input.activity?.title?.trim()) throw new PlatformError('invalid', 'Give the homework a title.');
     if (!input.dueAt || Number.isNaN(new Date(input.dueAt).getTime())) throw new PlatformError('invalid', 'Choose a deadline.');
     for (const s of input.studentIds) this.assertStudentAccess(s);
-    const items = input.studentIds.map<Homework>((studentId) => ({ id: uid(), teacherId: this.actor.id, studentId, activity: input.activity, instructions: input.instructions, assignedAt: this.iso(), dueAt: input.dueAt, status: 'assigned' }));
+    const items = input.studentIds.map<Homework>((studentId) => ({ id: uid(), teacherId: this.actor.id, studentId, activity: input.activity, instructions: input.instructions, assignedAt: this.iso(), dueAt: input.dueAt, status: 'assigned', ...(input.plan ? { plan: input.plan } : {}) }));
     await this.commit((d) => { d.homework.push(...items); });
     for (const h of items) await this.logActivity('homework', `Homework assigned: ${h.activity.title}`, h.studentId);
     return items;
@@ -191,7 +192,10 @@ export class DemoBackend implements PlatformBackend {
     if (!cur) throw new PlatformError('not_found', 'Homework not found.');
     if (!this.isTeacher() && cur.studentId !== this.actor.id) throw new PlatformError('forbidden', 'This homework belongs to someone else.');
     const next: Homework = { ...cur, status: cur.status === 'reviewed' ? 'reviewed' : 'submitted', result: { ...result, completedAt: result.completedAt || this.iso() } };
-    await this.commit((d) => { d.homework = d.homework.map((h) => (h.id === id ? next : h)); });
+    const fid = `${id}-fu`;
+    const followUp = this.data.homework.some((h) => h.id === fid) ? null : (followUpFor(next as unknown as AdaptHomework, this.iso(), fid) as unknown as Homework | null);
+    await this.commit((d) => { d.homework = d.homework.map((h) => (h.id === id ? next : h)); if (followUp) d.homework.push(followUp); });
+    if (followUp) await this.logActivity('homework', `${followUp.plan?.adaptive === 'retry' ? 'Re-try added' : 'Stretch task added'}: ${followUp.activity.title}`, next.studentId);
     await this.logActivity('homework', `Homework completed: ${next.activity.title}${result.summary ? ` — ${result.summary}` : ''}`, next.studentId);
     return next;
   }
@@ -210,11 +214,11 @@ export class DemoBackend implements PlatformBackend {
     return (studentId ? list.filter((f) => f.studentId === studentId) : list).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
-  async addFeedback(input: { studentId: string; kind: FeedbackKind; body: string }) {
+  async addFeedback(input: { studentId: string; kind: FeedbackKind; body: string; debrief?: Feedback['debrief'] }) {
     this.assertTeacher();
     this.assertStudentAccess(input.studentId);
     if (!input.body.trim()) throw new PlatformError('invalid', 'Write something first.');
-    const f: Feedback = { id: uid(), teacherId: this.actor.id, studentId: input.studentId, kind: input.kind, body: input.body.trim(), createdAt: this.iso() };
+    const f: Feedback = { id: uid(), teacherId: this.actor.id, studentId: input.studentId, kind: input.kind, body: input.body.trim(), createdAt: this.iso(), ...(input.debrief ? { debrief: input.debrief } : {}) };
     await this.commit((d) => { d.feedback.unshift(f); });
     return f;
   }

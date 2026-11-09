@@ -163,6 +163,7 @@ export const FEEDBACK_META: Record<FeedbackKind, { label: string; plural: string
   comment: { label: 'Comment', plural: 'Comments', icon: 'chat', cls: 'bg-azul-50 text-azul', blurb: 'Notes from your lessons' },
   correction: { label: 'Correction', plural: 'Corrections', icon: 'edit', cls: 'bg-terracotta-50 text-terracotta-dark', blurb: 'Slips to watch out for' },
   recommendation: { label: 'Recommendation', plural: 'Recommendations', icon: 'bulb', cls: 'bg-olive-50 text-olive', blurb: 'What to practise next' },
+  debrief: { label: 'Lesson notes', plural: 'Lesson notes', icon: 'book', cls: 'bg-saffron-50 text-ink', blurb: 'What we covered and the plan for the week' },
 };
 
 export function Section({ eyebrow, title, right, children, className = '' }: { eyebrow?: string; title: string; right?: ReactNode; children: ReactNode; className?: string }) {

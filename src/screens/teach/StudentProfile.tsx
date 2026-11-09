@@ -21,6 +21,7 @@ import { BookingForm } from './BookingForm';
 import { HomeworkAssignForm } from './HomeworkAssignForm';
 import { HomeworkReview } from './HomeworkReview';
 import { AnalyticsTab } from './AnalyticsTab';
+import { DebriefForm } from './DebriefForm';
 import { pct, studentInsight, studyAgo } from './insights';
 import { ActivityList, Avatar, ConfirmButton, DemoChip, ErrorText, Field, HomeworkRow, LessonCard, Loading, Section, Stat, toneFor, useAction, useStudents, useViewZone } from './shared';
 
@@ -51,6 +52,7 @@ export function StudentProfile({ id, params }: { id: string; params: URLSearchPa
   const [assign, setAssign] = useState(false);
   const [review, setReview] = useState<Homework | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [debrief, setDebrief] = useState(false);
   const downloadPdf = async () => {
     if (!state) return;
     setPdfBusy(true);
@@ -92,7 +94,8 @@ export function StudentProfile({ id, params }: { id: string; params: URLSearchPa
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <DemoChip />
-            <button type="button" className="btn-primary !py-2.5" onClick={() => setBooking({ open: true })}><Icon name="calendar" size={16} /> Book a lesson</button>
+            <button type="button" className="btn-primary !py-2.5" onClick={() => setDebrief(true)} data-testid="lesson-debrief"><Icon name="edit" size={16} /> Lesson debrief &amp; week plan</button>
+            <button type="button" className="btn-ghost !py-2.5" onClick={() => setBooking({ open: true })}><Icon name="calendar" size={16} /> Book a lesson</button>
             <button type="button" className="btn-ghost !py-2.5" onClick={() => setAssign(true)}><Icon name="book" size={16} /> Assign homework</button>
           </div>
         </div>
@@ -127,6 +130,7 @@ export function StudentProfile({ id, params }: { id: string; params: URLSearchPa
       )}
 
       <BookingForm open={booking.open} onClose={() => setBooking({ open: false })} people={people} booking={booking.edit} prefill={{ studentId: id }} viewZone={zone} />
+      <DebriefForm open={debrief} onClose={() => setDebrief(false)} student={person} state={state} homework={homework.data ?? []} />
       <HomeworkAssignForm open={assign} onClose={() => setAssign(false)} people={people} progress={students.data.progress} initialStudentIds={[id]} viewZone={zone} />
       <HomeworkReview homework={review} people={people} viewZone={zone} onClose={() => setReview(null)} />
     </div>

@@ -19,7 +19,7 @@ const ROLES: { actor: Exclude<DemoActor, null>; name: string; role: string; blur
  * The front page: continue as whoever is signed in, pick a person who has used this device,
  * create an account or log in, learn without an account, or try the demonstration.
  */
-export function Demo() {
+export function Demo({ showDemo = false }: { showDemo?: boolean }) {
   const { switchDemo, resetDemo, demoActor, demoAvailable } = usePlatform();
   const account = useAccount();
   const { state } = useStore();
@@ -82,7 +82,7 @@ export function Demo() {
               <button className="btn-primary" onClick={() => navigate('account?mode=register')} data-testid="create-account"><Icon name="user" size={16} /> Create a new account</button>
               <button className="btn-ghost" onClick={() => navigate('account?mode=login')} data-testid="log-in">Log in</button>
             </div>
-            <p className="mt-3 text-xs text-ink-mute">Students: use the username and password Dina gave you, or create an account and Dina will see you in her list. Your learning progress syncs too.</p>
+            <p className="mt-3 text-xs text-ink-mute">Students: use the username and password Dina gave you, or create an account and Dina will see you in her list. Your learning progress syncs too. <button type="button" className="font-semibold text-olive underline-offset-2 hover:underline" onClick={() => navigate('guide?for=student')}>How to use (students)</button> · <button type="button" className="font-semibold text-olive underline-offset-2 hover:underline" onClick={() => navigate('guide?for=teacher')}>How to use (teacher)</button></p>
           </section>
         )}
 
@@ -94,10 +94,10 @@ export function Demo() {
           <button className="ctrl" onClick={() => navigate(state.onboardingDone ? 'world' : 'welcome')} data-testid="learn-solo">{state.onboardingDone ? 'Back to my city' : 'Start learning'} <Icon name="arrowRight" size={14} /></button>
         </section>
 
-        {!demoAvailable && !demoActor && (
+        {showDemo && !demoAvailable && !demoActor && (
           <div className="card mb-4 p-4 text-sm">The demonstration uses separate, fictional accounts (Dina, Sam and Anneka) — log out from your account page to open it.</div>
         )}
-        {(demoAvailable || demoActor) && <>
+        {(showDemo || demoActor) && demoAvailable !== undefined && (demoAvailable || demoActor) && <>
         <h2 className="eyebrow mb-3">Try the demonstration — no password needed</h2>
         <div className="grid gap-4 md:grid-cols-3">
           {ROLES.map((r, i) => (

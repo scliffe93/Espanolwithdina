@@ -130,6 +130,24 @@ describe('teaching platform API', () => {
     expect((await list(sam.token, 'homework')).json.records).toEqual([]);
   });
 
+  it('submitting a plan item creates an adaptive follow-up once', async () => {
+    const dina = await register('dina', 'Dina');
+    const sam = await register('sam', 'Sam');
+    const hw = { activity: { kind: 'verbs', title: 'Verb gym: querer, poder (present)', verbs: ['querer', 'poder', 'salir', 'ir'], tense: 'present' }, instructions: '', assignedAt: at(0), dueAt: at(20), status: 'assigned', plan: { week: '2026-11-09', day: 2 } };
+    expect((await put(dina.token, { kind: 'homework', id: 'hw-plan-0001', studentId: sam.id, data: hw })).status).toBe(200);
+    const low = await call('platform/homework/submit', { token: sam.token, body: { id: 'hw-plan-0001', result: { score: 0.3 } } });
+    expect(low.status).toBe(200);
+    expect(low.json.followUp).toMatchObject({ id: 'hw-plan-0001-fu', studentId: sam.id, teacherId: dina.id, plan: { adaptive: 'retry', sourceId: 'hw-plan-0001' } });
+    expect(low.json.followUp.activity.verbs).toHaveLength(3);
+    const again = await call('platform/homework/submit', { token: sam.token, body: { id: 'hw-plan-0001', result: { score: 0.2 } } });
+    expect(again.json.followUp).toBeNull(); // only once per source item
+    const list = await call('platform/records?kind=homework', { token: sam.token });
+    expect(list.json.records.map((h: { id: string }) => h.id).sort()).toEqual(['hw-plan-0001', 'hw-plan-0001-fu']);
+    // Re-tries never spawn another re-try.
+    const retry = await call('platform/homework/submit', { token: sam.token, body: { id: 'hw-plan-0001-fu', result: { score: 0.1 } } });
+    expect(retry.json.followUp).toBeNull();
+  });
+
   it('activity and progress: students log their own, the teacher reads everything', async () => {
     const dina = await register('dina', 'Dina');
     const sam = await register('sam', 'Sam');

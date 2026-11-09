@@ -88,9 +88,30 @@ export interface Homework {
   status: HomeworkStatus;
   result?: HomeworkResult;
   feedback?: { body: string; at: string };
+  /** Set when the item belongs to a generated weekly plan; `adaptive` marks items the app added from results. */
+  plan?: { week: string; goal?: string; day?: number; adaptive?: 'retry' | 'stretch'; sourceId?: string };
 }
 
-export type FeedbackKind = 'comment' | 'correction' | 'recommendation';
+export type FeedbackKind = 'comment' | 'correction' | 'recommendation' | 'debrief';
+
+/** Things a lesson can surface that the week's work should target. */
+export type FocusTag = 'person-agreement' | 'accents' | 'stem-change' | 'irregular-verbs' | 'ser-estar' | 'vocabulary' | 'listening' | 'speaking' | 'pronunciation' | 'spelling' | 'confidence';
+export const FOCUS_TAG_LABEL: Record<FocusTag, string> = {
+  'person-agreement': 'Verb endings (person agreement)', accents: 'Accents', 'stem-change': 'Stem changes (e→ie, o→ue)', 'irregular-verbs': 'Irregular verbs', 'ser-estar': 'Ser vs estar',
+  vocabulary: 'Vocabulary', listening: 'Listening', speaking: 'Speaking', pronunciation: 'Pronunciation', spelling: 'Spelling / writing', confidence: 'Confidence',
+};
+
+/** The teacher's notes after a lesson. Drives the generated weekly plan. */
+export interface LessonDebrief {
+  lessonDate: string; // YYYY-MM-DD
+  covered: { tenses: ('present' | 'progressive' | 'perfect')[]; verbs: string[]; themes: string[]; sceneId?: string };
+  wentWell: string;
+  toFix: FocusTag[];
+  goals: string[];
+  minutesPerDay: number;
+  /** Week the plan was generated for (YYYY-MM-DD of its Monday). */
+  planWeek: string;
+}
 
 export interface Feedback {
   id: string;
@@ -99,6 +120,8 @@ export interface Feedback {
   kind: FeedbackKind;
   body: string;
   createdAt: string;
+  /** Present when kind = 'debrief'. */
+  debrief?: LessonDebrief;
 }
 
 export type ActivityType = 'chapter' | 'practice' | 'game' | 'review' | 'homework' | 'lesson' | 'login';

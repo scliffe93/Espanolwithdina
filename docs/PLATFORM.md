@@ -5,6 +5,14 @@ A teacher dashboard for Dina and individual dashboards for her students, built i
 - **Real accounts** (once Supabase is configured as in `docs/ACCOUNTS.md`): Dina logs in with her own account and is the teacher; every other account is her student. Lessons, homework, feedback and activity are saved on the server and appear on every device each person logs in on.
 - **Demonstration** (always available, no server): Dina, Sam and Anneka with sample data in this browser's IndexedDB.
 
+## Lesson debrief → weekly plan (how homework is set)
+
+After each lesson Dina opens the student → **Lesson debrief & week plan**: tenses and verbs covered, themes, optional storyline chapter, a note for the student, what to fix (verb endings, accents, stem changes, irregular verbs, ser vs estar, vocabulary, listening, speaking, pronunciation, spelling, confidence), up to three goals and minutes a day. **Generate the week's plan** turns that into real activities spread Monday–Sunday, tailored with the student's own data (their weakest verbs, their next chapter, their interests, e.g. the football games). Dina removes or moves items, then **Send**: the student gets "This week with Dina" on their home page (the note, the goals, the tasks day by day). The next debrief opens with last week's evidence (done, on time, average score, recurring slips).
+
+The app then adapts on its own (`supabase/functions/_shared/adapt.ts`, the same rule on the server and in the demo): under 60% on a plan task adds a shorter re-try two days later; 90%+ on a verb drill adds a stretch task in the next tense. One follow-up per task, never for a re-try itself. Spaced repetition continues to drive reviews.
+
+Guides for Dina and for students are in the app under **How to use** (`#/guide`).
+
 ## Real accounts
 
 - **Who is the teacher**: the account(s) named in the `TEACHER_USERNAMES` secret of the Edge Function (default `dina`). Dina registers (or logs in) with that username and gets the teacher dashboard: Today, Calendar, Students, Homework.

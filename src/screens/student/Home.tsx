@@ -8,7 +8,7 @@ import { formatMinutes } from '../../lib/dates';
 import { usePlatform } from '../../lib/platform/context';
 import { describeActivity, homeworkRoute } from '../../lib/platform/homework';
 import { relative } from '../../lib/platform/time';
-import type { Booking, Feedback } from '../../lib/platform/types';
+import type { Booking, Feedback, Homework } from '../../lib/platform/types';
 import { resumeTarget } from '../../lib/resume';
 import { navigate } from '../../lib/router';
 import { mastery } from '../../lib/srs';
@@ -184,6 +184,43 @@ function Journey({ state }: { state: AppState }) {
   );
 }
 
+/** Dina's latest lesson notes and the week's generated tasks, day by day. */
+function WeekPlan({ data, now }: { data: { homework: Homework[]; feedback: Feedback[] }; now: number }) {
+  const debrief = data.feedback.find((f) => f.kind === 'debrief' && f.debrief);
+  const planned = data.homework.filter((h) => h.plan);
+  if (!debrief && !planned.length) return null;
+  const week = (debrief?.debrief?.planWeek ?? planned.map((h) => h.plan!.week).sort().reverse()[0]) as string;
+  const items = planned.filter((h) => h.plan!.week === week).sort((a, b) => (a.plan!.day ?? 9) - (b.plan!.day ?? 9) || a.dueAt.localeCompare(b.dueAt));
+  const done = items.filter((h) => h.result).length;
+  const DAY = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  return (
+    <section className="card mb-4 overflow-hidden" data-testid="week-plan">
+      <div className="bg-saffron-50 p-5">
+        <p className="eyebrow">Esta semana con Dina · This week with Dina</p>
+        {debrief && <p className="mt-1 whitespace-pre-line text-sm">{debrief.body}</p>}
+        {debrief?.debrief?.goals.length ? <ul className="mt-2 flex flex-wrap gap-2">{debrief.debrief.goals.map((g) => <li key={g} className="rounded-full bg-white px-3 py-1 text-xs font-semibold">{g}</li>)}</ul> : null}
+      </div>
+      {items.length > 0 && (
+        <div className="p-5">
+          <div className="mb-2 flex items-center justify-between text-sm"><span className="font-semibold">{done}/{items.length} done</span><span className="text-ink-mute">week of {week}</span></div>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {items.map((h) => {
+              const overdue = !h.result && new Date(h.dueAt).getTime() < now;
+              return (
+                <li key={h.id} className={`flex items-center gap-3 rounded-2xl p-3 text-sm ${h.result ? 'bg-olive-50' : overdue ? 'bg-terracotta-50' : 'bg-cream-100'}`}>
+                  <span className="w-9 shrink-0 rounded-lg bg-white px-1.5 py-1 text-center text-xs font-bold">{DAY[h.plan!.day ?? 0] || '—'}</span>
+                  <div className="min-w-0 flex-1"><p className="truncate font-semibold">{h.activity.title}</p><p className="text-xs text-ink-mute">{h.plan!.adaptive === 'retry' ? 'Added by the app: a shorter re-try' : h.plan!.adaptive === 'stretch' ? 'Added by the app: a stretch task' : h.plan!.goal ?? ''}</p></div>
+                  {h.result ? <Icon name="check" size={16} className="text-olive" /> : <button type="button" className="btn-dark !py-1.5 !text-xs" onClick={() => navigate(homeworkRoute(h))} data-testid={`plan-start-${h.id}`}>Start</button>}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function Home() {
   const { me } = usePlatform();
   const { state } = useStore();
@@ -200,6 +237,7 @@ export function Home() {
       {data && (
         <>
           <Reminders reminders={buildReminders(data, now)} />
+          <WeekPlan data={data} now={now} />
           <div className="grid gap-4 lg:grid-cols-[1.45fr_1fr]">
             <NextLesson b={nextLesson(data.bookings, now)} now={now} />
             <ContinueLearning state={state} />

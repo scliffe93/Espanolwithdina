@@ -9,7 +9,7 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
   await p.goto(BASE); await p.waitForTimeout(1500);
   ok(/#\/home$/.test(p.url()) || p.url() === BASE, 'root opens the front page: ' + p.url());
   const t = await p.locator('body').innerText();
-  ok(/Lessons with Dina/.test(t) && /Create a new account/.test(t) && /Start learning/.test(t) && /Try the demonstration/i.test(t), 'front page has account, solo and demo options');
+  ok(/Lessons with Dina/.test(t) && /Create a new account/.test(t) && /Start learning/.test(t) && !/Try the demonstration/i.test(t), 'front page has account and solo options, no demo cards');
   await p.screenshot({ path: OUT + '/home-fresh.png', fullPage: true });
   // Register Dina via the front page button
   await p.getByTestId('create-account').click(); await p.waitForTimeout(800);

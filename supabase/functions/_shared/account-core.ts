@@ -17,6 +17,8 @@
 //    overwrites; conflicts are returned to the client to merge.
 // ───────────────────────────────────────────────────────────────
 
+import { followUpFor, type AdaptHomework } from './adapt.ts';
+
 export interface Db {
   query<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]>;
 }
@@ -473,7 +475,14 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
       const cur = parseRow(row);
       const next = { ...cur, status: cur.status === 'reviewed' ? 'reviewed' : 'submitted', result: { ...result, completedAt: str(result.completedAt) || iso(now()) } };
       await db.query('update public.lwd_platform set data = $2::jsonb, updated_at = $3 where id = $1', [str(b.id), JSON.stringify(next), iso(now())]);
-      return { status: 200, json: { record: next } };
+      // Adaptive follow-up (re-try or stretch) for plan items, created once per source item.
+      let followUp: AdaptHomework | null = null;
+      const fid = `${str(b.id)}-fu`;
+      if (!(await db.query('select 1 from public.lwd_platform where id = $1', [fid])).length) {
+        followUp = followUpFor(next as unknown as AdaptHomework, iso(now()), fid);
+        if (followUp) await db.query("insert into public.lwd_platform (id, kind, teacher_id, student_id, data, updated_at) values ($1, 'homework', $2, $3, $4::jsonb, $5) on conflict (id) do nothing", [fid, followUp.teacherId, row.student_id, JSON.stringify(followUp), iso(now())]);
+      }
+      return { status: 200, json: { record: next, followUp } };
     }
 
     if (path === 'platform/records/delete' && method === 'POST') {

@@ -133,14 +133,14 @@ class CloudBackend implements PlatformBackend {
     return [...list].sort((a, b) => a.dueAt.localeCompare(b.dueAt));
   }
 
-  async assignHomework(input: { studentIds: string[]; activity: HomeworkActivity; instructions: string; dueAt: string }) {
+  async assignHomework(input: { studentIds: string[]; activity: HomeworkActivity; instructions: string; dueAt: string; plan?: Homework['plan'] }) {
     this.assertTeacher();
     if (!input.studentIds.length) throw new PlatformError('invalid', 'Choose at least one student.');
     if (!input.activity?.title?.trim()) throw new PlatformError('invalid', 'Give the homework a title.');
     if (!input.dueAt || Number.isNaN(new Date(input.dueAt).getTime())) throw new PlatformError('invalid', 'Choose a deadline.');
     const items: Homework[] = [];
     for (const studentId of input.studentIds) {
-      const h: Homework = { id: uid(), teacherId: this.actor.id, studentId, activity: input.activity, instructions: input.instructions, assignedAt: this.iso(), dueAt: input.dueAt, status: 'assigned' };
+      const h: Homework = { id: uid(), teacherId: this.actor.id, studentId, activity: input.activity, instructions: input.instructions, assignedAt: this.iso(), dueAt: input.dueAt, status: 'assigned', ...(input.plan ? { plan: input.plan } : {}) };
       items.push(await this.put('homework', h.id, studentId, h));
       await this.logActivity('homework', `Homework assigned: ${h.activity.title}`, studentId);
     }
@@ -181,10 +181,10 @@ class CloudBackend implements PlatformBackend {
     return [...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
-  async addFeedback(input: { studentId: string; kind: FeedbackKind; body: string }) {
+  async addFeedback(input: { studentId: string; kind: FeedbackKind; body: string; debrief?: Feedback['debrief'] }) {
     this.assertTeacher();
     if (!input.body.trim()) throw new PlatformError('invalid', 'Write something first.');
-    const f: Feedback = { id: uid(), teacherId: this.actor.id, studentId: input.studentId, kind: input.kind, body: input.body.trim(), createdAt: this.iso() };
+    const f: Feedback = { id: uid(), teacherId: this.actor.id, studentId: input.studentId, kind: input.kind, body: input.body.trim(), createdAt: this.iso(), ...(input.debrief ? { debrief: input.debrief } : {}) };
     return this.put('feedback', f.id, f.studentId, f);
   }
 
