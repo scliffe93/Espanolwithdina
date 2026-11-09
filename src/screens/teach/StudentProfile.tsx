@@ -11,7 +11,7 @@ import { allVerbMastery, currentStreak, totalActiveSeconds, weekSummary } from '
 import { addDays, dayKey, formatMinutes, weekStart } from '../../lib/dates';
 import { usePlatform, usePlatformQuery, type AppState } from '../../lib/platform/context';
 import { fmtDateTime, relative } from '../../lib/platform/time';
-import type { Booking, Feedback, FeedbackKind, Homework } from '../../lib/platform/types';
+import type { Booking, Feedback, FeedbackKind, Homework, Role } from '../../lib/platform/types';
 import { buildTeacherReport } from '../../lib/report';
 import { navigate } from '../../lib/router';
 import { mastery } from '../../lib/srs';
@@ -298,7 +298,7 @@ function VerbList({ items }: { items: ReturnType<typeof allVerbMastery> }) {
 
 // ── Lessons ─────────────────────────────────────────────────────
 
-function LessonsTab({ bookings, people, zone, onEdit, onBook }: { bookings: Booking[] | null; people: { id: string; firstName: string; username: string; role: 'student' | 'teacher' }[]; zone: string; onEdit: (b: Booking) => void; onBook: () => void }) {
+function LessonsTab({ bookings, people, zone, onEdit, onBook }: { bookings: Booking[] | null; people: { id: string; firstName: string; username: string; role: Role }[]; zone: string; onEdit: (b: Booking) => void; onBook: () => void }) {
   const nowIso = new Date().toISOString();
   const [showCancelled, setShowCancelled] = useState(false);
   if (!bookings) return <Loading />;
@@ -320,7 +320,7 @@ function LessonsTab({ bookings, people, zone, onEdit, onBook }: { bookings: Book
 
 // ── Homework ────────────────────────────────────────────────────
 
-function HomeworkTab({ homework, people, zone, onOpen, onAssign }: { homework: Homework[] | null; people: { id: string; firstName: string; username: string; role: 'student' | 'teacher' }[]; zone: string; onOpen: (h: Homework) => void; onAssign: () => void }) {
+function HomeworkTab({ homework, people, zone, onOpen, onAssign }: { homework: Homework[] | null; people: { id: string; firstName: string; username: string; role: Role }[]; zone: string; onOpen: (h: Homework) => void; onAssign: () => void }) {
   if (!homework) return <Loading />;
   const groups: { status: Homework['status']; title: string; eyebrow: string; empty: string }[] = [
     { status: 'submitted', title: 'Awaiting your review', eyebrow: 'Submitted', empty: 'Nothing waiting for review.' },

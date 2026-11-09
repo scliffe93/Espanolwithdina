@@ -81,7 +81,7 @@ You need a free Supabase account and the Supabase CLI. Nothing here activates a 
    ```bash
    supabase secrets set TEACHER_USERNAMES=dina
    ```
-   Whoever registers or logs in with that username is the teacher; everyone else is a student. See `docs/PLATFORM.md`.
+   Whoever registers or logs in with that username is the teacher; everyone else is a student. `TEACHER_USERNAMES` can list several. The administrator (above the teacher) is set the same way with `ADMIN_USERNAMES` (default `admin`). See `docs/PLATFORM.md`.
 5. **Deploy the account function**. It handles its own login, so Supabase's JWT check is off:
    ```bash
    supabase functions deploy account --no-verify-jwt

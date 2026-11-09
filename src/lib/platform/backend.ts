@@ -85,7 +85,7 @@ export class DemoBackend implements PlatformBackend {
     return new Date(this.now()).toISOString();
   }
   private isTeacher() {
-    return this.actor.role === 'teacher';
+    return this.actor.role === 'teacher' || this.actor.role === 'admin';
   }
   private assertStudentAccess(studentId: string) {
     if (this.isTeacher()) {

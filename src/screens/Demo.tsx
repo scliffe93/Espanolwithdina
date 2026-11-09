@@ -52,10 +52,11 @@ export function Demo({ showDemo = false }: { showDemo?: boolean }) {
         {signedIn && (
           <section className="card mb-4 flex flex-wrap items-center gap-4 p-5" data-testid="platform-signed-in">
             <div className="min-w-0 flex-1 text-sm">
-              <p className="font-semibold">Signed in as @{account.session?.user.username}{role === 'teacher' ? ' · teacher' : role === 'student' ? ' · student' : ''}</p>
-              <p className="text-ink-soft">{role === 'teacher' ? 'Your real students, lessons and homework.' : role ? 'Your next lesson, homework and Dina’s feedback.' : 'Checking your account…'}</p>
+              <p className="font-semibold">Signed in as @{account.session?.user.username}{role === 'admin' ? ' · administrator' : role === 'teacher' ? ' · teacher' : role === 'student' ? ' · student' : ''}</p>
+              <p className="text-ink-soft">{role === 'admin' ? 'Every account, the teacher dashboards and platform usage.' : role === 'teacher' ? 'Your real students, lessons and homework.' : role ? 'Your next lesson, homework and Dina’s feedback.' : 'Checking your account…'}</p>
             </div>
-            {role && <button className="btn-primary" onClick={() => navigate(role === 'teacher' ? 'teach' : 'student')} data-testid="continue-signed-in">{role === 'teacher' ? 'Open the teacher dashboard' : 'Open my lessons'} <Icon name="arrowRight" size={16} /></button>}
+            {role === 'admin' && <button className="btn-dark" onClick={() => navigate('admin')} data-testid="open-admin"><Icon name="shield" size={16} /> Admin</button>}
+            {role && <button className="btn-primary" onClick={() => navigate(role === 'student' ? 'student' : 'teach')} data-testid="continue-signed-in">{role === 'student' ? 'Open my lessons' : 'Open the teacher dashboard'} <Icon name="arrowRight" size={16} /></button>}
             <button className="ctrl" onClick={() => navigate('account')}>Account</button>
           </section>
         )}
@@ -67,10 +68,10 @@ export function Demo({ showDemo = false }: { showDemo?: boolean }) {
               <ul className="mb-4 grid gap-2 sm:grid-cols-2" data-testid="known-accounts">
                 {others.map((k) => (
                   <li key={k.username} className="flex items-center gap-3 rounded-2xl bg-cream-100 p-3">
-                    <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full font-display text-xl font-semibold text-white ${k.role === 'teacher' ? 'bg-terracotta' : 'bg-azul'}`} aria-hidden>{k.firstName.slice(0, 1).toUpperCase()}</span>
+                    <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full font-display text-xl font-semibold text-white ${k.role === 'admin' ? 'bg-ink' : k.role === 'teacher' ? 'bg-terracotta' : 'bg-azul'}`} aria-hidden>{k.firstName.slice(0, 1).toUpperCase()}</span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-semibold">{k.firstName} <span className="font-normal text-ink-mute">@{k.username}</span></p>
-                      <p className="text-xs text-ink-mute">{k.role === 'teacher' ? 'Teacher' : 'Student'} · enter password to continue</p>
+                      <p className="text-xs text-ink-mute">{k.role === 'admin' ? 'Administrator' : k.role === 'teacher' ? 'Teacher' : 'Student'} · enter password to continue</p>
                     </div>
                     <button type="button" className="btn-dark !py-2" onClick={() => navigate(`account?user=${encodeURIComponent(k.username)}`)} data-testid={`known-${k.username}`}>Log in <Icon name="arrowRight" size={14} /></button>
                     <button type="button" className="ctrl !px-2" aria-label={`Forget ${k.firstName} on this device`} title="Forget on this device" onClick={() => { forgetAccount(k.username); setKnown(knownAccounts()); }}><Icon name="x" size={14} /></button>

@@ -16,6 +16,7 @@ const NAME = args.project ?? 'learning-with-dina';
 const REGION = args.region ?? 'eu-west-2';
 const ORIGINS = args.origins ?? 'https://scliffe93.github.io';
 const TEACHERS = args.teachers ?? 'dina';
+const ADMINS = args.admins ?? 'admin';
 const TOKEN = process.env.SUPABASE_ACCESS_TOKEN ?? 'proxy-injected';
 const API = 'https://api.supabase.com/v1';
 const log = (...m) => console.log('•', ...m);
@@ -75,8 +76,8 @@ async function main() {
   if (tables.some((t) => !t.rowsecurity)) throw new Error('A table has Row Level Security off — stopping.');
 
   // 4. Secrets
-  await api(`/projects/${ref}/secrets`, { method: 'POST', body: JSON.stringify([{ name: 'ALLOWED_ORIGINS', value: ORIGINS }, { name: 'TEACHER_USERNAMES', value: TEACHERS }]) });
-  log(`secrets set: ALLOWED_ORIGINS=${ORIGINS} TEACHER_USERNAMES=${TEACHERS}`);
+  await api(`/projects/${ref}/secrets`, { method: 'POST', body: JSON.stringify([{ name: 'ALLOWED_ORIGINS', value: ORIGINS }, { name: 'TEACHER_USERNAMES', value: TEACHERS }, { name: 'ADMIN_USERNAMES', value: ADMINS }]) });
+  log(`secrets set: ALLOWED_ORIGINS=${ORIGINS} TEACHER_USERNAMES=${TEACHERS} ADMIN_USERNAMES=${ADMINS}`);
 
   // 5. Deploy the function
   const { code } = await bundleFunction();

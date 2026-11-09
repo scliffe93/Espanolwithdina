@@ -40,7 +40,7 @@ class CloudBackend implements PlatformBackend {
     return new Date().toISOString();
   }
   private isTeacher() {
-    return this.actor.role === 'teacher';
+    return this.actor.role === 'teacher' || this.actor.role === 'admin';
   }
   private assertTeacher() {
     if (!this.isTeacher()) throw new PlatformError('forbidden', 'Only the teacher can do that.');

@@ -9,7 +9,7 @@
 export const API_URL = ((import.meta.env.VITE_LWD_API_URL as string | undefined) ?? '').replace(/\/+$/, '');
 export const cloudConfigured = !!API_URL;
 
-export interface CloudUser { id: string; username: string; firstName: string; /** Set by the teaching platform backend; absent on plain learner accounts. */ role?: 'student' | 'teacher' }
+export interface CloudUser { id: string; username: string; firstName: string; /** Set by the teaching platform backend; absent on plain learner accounts. */ role?: 'student' | 'teacher' | 'admin' }
 export interface Session { token: string; user: CloudUser; remember: boolean; expiresAt: string }
 
 export class ApiError extends Error {
@@ -99,7 +99,7 @@ export const api = {
     request<{ version: number; updatedAt: string }>('progress', { method: 'PUT', token, body: { data, baseVersion, deviceId: deviceId() }, keepalive }),
 };
 
-export interface PlatformPerson { id: string; username: string; firstName: string; role: 'student' | 'teacher' }
+export interface PlatformPerson { id: string; username: string; firstName: string; role: 'student' | 'teacher' | 'admin' }
 export type PlatformKind = 'booking' | 'homework' | 'feedback' | 'activity';
 
 /** Teaching platform endpoints (same Edge Function). Every call is scoped server-side to the signed-in person's role. */
@@ -113,8 +113,19 @@ export const platformApi = {
   addStudent: (token: string, input: { username: string; firstName: string; password?: string }) => request<{ user: PlatformPerson; recoveryCode: string; password?: string }>('platform/students', { token, body: input }),
 };
 
+export interface AdminUser { id: string; username: string; firstName: string; role: 'student' | 'teacher' | 'admin'; createdAt: string; lastSeenAt: string | null; progressAt: string | null; homework: number; bookings: number }
+export interface AdminOverview { users: Record<string, number>; records: Record<string, number>; activeUsers7d: number; activeUsers24h: number; progressSaves: number; latestProgressAt: string | null; loginAttempts24h: number }
+/** Administration endpoints (admin role only). */
+export const adminApi = {
+  overview: (token: string) => request<AdminOverview>('admin/overview', { token }),
+  users: (token: string) => request<{ users: AdminUser[] }>('admin/users', { token }),
+  setRole: (token: string, userId: string, role: 'student' | 'teacher') => request<{ user: PlatformPerson }>('admin/users/role', { token, body: { userId, role } }),
+  resetPassword: (token: string, userId: string, password?: string) => request<{ user: PlatformPerson; recoveryCode: string; password?: string }>('admin/users/reset-password', { token, body: { userId, password } }),
+  remove: (token: string, userId: string) => request<void>('admin/users/delete', { token, body: { userId } }),
+};
+
 const KNOWN_KEY = 'lwd-known-accounts';
-export interface KnownAccount { username: string; firstName: string; role?: 'student' | 'teacher'; at: number }
+export interface KnownAccount { username: string; firstName: string; role?: 'student' | 'teacher' | 'admin'; at: number }
 /** Accounts that have signed in on this device (no secrets: just who, for the quick-pick on the front page). */
 export function knownAccounts(): KnownAccount[] {
   try { const v = JSON.parse(window.localStorage.getItem(KNOWN_KEY) ?? '[]'); return Array.isArray(v) ? v : []; } catch { return []; }

@@ -342,7 +342,7 @@ export function HomeworkRunner({ id }: { id: string }) {
   const { data, loading, error, reload } = usePlatformQuery((b) => b.homework(), [id]);
   const now = Date.now();
   const h = data?.find((x) => x.id === id);
-  const readOnly = me?.role === 'teacher';
+  const readOnly = me?.role === 'teacher' || me?.role === 'admin';
 
   if (error) return <div className="mx-auto max-w-3xl"><ErrorCard error={error} retry={reload} /></div>;
   if (loading && !data) return <div className="mx-auto max-w-3xl"><Loading what="your homework" /></div>;

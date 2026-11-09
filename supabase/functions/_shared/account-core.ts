@@ -35,6 +35,8 @@ export interface Config {
   maxBodyBytes?: number;
   /** Usernames that are the teacher (case-insensitive). Everyone else is a student. */
   teacherUsernames?: string[];
+  /** Usernames that administer the whole platform (above the teacher). */
+  adminUsernames?: string[];
 }
 
 const MIN = 60_000;
@@ -137,7 +139,7 @@ class HttpError extends Error {
 
 // ── handler ─────────────────────────────────────────────────────
 
-interface UserRow { id: string; username: string; first_name: string; password_hash: string; recovery_hash: string; role: 'student' | 'teacher' }
+interface UserRow { id: string; username: string; first_name: string; password_hash: string; recovery_hash: string; role: 'student' | 'teacher' | 'admin' }
 
 export function createHandler(db: Db, hasher: Hasher, config: Config) {
   const now = config.now ?? (() => Date.now());
@@ -190,10 +192,12 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
 
   /** The configured teacher username(s) get the teacher role the first time they are seen. */
   const teachers = new Set((config.teacherUsernames ?? []).map(normaliseUsername).filter(Boolean));
+  const admins = new Set((config.adminUsernames ?? []).map(normaliseUsername).filter(Boolean));
   async function promote(u: UserRow): Promise<UserRow> {
-    if (u.role !== 'teacher' && teachers.has(normaliseUsername(u.username))) {
-      await db.query("update public.lwd_users set role = 'teacher' where id = $1", [u.id]);
-      return { ...u, role: 'teacher' };
+    const want: UserRow['role'] | null = admins.has(normaliseUsername(u.username)) ? 'admin' : teachers.has(normaliseUsername(u.username)) && u.role !== 'admin' ? 'teacher' : null;
+    if (want && u.role !== want) {
+      await db.query('update public.lwd_users set role = $2 where id = $1', [u.id, want]);
+      return { ...u, role: want };
     }
     return u;
   }
@@ -367,7 +371,8 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
     // Records: bookings, homework, feedback and activity, stored as JSON per row and
     // scoped by role: a student reads/writes only rows where student_id = self (and
     // may only log activity or submit homework); the teacher reads all and writes all.
-    const isTeacher = user.role === 'teacher';
+    const isAdmin = user.role === 'admin';
+    const isTeacher = user.role === 'teacher' || isAdmin; // the admin can do everything the teacher can
     const KINDS = ['booking', 'homework', 'feedback', 'activity'];
     const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const parseRow = (r: { data: unknown }) => (typeof r.data === 'string' ? JSON.parse(r.data) : r.data) as Record<string, unknown>;
@@ -490,6 +495,86 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
       if (!isTeacher) throw new HttpError(403, 'forbidden', 'Only the teacher can do that.');
       await db.query("delete from public.lwd_platform where id = $1 and kind in ('homework', 'feedback')", [str(b.id)]);
       return { status: 204 };
+    }
+
+    // ── administration (admin role only) ──
+    if (path.startsWith('admin/')) {
+      if (!isAdmin) throw new HttpError(403, 'forbidden', 'Administrators only.');
+
+      if (path === 'admin/overview' && method === 'GET') {
+        const [roles, kinds, active7, active1, progress, attempts] = await Promise.all([
+          db.query<{ role: string; n: number }>('select role, count(*)::int as n from public.lwd_users group by role'),
+          db.query<{ kind: string; n: number }>('select kind, count(*)::int as n from public.lwd_platform group by kind'),
+          db.query<{ n: number }>('select count(distinct user_id)::int as n from public.lwd_sessions where last_used_at > $1', [iso(now() - 7 * DAY)]),
+          db.query<{ n: number }>('select count(distinct user_id)::int as n from public.lwd_sessions where last_used_at > $1', [iso(now() - DAY)]),
+          db.query<{ n: number; latest: string | Date | null }>('select count(*)::int as n, max(updated_at) as latest from public.lwd_progress'),
+          db.query<{ n: number }>('select count(*)::int as n from public.lwd_attempts where at > $1', [iso(now() - DAY)]),
+        ]);
+        return { status: 200, json: {
+          users: Object.fromEntries(roles.map((r) => [r.role, Number(r.n)])),
+          records: Object.fromEntries(kinds.map((k) => [k.kind, Number(k.n)])),
+          activeUsers7d: Number(active7[0]?.n ?? 0), activeUsers24h: Number(active1[0]?.n ?? 0),
+          progressSaves: Number(progress[0]?.n ?? 0), latestProgressAt: progress[0]?.latest ? new Date(progress[0].latest).toISOString() : null,
+          loginAttempts24h: Number(attempts[0]?.n ?? 0),
+        } };
+      }
+
+      if (path === 'admin/users' && method === 'GET') {
+        const rows = await db.query<{ id: string; username: string; first_name: string; role: string; created_at: string | Date; last_seen: string | Date | null; progress_at: string | Date | null; homework: number; bookings: number }>(
+          `select u.id, u.username, u.first_name, u.role, u.created_at,
+                  (select max(s.last_used_at) from public.lwd_sessions s where s.user_id = u.id) as last_seen,
+                  (select p.updated_at from public.lwd_progress p where p.user_id = u.id) as progress_at,
+                  (select count(*)::int from public.lwd_platform r where r.student_id = u.id and r.kind = 'homework') as homework,
+                  (select count(*)::int from public.lwd_platform r where r.student_id = u.id and r.kind = 'booking') as bookings
+             from public.lwd_users u order by case u.role when 'admin' then 0 when 'teacher' then 1 else 2 end, lower(u.first_name), u.username_norm`);
+        return { status: 200, json: { users: rows.map((r) => ({ id: r.id, username: r.username, firstName: r.first_name, role: r.role, createdAt: new Date(r.created_at).toISOString(), lastSeenAt: r.last_seen ? new Date(r.last_seen).toISOString() : null, progressAt: r.progress_at ? new Date(r.progress_at).toISOString() : null, homework: Number(r.homework), bookings: Number(r.bookings) })) } };
+      }
+
+      const target = async (b: Record<string, unknown>) => {
+        const id = str(b.userId);
+        if (!UUID.test(id)) throw new HttpError(400, 'invalid', 'Bad user id.');
+        const rows = await db.query<UserRow>('select id, username, first_name, password_hash, recovery_hash, role from public.lwd_users where id = $1', [id]);
+        if (!rows[0]) throw new HttpError(404, 'not_found', 'No such account.');
+        return rows[0];
+      };
+
+      if (path === 'admin/users/role' && method === 'POST') {
+        const b = await body(req);
+        const role = str(b.role);
+        if (role !== 'student' && role !== 'teacher') throw new HttpError(400, 'invalid', 'Role must be student or teacher (admins are set in the server configuration).');
+        const u = await target(b);
+        if (u.id === user.id) throw new HttpError(400, 'invalid', 'You cannot change your own role.');
+        if (u.role === 'admin') throw new HttpError(400, 'invalid', 'That account is an administrator.');
+        await db.query('update public.lwd_users set role = $2 where id = $1', [u.id, role]);
+        await db.query('delete from public.lwd_sessions where user_id = $1', [u.id]); // they log in again with the new role
+        return { status: 200, json: { user: { id: u.id, username: u.username, firstName: u.first_name, role } } };
+      }
+
+      if (path === 'admin/users/reset-password' && method === 'POST') {
+        const b = await body(req);
+        const u = await target(b);
+        if (u.role === 'admin' && u.id !== user.id) throw new HttpError(400, 'invalid', 'Another administrator’s password cannot be reset here.');
+        const generated = !str(b.password);
+        const password = generated ? temporaryPassword() : str(b.password);
+        const err = validatePassword(password, u.username);
+        if (err) throw new HttpError(400, 'invalid', err);
+        const recoveryCode = newRecoveryCode();
+        await db.query('update public.lwd_users set password_hash = $2, recovery_hash = $3, password_changed_at = $4 where id = $1', [u.id, await hasher.hash(password), await sha256Hex(normaliseRecoveryCode(recoveryCode)), iso(now())]);
+        await db.query('delete from public.lwd_sessions where user_id = $1 and token_hash <> $2', [u.id, tokenHash]);
+        await clear(`login:user:${normaliseUsername(u.username)}`);
+        return { status: 200, json: { user: { id: u.id, username: u.username, firstName: u.first_name, role: u.role }, recoveryCode, ...(generated ? { password } : {}) } };
+      }
+
+      if (path === 'admin/users/delete' && method === 'POST') {
+        const b = await body(req);
+        const u = await target(b);
+        if (u.id === user.id) throw new HttpError(400, 'invalid', 'Use your own account page to delete your account.');
+        if (u.role === 'admin') throw new HttpError(400, 'invalid', 'Administrator accounts cannot be removed here.');
+        await db.query('delete from public.lwd_users where id = $1', [u.id]); // cascades to sessions, progress and platform records
+        return { status: 204 };
+      }
+
+      throw new HttpError(404, 'not_found', 'Not found.');
     }
 
     throw new HttpError(404, 'not_found', 'Not found.');

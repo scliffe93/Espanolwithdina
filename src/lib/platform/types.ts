@@ -5,7 +5,7 @@
 // zone a lesson was scheduled in, so it can be shown as intended.
 // ───────────────────────────────────────────────────────────────
 
-export type Role = 'student' | 'teacher';
+export type Role = 'student' | 'teacher' | 'admin';
 
 export interface Person {
   id: string;

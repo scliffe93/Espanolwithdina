@@ -13,6 +13,10 @@ The app then adapts on its own (`supabase/functions/_shared/adapt.ts`, the same 
 
 Guides for Dina and for students are in the app under **How to use** (`#/guide`).
 
+## Administrator
+
+The usernames in the `ADMIN_USERNAMES` secret (default `admin`) sit above the teacher: the **Admin** page lists every account with last activity, lessons and homework counts; changes a person's role between student and teacher (signs them out so they return with the new role); resets a password (new temporary password and recovery code, shown once); removes an account (everything cascades); and shows platform usage (accounts, active in 7 days / 24 h, records, progress saves). The admin also gets the full teacher dashboards. Admin rights cannot be granted or removed through the API. Tests: `tests/admin-api.test.ts`, `scripts/admin-e2e.cjs`.
+
 ## Real accounts
 
 - **Who is the teacher**: the account(s) named in the `TEACHER_USERNAMES` secret of the Edge Function (default `dina`). Dina registers (or logs in) with that username and gets the teacher dashboard: Today, Calendar, Students, Homework.

@@ -11,6 +11,7 @@ import { resumeLabel } from './lib/resume';
 import { usePlatform } from './lib/platform/context';
 import { Demo } from './screens/Demo';
 import { Guide } from './screens/Guide';
+import { Admin } from './screens/Admin';
 import { TeacherApp } from './screens/teach/TeacherApp';
 import { HomeworkRunner, StudentApp } from './screens/student/StudentApp';
 import { stopSpeaking } from './lib/speech';
@@ -87,8 +88,8 @@ function DemoPill() {
 
 function Shell({ children, route, routeId }: { children: ReactNode; route: RouteName; routeId?: string }) {
   const { me, demoActor } = usePlatform();
-  const teacher = me?.role === 'teacher';
-  const items = teacher ? TEACHER_NAV.filter((n) => (n.name === 'demo' ? !!demoActor : n.name === 'account' ? !demoActor : true)) : me?.role === 'student' ? [{ name: 'student' as RouteName, label: 'My lessons', es: 'Clases', icon: 'calendar' as IconName, mobile: true }, ...(demoActor ? [{ name: 'demo' as RouteName, label: 'Switch person', es: 'Cambiar', icon: 'refresh' as IconName, mobile: true }] : []), { name: 'guide' as RouteName, label: 'How to use', es: 'Guía', icon: 'book' as IconName }, ...NAV.filter((n) => n.name !== 'progress' && n.name !== 'teacher')] : [...NAV, { name: 'home' as RouteName, label: 'Lessons with Dina', es: 'Clases', icon: 'calendar' as IconName, mobile: true }];
+  const teacher = me?.role === 'teacher' || me?.role === 'admin';
+  const items = teacher ? [...TEACHER_NAV.filter((n) => (n.name === 'demo' ? !!demoActor : n.name === 'account' ? !demoActor : true)), ...(me?.role === 'admin' ? [{ name: 'admin' as RouteName, label: 'Admin', es: 'Administración', icon: 'shield' as IconName, mobile: true }] : [])] : me?.role === 'student' ? [{ name: 'student' as RouteName, label: 'My lessons', es: 'Clases', icon: 'calendar' as IconName, mobile: true }, ...(demoActor ? [{ name: 'demo' as RouteName, label: 'Switch person', es: 'Cambiar', icon: 'refresh' as IconName, mobile: true }] : []), { name: 'guide' as RouteName, label: 'How to use', es: 'Guía', icon: 'book' as IconName }, ...NAV.filter((n) => n.name !== 'progress' && n.name !== 'teacher')] : [...NAV, { name: 'home' as RouteName, label: 'Lessons with Dina', es: 'Clases', icon: 'calendar' as IconName, mobile: true }];
   const sub = routeId?.split('/')[0];
   const isActive = (n: NavItem) => {
     if (teacher) return route === 'teach' ? (n.name === 'teach' && (n.sub ?? '') === (sub && ['calendar', 'students', 'homework'].includes(sub) ? sub : sub === 'student' ? 'students' : '')) : n.name === route;
@@ -160,7 +161,7 @@ export default function App() {
   // Route guards
   useEffect(() => {
     if (!ready) return;
-    const pre: RouteName[] = ['home', 'guide', 'welcome', 'onboarding', 'level', 'assessment', 'dna', 'privacy', 'account', 'demo', 'teach', 'student', 'homework'];
+    const pre: RouteName[] = ['home', 'guide', 'admin', 'welcome', 'onboarding', 'level', 'assessment', 'dna', 'privacy', 'account', 'demo', 'teach', 'student', 'homework'];
     if (!state.onboardingDone && !pre.includes(route.name)) navigate('welcome');
     if (state.onboardingDone && ['welcome', 'onboarding', 'level', 'dna'].includes(route.name)) navigate('world');
   }, [ready, state.onboardingDone, route.name]);
@@ -192,9 +193,9 @@ export default function App() {
       case 'demo': screen = <Demo showDemo />; break;
       case 'home': screen = <Demo />; break;
       case 'guide': screen = <Guide />; break;
-      case 'teach': case 'student': case 'homework':
-        // The demo can be used before onboarding (Dina has no learner profile of her own).
-        return <><Toasts /><WelcomeBack /><Shell route={route.name} routeId={route.id}><PlatformScreen route={route.name} id={route.id} params={route.params} /></Shell></>;
+      case 'admin': case 'teach': case 'student': case 'homework':
+        // The platform can be used before onboarding (Dina and the admin have no learner profile of their own).
+        return <><Toasts /><WelcomeBack /><Shell route={route.name} routeId={route.id}>{route.name === 'admin' ? <Admin /> : <PlatformScreen route={route.name} id={route.id} params={route.params} />}</Shell></>;
       default: screen = <Welcome />;
     }
     return <><Toasts /><WelcomeBack />{screen}</>;
@@ -214,6 +215,7 @@ export default function App() {
     case 'demo': screen = <Demo showDemo />; break;
     case 'home': screen = <Demo />; break;
     case 'guide': screen = <Guide />; break;
+    case 'admin': screen = <Admin />; break;
     case 'teach': case 'student': case 'homework': screen = <PlatformScreen route={route.name} id={route.id} params={route.params} />; break;
     case 'account': screen = <Account />; break;
     case 'journey': screen = <Journey />; break;
@@ -244,7 +246,7 @@ function PlatformScreen({ route, id, params }: { route: RouteName; id?: string; 
   if (!ready) return null;
   if (!me) return <Demo />;
   if (route === 'teach') {
-    if (me.role !== 'teacher') return <StudentApp page="home" params={params} />;
+    if (me.role !== 'teacher' && me.role !== 'admin') return <StudentApp page="home" params={params} />;
     const [page, ...rest] = (id ?? '').split('/');
     return <TeacherApp page={page || undefined} id={rest.join('/') || undefined} params={params} />;
   }
@@ -252,6 +254,6 @@ function PlatformScreen({ route, id, params }: { route: RouteName; id?: string; 
     if (!id) return <StudentApp page="homework" params={params} />;
     return <HomeworkRunner id={id} />;
   }
-  if (me.role === 'teacher') return <TeacherApp page={id} params={params} />;
+  if (me.role === 'teacher' || me.role === 'admin') return <TeacherApp page={id} params={params} />;
   return <StudentApp page={id} params={params} />;
 }
