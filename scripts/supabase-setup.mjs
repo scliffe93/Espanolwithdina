@@ -42,13 +42,13 @@ async function main() {
   if (args['bundle-only']) { const b = await bundleFunction(); log(`bundled function: ${b.code.length} bytes → ${b.dir}/index.ts`); return; }
 
   // 1. Organisation + project
-  const orgs = await api('/organizations');
-  if (!orgs.length) throw new Error('No Supabase organisation on this account — create one in the dashboard first.');
-  const org = orgs[0];
-  log(`organisation: ${org.name} (${org.id})`);
   let project = (await api('/projects')).find((p) => p.name === NAME);
   if (project) log(`project exists: ${project.name} (${project.id}) in ${project.region}`);
   else {
+    const orgs = await api('/organizations');
+    if (!orgs.length) throw new Error('No Supabase organisation on this account — create one in the dashboard first.');
+    const org = orgs[0];
+    log(`organisation: ${org.name} (${org.id})`);
     const dbPass = randomBytes(24).toString('base64url');
     project = await api('/projects', { method: 'POST', body: JSON.stringify({ name: NAME, organization_id: org.id, db_pass: dbPass, region: REGION, plan: 'free' }) });
     log(`project created: ${project.id} in ${REGION} (database password set randomly; reset it in the dashboard if you ever need direct database access)`);
