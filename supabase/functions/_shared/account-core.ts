@@ -373,7 +373,7 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
     // may only log activity or submit homework); the teacher reads all and writes all.
     const isAdmin = user.role === 'admin';
     const isTeacher = user.role === 'teacher' || isAdmin; // the admin can do everything the teacher can
-    const KINDS = ['booking', 'homework', 'feedback', 'activity'];
+    const KINDS = ['booking', 'homework', 'feedback', 'activity', 'invoice', 'config'];
     const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const parseRow = (r: { data: unknown }) => (typeof r.data === 'string' ? JSON.parse(r.data) : r.data) as Record<string, unknown>;
     const studentExists = async (id: string) => UUID.test(id) && (await db.query("select 1 from public.lwd_users where id = $1 and role = 'student'", [id])).length > 0;
@@ -446,6 +446,8 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
       if (!b.data || typeof b.data !== 'object' || Array.isArray(b.data)) throw new HttpError(400, 'invalid', 'Missing record data.');
       if (!isTeacher) {
         if (kind !== 'activity' || studentId !== user.id) throw new HttpError(403, 'forbidden', 'Only the teacher can do that.');
+      } else if (kind === 'config') {
+        if (studentId !== user.id) throw new HttpError(400, 'invalid', 'Settings belong to the teacher.'); // the teacher's own row
       } else if (!(await studentExists(studentId))) throw new HttpError(404, 'not_found', 'Unknown student.');
       const rec: Record<string, unknown> = { ...(b.data as Record<string, unknown>), id, studentId };
       if (kind !== 'activity') rec.teacherId = user.id; // never trust the client's teacherId
@@ -493,7 +495,7 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
     if (path === 'platform/records/delete' && method === 'POST') {
       const b = await body(req);
       if (!isTeacher) throw new HttpError(403, 'forbidden', 'Only the teacher can do that.');
-      await db.query("delete from public.lwd_platform where id = $1 and kind in ('homework', 'feedback')", [str(b.id)]);
+      await db.query("delete from public.lwd_platform where id = $1 and kind in ('homework', 'feedback', 'invoice')", [str(b.id)]);
       return { status: 204 };
     }
 

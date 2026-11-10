@@ -1,5 +1,6 @@
 import type { AppState } from '../../types';
-import type { ActivityEvent, ActivityType, Booking, BookingInput, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, PlatformData, Person } from './types';
+import type { ActivityEvent, ActivityType, Booking, BookingInput, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, PlatformData, Person, TeacherConfig } from './types';
+import { DEFAULT_TEACHER_CONFIG } from './types';
 import { overlaps } from './time';
 import { followUpFor, type AdaptHomework } from '../../../supabase/functions/_shared/adapt';
 
@@ -42,6 +43,16 @@ export interface PlatformBackend {
   logActivity(type: ActivityType, label: string, studentId?: string): Promise<void>;
   /** Real accounts only: the teacher creates a student's account and gets the login details to pass on. */
   addStudent?(input: { username: string; firstName: string; password?: string }): Promise<{ user: Person; recoveryCode: string; password?: string }>;
+  // ── Invoicing ──
+  /** Teacher: all her invoices (optionally one student's). Student: their own. */
+  invoices(opts?: { studentId?: string }): Promise<Invoice[]>;
+  /** Teacher: create or update an invoice (the whole record). */
+  saveInvoice(inv: Invoice): Promise<Invoice>;
+  /** Teacher: delete a draft. Sent invoices are voided instead. */
+  deleteInvoice(id: string): Promise<void>;
+  /** Teacher: her invoicing settings (defaults until saved). Students get the defaults (for currency display). */
+  teacherConfig(): Promise<TeacherConfig>;
+  saveTeacherConfig(cfg: TeacherConfig): Promise<TeacherConfig>;
 }
 
 export const uid = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`);
@@ -96,7 +107,7 @@ export class DemoBackend implements PlatformBackend {
     if (!this.isTeacher()) throw new PlatformError('forbidden', 'Only the teacher can do that.');
   }
   private async commit(mutate: (d: PlatformData) => void) {
-    const next: PlatformData = { ...this.data, bookings: [...this.data.bookings], homework: [...this.data.homework], feedback: [...this.data.feedback], activity: [...this.data.activity] };
+    const next: PlatformData = { ...this.data, bookings: [...this.data.bookings], homework: [...this.data.homework], feedback: [...this.data.feedback], activity: [...this.data.activity], invoices: [...(this.data.invoices ?? [])] };
     mutate(next);
     this.data = next;
     await this.storage.saveData(next);
@@ -237,5 +248,32 @@ export class DemoBackend implements PlatformBackend {
   async logActivity(type: ActivityType, label: string, studentId = this.actor.id) {
     const ev: ActivityEvent = { id: uid(), studentId, at: this.iso(), type, label };
     await this.commit((d) => { d.activity = [ev, ...d.activity].slice(0, 300); });
+  }
+
+  // ── Invoicing ──
+  async invoices(opts: { studentId?: string } = {}) {
+    let list = (this.data.invoices ?? []).filter((i) => (this.isTeacher() ? i.teacherId === this.actor.id : i.studentId === this.actor.id && i.status !== 'draft'));
+    if (opts.studentId) list = list.filter((i) => i.studentId === opts.studentId);
+    return list.sort((a, b) => b.issuedAt.localeCompare(a.issuedAt) || b.number.localeCompare(a.number));
+  }
+  async saveInvoice(inv: Invoice) {
+    this.assertTeacher();
+    this.assertStudentAccess(inv.studentId);
+    if (!inv.lines.length) throw new PlatformError('invalid', 'Add at least one line.');
+    const next: Invoice = { ...inv, teacherId: this.actor.id, updatedAt: this.iso() };
+    await this.commit((d) => { d.invoices = d.invoices!.some((i) => i.id === inv.id) ? d.invoices!.map((i) => (i.id === inv.id ? next : i)) : [next, ...d.invoices!]; });
+    return next;
+  }
+  async deleteInvoice(id: string) {
+    this.assertTeacher();
+    await this.commit((d) => { d.invoices = d.invoices!.filter((i) => !(i.id === id && i.teacherId === this.actor.id)); });
+  }
+  async teacherConfig() {
+    return { ...DEFAULT_TEACHER_CONFIG, ...(this.data.config ?? {}) };
+  }
+  async saveTeacherConfig(cfg: TeacherConfig) {
+    this.assertTeacher();
+    await this.commit((d) => { d.config = cfg; });
+    return cfg;
   }
 }

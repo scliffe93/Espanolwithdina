@@ -135,6 +135,58 @@ export interface ActivityEvent {
   label: string;
 }
 
+// ── Invoicing ────────────────────────────────────────────────────
+
+export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'void';
+
+export interface InvoiceLine {
+  description: string;
+  qty: number;
+  /** In the invoice currency, per unit. */
+  unitPrice: number;
+  /** The lesson this line bills, if any (prevents double billing). */
+  bookingId?: string;
+}
+
+export interface Invoice {
+  id: string;
+  teacherId: string;
+  studentId: string;
+  /** e.g. "LWD-2026-0007". */
+  number: string;
+  issuedAt: string; // YYYY-MM-DD
+  dueAt: string; // YYYY-MM-DD
+  currency: string; // ISO 4217, e.g. GBP, EUR
+  lines: InvoiceLine[];
+  /** Absolute discount in the invoice currency. */
+  discount: number;
+  total: number;
+  status: InvoiceStatus;
+  paidAt?: string; // YYYY-MM-DD
+  paymentMethod?: string;
+  notes?: string;
+  paymentInstructions?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** The teacher's invoicing settings (one row, hers). */
+export interface TeacherConfig {
+  businessName: string;
+  address: string;
+  currency: string;
+  /** Default rate for a 60-minute lesson. */
+  hourlyRate: number;
+  /** Days until an invoice is due. */
+  dueDays: number;
+  invoicePrefix: string;
+  nextNumber: number;
+  paymentInstructions: string;
+  footer: string;
+}
+
+export const DEFAULT_TEACHER_CONFIG: TeacherConfig = { businessName: 'Learning with Dina', address: '', currency: 'GBP', hourlyRate: 35, dueDays: 14, invoicePrefix: 'LWD', nextNumber: 1, paymentInstructions: '', footer: 'Thank you — ¡gracias!' };
+
 /** Everything the teaching side stores (besides each learner's own AppState). */
 export interface PlatformData {
   version: 1;
@@ -143,6 +195,8 @@ export interface PlatformData {
   homework: Homework[];
   feedback: Feedback[];
   activity: ActivityEvent[];
+  invoices?: Invoice[];
+  config?: TeacherConfig;
 }
 
 export const DEMO_TEACHER_ID = 'demo-dina';

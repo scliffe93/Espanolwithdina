@@ -2,7 +2,8 @@ import type { AppState } from '../../types';
 import { ApiError, platformApi, type PlatformKind, type Session } from '../cloud';
 import { migrate } from '../state';
 import { PlatformError, findOverlap, uid, validateBooking, type PlatformBackend } from './backend';
-import type { ActivityEvent, ActivityType, Booking, BookingInput, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Person } from './types';
+import type { ActivityEvent, ActivityType, Booking, BookingInput, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, Person, TeacherConfig } from './types';
+import { DEFAULT_TEACHER_CONFIG } from './types';
 
 // ───────────────────────────────────────────────────────────────
 // The teaching platform for real accounts: every record lives in the
@@ -206,6 +207,34 @@ class CloudBackend implements PlatformBackend {
     } catch {
       /* an activity line is never worth failing the action it describes */
     }
+  }
+
+  // ── Invoicing ──
+  async invoices(opts: { studentId?: string } = {}) {
+    const list = await this.records<Invoice>('invoice', opts.studentId);
+    return list.filter((i) => this.isTeacher() || i.status !== 'draft').sort((a, b) => b.issuedAt.localeCompare(a.issuedAt) || b.number.localeCompare(a.number));
+  }
+  async saveInvoice(inv: Invoice) {
+    this.assertTeacher();
+    if (!inv.lines.length) throw new PlatformError('invalid', 'Add at least one line.');
+    const next: Invoice = { ...inv, teacherId: this.actor.id, updatedAt: this.iso() };
+    return this.put('invoice', next.id, next.studentId, next);
+  }
+  async deleteInvoice(id: string) {
+    this.assertTeacher();
+    await this.wrap(() => platformApi.remove(this.token, id));
+    this.cache.clear();
+  }
+  async teacherConfig() {
+    if (!this.isTeacher()) return DEFAULT_TEACHER_CONFIG;
+    const rows = await this.records<TeacherConfig & { id: string }>('config');
+    const mine = rows.find((r) => r.id === `config-${this.actor.id}`) ?? rows[0];
+    return { ...DEFAULT_TEACHER_CONFIG, ...(mine ?? {}) };
+  }
+  async saveTeacherConfig(cfg: TeacherConfig) {
+    this.assertTeacher();
+    const saved = await this.put('config', `config-${this.actor.id}`, this.actor.id, { ...cfg, id: `config-${this.actor.id}` });
+    return { ...DEFAULT_TEACHER_CONFIG, ...saved };
   }
 
   async addStudent(input: { username: string; firstName: string; password?: string }) {

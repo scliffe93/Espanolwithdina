@@ -1,4 +1,5 @@
 import { motion } from 'motion/react';
+import { InvoiceNudge } from './InvoiceNudge';
 import { useMemo, useState } from 'react';
 import { DinaArt } from '../../components/Dina';
 import { Icon } from '../../components/Icon';
@@ -82,6 +83,7 @@ export function Today() {
           <button type="button" className="btn-ghost" onClick={() => setAssign({ open: true })} data-testid="assign-homework"><Icon name="book" size={18} /> Assign homework</button>
         </div>
       </motion.header>
+      <InvoiceNudge />
 
       <ErrorText error={error} />
 

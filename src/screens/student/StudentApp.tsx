@@ -1,4 +1,5 @@
 import { Calendar } from './Calendar';
+import { InvoicesPage } from './Invoices';
 import { FeedbackPage } from './Feedback';
 import { Home } from './Home';
 import { HomeworkPage } from './Homework';
@@ -17,6 +18,7 @@ export function StudentApp({ page, params }: { page?: string; params: URLSearchP
     case 'calendar': return <Calendar />;
     case 'homework': return <HomeworkPage params={params} />;
     case 'feedback': return <FeedbackPage />;
+    case 'invoices': return <InvoicesPage />;
     default: return <Home />;
   }
 }

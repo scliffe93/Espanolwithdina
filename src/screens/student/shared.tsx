@@ -124,7 +124,7 @@ export function DemoChip() {
   );
 }
 
-export type StudentPage = 'home' | 'calendar' | 'homework' | 'feedback';
+export type StudentPage = 'home' | 'calendar' | 'homework' | 'feedback' | 'invoices';
 
 export function StudentNav({ page }: { page: StudentPage }) {
   return (
@@ -133,7 +133,7 @@ export function StudentNav({ page }: { page: StudentPage }) {
         label="Student pages"
         value={page}
         onChange={(p) => navigate(p === 'home' ? 'student' : `student/${p}`)}
-        options={[{ value: 'home', label: 'Overview' }, { value: 'calendar', label: 'Lessons' }, { value: 'homework', label: 'Homework' }, { value: 'feedback', label: 'Feedback' }]}
+        options={[{ value: 'home', label: 'Overview' }, { value: 'calendar', label: 'Lessons' }, { value: 'homework', label: 'Homework' }, { value: 'feedback', label: 'Feedback' }, { value: 'invoices', label: 'Invoices' }]}
       />
     </div>
   );

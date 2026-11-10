@@ -1,5 +1,6 @@
 import { Calendar } from './Calendar';
 import { HomeworkPage } from './HomeworkPage';
+import { Invoices } from './Invoices';
 import { StudentProfile } from './StudentProfile';
 import { Students } from './Students';
 import { Today } from './Today';
@@ -18,6 +19,7 @@ export function TeacherApp({ page, id, params }: { page?: string; id?: string; p
     case 'students': return <Students key="students" />;
     case 'student': return id ? <StudentProfile key={id} id={id} params={params} /> : <Students key="students" />;
     case 'homework': return <HomeworkPage key="homework" params={params} />;
+    case 'invoices': return <Invoices key="invoices" params={params} />;
     default: return <Today key="today" />;
   }
 }

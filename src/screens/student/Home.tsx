@@ -15,6 +15,7 @@ import { mastery } from '../../lib/srs';
 import { useStore } from '../../lib/store';
 import { CEFR_LEVELS, SKILLS, type AppState } from '../../types';
 import { downloadIcs, isMeetingLink } from './ics';
+import { InvoiceNudge } from '../teach/InvoiceNudge';
 import { DemoChip, ErrorCard, FeedbackItem, HomeworkStatus, LessonDetails, Loading, Section, StudentNav, buildReminders, homeworkBuckets, nextLesson, useStudentData, type Reminder } from './shared';
 
 // ───────────────────────────────────────────────────────────────
@@ -237,6 +238,7 @@ export function Home() {
       {data && (
         <>
           <Reminders reminders={buildReminders(data, now)} />
+          <InvoiceNudge />
           <WeekPlan data={data} now={now} />
           <div className="grid gap-4 lg:grid-cols-[1.45fr_1fr]">
             <NextLesson b={nextLesson(data.bookings, now)} now={now} />

@@ -140,6 +140,12 @@ const teacherSections = [
     <p>The <b>Calendar</b> shows the week or the month. Book, move or cancel lessons here or from a student’s profile.</p>
     ${figure('t-calendar', 'h2', 'Week view. Lessons show in your time zone; students see them in theirs.')}
     <ul class="ticks"><li>Online lessons can carry a meeting link; face-to-face lessons an address. Both appear on the student’s next-lesson card.</li><li>Reminders 24 hours and 1 hour before appear inside the app while it is open.</li></ul>`],
+  ['Invoices', `
+    <p>Bill the lessons you have taught without leaving the app. Students see their invoices in their own app, with how to pay, and can download the PDF.</p>
+    <ol class="steps"><li>Once: <b>Invoices → Rates &amp; payment details</b>. Your business name, currency, rate for a 60-minute lesson (other lengths are priced in proportion), days until due, invoice prefix, and <b>how students pay</b> (bank details or a payment link). This prints on every invoice.</li><li><b>New invoice</b>: choose the student. The lessons you have taught and not yet billed are listed; tick the ones to include. Add any other line (a workbook, a lesson pack, a discount as a negative price).</li><li><b>Save and send to student</b>: it appears in their app at once. Use <b>Email</b> to send the summary by email too, or <b>PDF</b> to download it.</li><li>When the money arrives, <b>Mark paid</b> with the date and method. Overdue invoices are flagged on your Today page and on the student’s home page.</li></ol>
+    ${figure('t-invoice-new', 'h2', 'A new invoice: tick the taught lessons, add a line, see the total before sending.')}
+    ${figure('t-invoices', 'h3', 'The Invoices page: outstanding, overdue, paid this month, and every invoice with its actions.')}
+    <div class="note">Invoice numbers run LWD-2026-0001, 0002… and are never reused. A sent invoice can be voided, never deleted; drafts can be deleted.</div>`],
   ['Housekeeping and tips', `
     <div class="cards">
       <div class="card"><h4>Change your password</h4><p>Account → change password. Also where you log out or switch to another account on a shared device.</p></div>
@@ -192,6 +198,11 @@ const studentSections = [
   ['Your journey and feedback', `
     ${figure('s-journey', 'h2', 'My journey: level per skill, study days, trends, your most common slips and what to work on.')}
     ${figure('s-feedback', 'h3', 'Feedback: Dina’s lesson notes, comments, corrections and recommendations.')}`],
+  ['Your invoices', `
+    <p>Dina’s invoices for your lessons appear under <b>Invoices</b> on your lessons pages. A banner on your home page tells you when something is due.</p>
+    ${figure('s-invoices', 'h3', 'My invoices: what is to pay, what is paid.')}
+    <ul class="ticks"><li>Open an invoice to see the lessons it covers and <b>how to pay</b> (Dina’s bank details or payment link). Use the invoice number as the payment reference.</li><li><b>Download PDF</b> gives you a copy for your records.</li><li>Once Dina marks it paid, it moves to “paid” and the banner disappears.</li></ul>
+    ${figure('s-invoice-detail', 'h3', 'An invoice with its payment details.')}`],
   ['Settings and your account', `
     ${figure('s-settings', 'h2', 'Settings: voice and speech speed, translations, your city, data and account.')}
     <div class="cards">

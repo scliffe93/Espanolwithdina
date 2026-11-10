@@ -148,6 +148,27 @@ describe('teaching platform API', () => {
     expect(retry.json.followUp).toBeNull();
   });
 
+  it('invoices: the teacher writes, the student reads only their own; settings belong to the teacher', async () => {
+    const dina = await register('dina', 'Dina');
+    const sam = await register('sam', 'Sam');
+    const anneka = await register('anneka', 'Anneka');
+    const invoice = { number: 'LWD-2026-0001', issuedAt: '2026-11-10', dueAt: '2026-11-24', currency: 'GBP', lines: [{ description: 'Lesson', qty: 1, unitPrice: 35 }], discount: 0, total: 35, status: 'sent', createdAt: at(0), updatedAt: at(0) };
+    expect((await put(sam.token, { kind: 'invoice', id: 'inv-00000001', studentId: sam.id, data: invoice })).status).toBe(403);
+    expect((await put(dina.token, { kind: 'invoice', id: 'inv-00000001', studentId: sam.id, data: invoice })).status).toBe(200);
+    expect((await list(sam.token, 'invoice')).json.records.map((i: { number: string }) => i.number)).toEqual(['LWD-2026-0001']);
+    expect((await list(anneka.token, 'invoice')).json.records).toEqual([]);
+    // Teacher settings: her own row only.
+    expect((await put(dina.token, { kind: 'config', id: `config-${dina.id}`, studentId: dina.id, data: { hourlyRate: 40, currency: 'GBP' } })).status).toBe(200);
+    expect((await put(dina.token, { kind: 'config', id: `config-${sam.id}`, studentId: sam.id, data: { hourlyRate: 1 } })).status).toBe(400);
+    expect((await put(sam.token, { kind: 'config', id: `config-${sam.id}`, studentId: sam.id, data: { hourlyRate: 1 } })).status).toBe(403);
+    expect((await list(dina.token, 'config')).json.records[0].hourlyRate).toBe(40);
+    expect((await list(sam.token, 'config')).json.records).toEqual([]);
+    // Deleting a draft invoice works for the teacher only.
+    expect((await call('platform/records/delete', { token: sam.token, body: { id: 'inv-00000001' } })).status).toBe(403);
+    expect((await call('platform/records/delete', { token: dina.token, body: { id: 'inv-00000001' } })).status).toBe(204);
+    expect((await list(dina.token, 'invoice')).json.records).toEqual([]);
+  });
+
   it('activity and progress: students log their own, the teacher reads everything', async () => {
     const dina = await register('dina', 'Dina');
     const sam = await register('sam', 'Sam');

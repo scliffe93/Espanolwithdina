@@ -45,6 +45,7 @@ const TEACHER_NAV: NavItem[] = [
   { name: 'teach', sub: 'calendar', label: 'Calendar', es: 'Agenda', icon: 'calendar', mobile: true },
   { name: 'teach', sub: 'students', label: 'Students', es: 'Alumnos', icon: 'user', mobile: true },
   { name: 'teach', sub: 'homework', label: 'Homework', es: 'Deberes', icon: 'book', mobile: true },
+  { name: 'teach', sub: 'invoices', label: 'Invoices', es: 'Facturas', icon: 'mail' },
   { name: 'demo', label: 'Switch person', es: 'Cambiar', icon: 'refresh', mobile: true },
   { name: 'account', label: 'Account', es: 'Cuenta', icon: 'settings', mobile: true },
   { name: 'guide', label: 'How to use', es: 'Guía', icon: 'book' },
@@ -92,7 +93,7 @@ function Shell({ children, route, routeId }: { children: ReactNode; route: Route
   const items = teacher ? [...TEACHER_NAV.filter((n) => (n.name === 'demo' ? !!demoActor : n.name === 'account' ? !demoActor : true)), ...(me?.role === 'admin' ? [{ name: 'admin' as RouteName, label: 'Admin', es: 'Administración', icon: 'shield' as IconName, mobile: true }] : [])] : me?.role === 'student' ? [{ name: 'student' as RouteName, label: 'My lessons', es: 'Clases', icon: 'calendar' as IconName, mobile: true }, ...(demoActor ? [{ name: 'demo' as RouteName, label: 'Switch person', es: 'Cambiar', icon: 'refresh' as IconName, mobile: true }] : []), { name: 'guide' as RouteName, label: 'How to use', es: 'Guía', icon: 'book' as IconName }, ...NAV.filter((n) => n.name !== 'progress' && n.name !== 'teacher')] : [...NAV, { name: 'home' as RouteName, label: 'Lessons with Dina', es: 'Clases', icon: 'calendar' as IconName, mobile: true }];
   const sub = routeId?.split('/')[0];
   const isActive = (n: NavItem) => {
-    if (teacher) return route === 'teach' ? (n.name === 'teach' && (n.sub ?? '') === (sub && ['calendar', 'students', 'homework'].includes(sub) ? sub : sub === 'student' ? 'students' : '')) : n.name === route;
+    if (teacher) return route === 'teach' ? (n.name === 'teach' && (n.sub ?? '') === (sub && ['calendar', 'students', 'homework', 'invoices'].includes(sub) ? sub : sub === 'student' ? 'students' : '')) : n.name === route;
     const a = route === 'scene' || route === 'recap' ? 'world' : route === 'privacy' || route === 'account' ? 'settings' : route === 'game' ? 'games' : route === 'progress' ? 'journey' : route === 'homework' ? 'student' : route;
     return a === n.name;
   };
