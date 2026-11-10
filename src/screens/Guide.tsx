@@ -45,6 +45,7 @@ export function Guide() {
       <div className="mt-5 flex flex-wrap gap-2">
         <button className="btn-primary" onClick={() => navigate(teacher ? 'teach' : account.session ? 'student' : cloudConfigured ? 'account?mode=login' : 'home')}>{teacher ? 'Go to Today' : account.session ? 'Go to my lessons' : 'Log in'} <Icon name="arrowRight" size={16} /></button>
         <button className="ctrl" onClick={() => navigate(`guide?for=${other}`)}>Read the {other} guide</button>
+        <a className="ctrl" href={`${import.meta.env.BASE_URL}guides/${teacher ? 'teacher' : 'student'}-guide.pdf`} target="_blank" rel="noreferrer"><Icon name="download" size={14} /> Download this guide as a PDF</a>
       </div>
     </div>
   );
