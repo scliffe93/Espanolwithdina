@@ -145,7 +145,11 @@ const teacherSections = [
     <ol class="steps"><li>Once: <b>Invoices → Rates &amp; payment details</b>. Your business name, currency, rate for a 60-minute lesson (other lengths are priced in proportion), days until due, invoice prefix, and <b>how students pay</b> (bank details or a payment link). This prints on every invoice.</li><li><b>New invoice</b>: choose the student. The lessons you have taught and not yet billed are listed; tick the ones to include. Add any other line (a workbook, a lesson pack, a discount as a negative price).</li><li><b>Save and send to student</b>: it appears in their app at once. Use <b>Email</b> to send the summary by email too, or <b>PDF</b> to download it.</li><li>When the money arrives, <b>Mark paid</b> with the date and method. Overdue invoices are flagged on your Today page and on the student’s home page.</li></ol>
     ${figure('t-invoice-new', 'h2', 'A new invoice: tick the taught lessons, add a line, see the total before sending.')}
     ${figure('t-invoices', 'h3', 'The Invoices page: outstanding, overdue, paid this month, and every invoice with its actions.')}
-    <div class="note">Invoice numbers run LWD-2026-0001, 0002… and are never reused. A sent invoice can be voided, never deleted; drafts can be deleted.</div>`],
+    <div class="note">Invoice numbers run LWD-2026-0001, 0002… and are never reused. A sent invoice can be voided, never deleted; drafts can be deleted.</div>
+    <h3>Lesson packages</h3>
+    <p>Sell lessons in blocks and let the app count them. In <b>Rates &amp; payment details → Lesson packages</b> define each package: name, number of lessons, minutes per lesson, price, and how many months it stays valid.</p>
+    <ol class="steps"><li><b>Sell a package</b> (Invoices page, or the Lessons tab of a student’s profile): choose the student and the package, the purchase date, and tick “already paid” if the money is in. The invoice is created for you.</li><li>From the purchase date, every lesson you teach that student uses one credit. Lessons you bill one by one are never counted.</li><li>The balance (“3 of 10 left · 2 booked”) shows on the Students page, on the profile and on the student’s own home page. When it is down to one lesson, Today flags it so you can offer the next package.</li></ol>
+    ${figure('t-balance', 'h3', 'A student’s balance on the Lessons tab, with the packages bought and lessons used.')}`],
   ['Housekeeping and tips', `
     <div class="cards">
       <div class="card"><h4>Change your password</h4><p>Account → change password. Also where you log out or switch to another account on a shared device.</p></div>
@@ -202,7 +206,10 @@ const studentSections = [
     <p>Dina’s invoices for your lessons appear under <b>Invoices</b> on your lessons pages. A banner on your home page tells you when something is due.</p>
     ${figure('s-invoices', 'h3', 'My invoices: what is to pay, what is paid.')}
     <ul class="ticks"><li>Open an invoice to see the lessons it covers and <b>how to pay</b> (Dina’s bank details or payment link). Use the invoice number as the payment reference.</li><li><b>Download PDF</b> gives you a copy for your records.</li><li>Once Dina marks it paid, it moves to “paid” and the banner disappears.</li></ul>
-    ${figure('s-invoice-detail', 'h3', 'An invoice with its payment details.')}`],
+    ${figure('s-invoice-detail', 'h3', 'An invoice with its payment details.')}
+    <h3>Lesson packages</h3>
+    <p>If you buy a block of lessons, your home page shows your <b>lesson balance</b>: how many are used, how many are left, how many are already booked, and until when the package is valid. When you are down to your last lesson, ask Dina for the next package.</p>
+    ${figure('s-balance', 'h3', 'Your lesson balance on your home page.')}`],
   ['Settings and your account', `
     ${figure('s-settings', 'h2', 'Settings: voice and speech speed, translations, your city, data and account.')}
     <div class="cards">

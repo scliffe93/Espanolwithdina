@@ -2,7 +2,7 @@ import type { AppState } from '../../types';
 import { ApiError, platformApi, type PlatformKind, type Session } from '../cloud';
 import { migrate } from '../state';
 import { PlatformError, findOverlap, uid, validateBooking, type PlatformBackend } from './backend';
-import type { ActivityEvent, ActivityType, Booking, BookingInput, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, Person, TeacherConfig } from './types';
+import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, Person, TeacherConfig } from './types';
 import { DEFAULT_TEACHER_CONFIG } from './types';
 
 // ───────────────────────────────────────────────────────────────
@@ -235,6 +235,20 @@ class CloudBackend implements PlatformBackend {
     this.assertTeacher();
     const saved = await this.put('config', `config-${this.actor.id}`, this.actor.id, { ...cfg, id: `config-${this.actor.id}` });
     return { ...DEFAULT_TEACHER_CONFIG, ...saved };
+  }
+
+  async credits(opts: { studentId?: string } = {}) {
+    const list = await this.records<Credit>('credit', opts.studentId);
+    return [...list].sort((a, b) => a.purchasedAt.localeCompare(b.purchasedAt));
+  }
+  async saveCredit(c: Credit) {
+    this.assertTeacher();
+    return this.put('credit', c.id, c.studentId, { ...c, teacherId: this.actor.id });
+  }
+  async deleteCredit(id: string) {
+    this.assertTeacher();
+    await this.wrap(() => platformApi.remove(this.token, id));
+    this.cache.clear();
   }
 
   async addStudent(input: { username: string; firstName: string; password?: string }) {

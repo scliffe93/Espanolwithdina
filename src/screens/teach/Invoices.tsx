@@ -5,9 +5,10 @@ import { usePlatform, usePlatformQuery } from '../../lib/platform/context';
 import { uid } from '../../lib/platform/backend';
 import { addDaysIso, bucket, daysOverdue, invoiceNumber, invoiceText, lineForBooking, lineTotal, money, round2, summarise, total, unbilledLessons, type InvoiceBucket } from '../../lib/platform/invoicing';
 import { mailtoHref } from '../../lib/report';
-import type { Booking, Invoice, InvoiceLine, Person, TeacherConfig } from '../../lib/platform/types';
+import type { Booking, Credit, Invoice, InvoiceLine, Person, TeacherConfig } from '../../lib/platform/types';
 import { navigate } from '../../lib/router';
 import { Field, Section, Stat, useAction, useStudents } from './shared';
+import { PackageEditor, SellPackageSheet } from './Packages';
 
 // ───────────────────────────────────────────────────────────────
 // Invoices: Dina bills the lessons she has taught (or anything else),
@@ -31,6 +32,8 @@ export function Invoices({ params }: { params: URLSearchParams }) {
   const [editing, setEditing] = useState<Invoice | 'new' | null>(params.get('new') ? 'new' : null);
   const [settings, setSettings] = useState(false);
   const [viewing, setViewing] = useState<Invoice | null>(null);
+  const [selling, setSelling] = useState(!!params.get('sell'));
+  const credits = usePlatformQuery((b) => b.credits());
   const people = students.data?.people ?? [];
   const cfg = config.data;
   const list = invoices.data ?? [];
@@ -41,7 +44,7 @@ export function Invoices({ params }: { params: URLSearchParams }) {
 
   return (
     <div>
-      <PageHeader eyebrow="Facturas" title="Invoices" subtitle="Bill the lessons you have taught, mark them paid, download a PDF or email the summary. Students see their invoices in the app." right={<div className="flex flex-wrap gap-2"><button type="button" className="ctrl" onClick={() => setSettings(true)} data-testid="invoice-settings"><Icon name="settings" size={14} /> Rates &amp; payment details</button><button type="button" className="btn-primary !py-2.5" onClick={() => setEditing('new')} data-testid="new-invoice"><Icon name="edit" size={16} /> New invoice</button></div>} />
+      <PageHeader eyebrow="Facturas" title="Invoices" subtitle="Bill the lessons you have taught, mark them paid, download a PDF or email the summary. Students see their invoices in the app." right={<div className="flex flex-wrap gap-2"><button type="button" className="ctrl" onClick={() => setSettings(true)} data-testid="invoice-settings"><Icon name="settings" size={14} /> Rates &amp; payment details</button><button type="button" className="ctrl" onClick={() => setSelling(true)} data-testid="sell-package-top"><Icon name="star" size={14} /> Sell a package</button><button type="button" className="btn-primary !py-2.5" onClick={() => setEditing('new')} data-testid="new-invoice"><Icon name="edit" size={16} /> New invoice</button></div>} />
       {!ready ? <p className="text-sm text-ink-mute">Loading invoices…</p> : (
         <>
           <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4" data-testid="invoice-summary">
@@ -75,7 +78,8 @@ export function Invoices({ params }: { params: URLSearchParams }) {
         </>
       )}
       {ready && settings && <SettingsSheet cfg={cfg!} onClose={() => setSettings(false)} />}
-      {ready && editing && <InvoiceForm key={editing === 'new' ? 'new' : editing.id} invoice={editing === 'new' ? null : editing} cfg={cfg!} people={people} bookings={bookings.data ?? []} invoices={list} teacherId={me!.id} preselect={params.get('student') ?? undefined} onClose={() => { setEditing(null); if (params.get('new') || params.get('student')) navigate('teach/invoices'); }} />}
+      {ready && selling && <SellPackageSheet open onClose={() => { setSelling(false); if (params.get('sell')) navigate('teach/invoices'); }} people={people} cfg={cfg!} preselect={params.get('student') ?? undefined} />}
+      {ready && editing && <InvoiceForm key={editing === 'new' ? 'new' : editing.id} invoice={editing === 'new' ? null : editing} cfg={cfg!} people={people} bookings={bookings.data ?? []} invoices={list} credits={credits.data ?? []} teacherId={me!.id} preselect={params.get('student') ?? undefined} onClose={() => { setEditing(null); if (params.get('new') || params.get('student')) navigate('teach/invoices'); }} />}
       {viewing && <Sheet open onClose={() => setViewing(null)} title={viewing.number}>
         <InvoiceView inv={viewing} studentName={nameOf(viewing.studentId)} />
         <div className="mt-4"><InvoiceActions inv={viewing} cfg={cfg!} studentName={nameOf(viewing.studentId)} teacherName={me?.firstName ?? 'Dina'} onEdit={() => { setViewing(null); setEditing(viewing); }} onDone={() => setViewing(null)} /></div>
@@ -146,6 +150,7 @@ function SettingsSheet({ cfg, onClose }: { cfg: TeacherConfig; onClose: () => vo
         <Field id="cf-address" label="Your address (optional)"><textarea id="cf-address" className="input min-h-[60px]" value={c.address} onChange={(e) => set('address', e.target.value)} /></Field>
         <Field id="cf-pay" label="How students pay" hint="Bank details, PayPal or a payment link. Printed on every invoice and shown in the student's app."><textarea id="cf-pay" className="input min-h-[80px]" value={c.paymentInstructions} onChange={(e) => set('paymentInstructions', e.target.value)} placeholder={'Bank transfer to Dina García\nSort code 00-00-00 · Account 12345678\nReference: your invoice number'} /></Field>
         <Field id="cf-footer" label="Footer line"><input id="cf-footer" className="input" value={c.footer} onChange={(e) => set('footer', e.target.value)} /></Field>
+        <PackageEditor packages={c.packages ?? []} currency={c.currency} onChange={(p) => set('packages', p)} />
         {error && <p role="alert" className="rounded-xl bg-terracotta-50 px-3 py-2 text-sm text-terracotta-dark">{error}</p>}
         <div className="flex gap-2"><button type="button" className="btn-primary" disabled={busy} onClick={() => run(async () => { await backend!.saveTeacherConfig(c); onClose(); })} data-testid="save-settings">{busy ? 'Saving…' : 'Save'}</button><button type="button" className="ctrl" onClick={onClose}>Cancel</button></div>
       </div>
@@ -153,7 +158,7 @@ function SettingsSheet({ cfg, onClose }: { cfg: TeacherConfig; onClose: () => vo
   );
 }
 
-function InvoiceForm({ invoice, cfg, people, bookings, invoices, teacherId, preselect, onClose }: { invoice: Invoice | null; cfg: TeacherConfig; people: Person[]; bookings: Booking[]; invoices: Invoice[]; teacherId: string; preselect?: string; onClose: () => void }) {
+function InvoiceForm({ invoice, cfg, people, bookings, invoices, credits, teacherId, preselect, onClose }: { invoice: Invoice | null; cfg: TeacherConfig; people: Person[]; bookings: Booking[]; invoices: Invoice[]; credits: Credit[]; teacherId: string; preselect?: string; onClose: () => void }) {
   const { backend } = usePlatform();
   const { run, busy, error, setError } = useAction();
   const [studentId, setStudentId] = useState(invoice?.studentId ?? preselect ?? people[0]?.id ?? '');
@@ -163,7 +168,7 @@ function InvoiceForm({ invoice, cfg, people, bookings, invoices, teacherId, pres
   const [discount, setDiscount] = useState(invoice?.discount ?? 0);
   const [notes, setNotes] = useState(invoice?.notes ?? '');
   const [pay, setPay] = useState(invoice?.paymentInstructions ?? cfg.paymentInstructions);
-  const unbilled = useMemo(() => unbilledLessons(bookings, invoices.filter((i) => i.id !== invoice?.id), studentId), [bookings, invoices, studentId, invoice?.id]);
+  const unbilled = useMemo(() => unbilledLessons(bookings, invoices.filter((i) => i.id !== invoice?.id), studentId, Date.now(), credits), [bookings, invoices, studentId, invoice?.id, credits]);
   const chosen = new Set(lines.map((l) => l.bookingId).filter(Boolean));
   const toggleLesson = (b: Booking) => setLines((ls) => (chosen.has(b.id) ? ls.filter((l) => l.bookingId !== b.id) : [...ls, lineForBooking(b, cfg)]));
   const addCustom = () => setLines((ls) => [...ls, { description: '', qty: 1, unitPrice: cfg.hourlyRate }]);
@@ -192,7 +197,7 @@ function InvoiceForm({ invoice, cfg, people, bookings, invoices, teacherId, pres
         </div>
         {unbilled.length > 0 && (
           <div>
-            <p className="mb-1 text-sm font-medium">Lessons not yet billed <span className="font-normal text-ink-mute">· tick to add at {money(cfg.hourlyRate, cfg.currency)} per hour</span></p>
+            <p className="mb-1 text-sm font-medium">Lessons not yet billed <span className="font-normal text-ink-mute">· tick to add at {money(cfg.hourlyRate, cfg.currency)} per hour · lessons covered by a package are not listed</span></p>
             <ul className="grid gap-1 sm:grid-cols-2" data-testid="unbilled-lessons">{unbilled.map((b) => <li key={b.id}><label className="flex cursor-pointer items-center gap-2 rounded-xl bg-cream-100 px-3 py-2 text-sm"><input type="checkbox" className="h-4 w-4 accent-terracotta" checked={chosen.has(b.id)} onChange={() => toggleLesson(b)} /><span className="min-w-0 flex-1 truncate">{new Date(b.startsAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} · {b.durationMin} min · {b.topic}</span><span className="tabular-nums text-ink-mute">{money(lineForBooking(b, cfg).unitPrice, cfg.currency)}</span></label></li>)}</ul>
           </div>
         )}

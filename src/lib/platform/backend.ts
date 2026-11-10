@@ -1,5 +1,5 @@
 import type { AppState } from '../../types';
-import type { ActivityEvent, ActivityType, Booking, BookingInput, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, PlatformData, Person, TeacherConfig } from './types';
+import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, PlatformData, Person, TeacherConfig } from './types';
 import { DEFAULT_TEACHER_CONFIG } from './types';
 import { overlaps } from './time';
 import { followUpFor, type AdaptHomework } from '../../../supabase/functions/_shared/adapt';
@@ -53,6 +53,10 @@ export interface PlatformBackend {
   /** Teacher: her invoicing settings (defaults until saved). Students get the defaults (for currency display). */
   teacherConfig(): Promise<TeacherConfig>;
   saveTeacherConfig(cfg: TeacherConfig): Promise<TeacherConfig>;
+  /** Packages bought (teacher: all or one student's; student: own). */
+  credits(opts?: { studentId?: string }): Promise<Credit[]>;
+  saveCredit(c: Credit): Promise<Credit>;
+  deleteCredit(id: string): Promise<void>;
 }
 
 export const uid = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`);
@@ -107,7 +111,7 @@ export class DemoBackend implements PlatformBackend {
     if (!this.isTeacher()) throw new PlatformError('forbidden', 'Only the teacher can do that.');
   }
   private async commit(mutate: (d: PlatformData) => void) {
-    const next: PlatformData = { ...this.data, bookings: [...this.data.bookings], homework: [...this.data.homework], feedback: [...this.data.feedback], activity: [...this.data.activity], invoices: [...(this.data.invoices ?? [])] };
+    const next: PlatformData = { ...this.data, bookings: [...this.data.bookings], homework: [...this.data.homework], feedback: [...this.data.feedback], activity: [...this.data.activity], invoices: [...(this.data.invoices ?? [])], credits: [...(this.data.credits ?? [])] };
     mutate(next);
     this.data = next;
     await this.storage.saveData(next);
@@ -275,5 +279,21 @@ export class DemoBackend implements PlatformBackend {
     this.assertTeacher();
     await this.commit((d) => { d.config = cfg; });
     return cfg;
+  }
+  async credits(opts: { studentId?: string } = {}) {
+    let list = (this.data.credits ?? []).filter((c) => (this.isTeacher() ? c.teacherId === this.actor.id : c.studentId === this.actor.id));
+    if (opts.studentId) list = list.filter((c) => c.studentId === opts.studentId);
+    return list.sort((a, b) => a.purchasedAt.localeCompare(b.purchasedAt));
+  }
+  async saveCredit(c: Credit) {
+    this.assertTeacher();
+    this.assertStudentAccess(c.studentId);
+    const next = { ...c, teacherId: this.actor.id };
+    await this.commit((d) => { d.credits = d.credits!.some((x) => x.id === c.id) ? d.credits!.map((x) => (x.id === c.id ? next : x)) : [...d.credits!, next]; });
+    return next;
+  }
+  async deleteCredit(id: string) {
+    this.assertTeacher();
+    await this.commit((d) => { d.credits = d.credits!.filter((x) => !(x.id === id && x.teacherId === this.actor.id)); });
   }
 }

@@ -5,7 +5,7 @@ import { PageHeader } from '../../components/ui';
 import { totalActiveSeconds } from '../../lib/analytics';
 import { levelIndex } from '../../lib/assessmentScore';
 import { formatMinutes } from '../../lib/dates';
-import { usePlatform } from '../../lib/platform/context';
+import { usePlatform, usePlatformQuery } from '../../lib/platform/context';
 import { describeActivity, homeworkRoute } from '../../lib/platform/homework';
 import { relative } from '../../lib/platform/time';
 import type { Booking, Feedback, Homework } from '../../lib/platform/types';
@@ -16,6 +16,7 @@ import { useStore } from '../../lib/store';
 import { CEFR_LEVELS, SKILLS, type AppState } from '../../types';
 import { downloadIcs, isMeetingLink } from './ics';
 import { InvoiceNudge } from '../teach/InvoiceNudge';
+import { BalanceCard, useBalance } from '../teach/Packages';
 import { DemoChip, ErrorCard, FeedbackItem, HomeworkStatus, LessonDetails, Loading, Section, StudentNav, buildReminders, homeworkBuckets, nextLesson, useStudentData, type Reminder } from './shared';
 
 // ───────────────────────────────────────────────────────────────
@@ -222,6 +223,15 @@ function WeekPlan({ data, now }: { data: { homework: Homework[]; feedback: Feedb
   );
 }
 
+/** The student's lesson balance when they have bought a package. */
+function StudentBalance() {
+  const { me } = usePlatform();
+  const { balance } = useBalance(me?.id);
+  const config = usePlatformQuery((b) => b.teacherConfig());
+  if (!balance || !balance.hasPackages || !config.data) return null;
+  return <div className="mb-4"><BalanceCard balance={balance} currency={config.data.currency} /></div>;
+}
+
 export function Home() {
   const { me } = usePlatform();
   const { state } = useStore();
@@ -239,6 +249,7 @@ export function Home() {
         <>
           <Reminders reminders={buildReminders(data, now)} />
           <InvoiceNudge />
+          <StudentBalance />
           <WeekPlan data={data} now={now} />
           <div className="grid gap-4 lg:grid-cols-[1.45fr_1fr]">
             <NextLesson b={nextLesson(data.bookings, now)} now={now} />

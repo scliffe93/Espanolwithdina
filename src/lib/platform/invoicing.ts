@@ -1,4 +1,4 @@
-import type { Booking, Invoice, InvoiceLine, TeacherConfig } from './types';
+import type { Booking, Credit, Invoice, InvoiceLine, TeacherConfig } from './types';
 
 // ───────────────────────────────────────────────────────────────
 // Invoicing arithmetic and helpers, shared by the teacher's screens,
@@ -55,12 +55,18 @@ export function lineForBooking(b: Booking, cfg: TeacherConfig, studentZone?: str
   return { description: `Spanish lesson · ${when} · ${b.durationMin} min · ${b.topic}`, qty: 1, unitPrice: price, bookingId: b.id };
 }
 
-/** Lessons that have happened (scheduled in the past or marked completed) and are not yet on any non-void invoice. */
-export function unbilledLessons(bookings: Booking[], invoices: Invoice[], studentId: string, now = Date.now()): Booking[] {
+/** Lessons that have happened, are not on any non-void invoice, and are not covered by a package credit. */
+export function unbilledLessons(bookings: Booking[], invoices: Invoice[], studentId: string, now = Date.now(), credits: Credit[] = []): Booking[] {
   const billed = new Set(invoices.filter((i) => i.status !== 'void').flatMap((i) => i.lines.map((l) => l.bookingId).filter(Boolean)));
-  return bookings
+  const taught = bookings
     .filter((b) => b.studentId === studentId && b.status !== 'cancelled' && new Date(b.startsAt).getTime() <= now && !billed.has(b.id))
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  const packages = credits.filter((c) => c.studentId === studentId).sort((a, b) => a.purchasedAt.localeCompare(b.purchasedAt));
+  if (!packages.length) return taught;
+  const total = packages.reduce((a, c) => a + c.lessons, 0);
+  const first = packages[0].purchasedAt;
+  const covered = new Set(taught.filter((b) => b.startsAt.slice(0, 10) >= first).slice(0, total).map((b) => b.id));
+  return taught.filter((b) => !covered.has(b.id));
 }
 
 export interface InvoiceSummary { outstanding: number; overdue: number; paidThisMonth: number; invoicedThisMonth: number; count: { draft: number; outstanding: number; overdue: number; paid: number } }

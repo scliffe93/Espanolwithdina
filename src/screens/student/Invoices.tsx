@@ -3,6 +3,7 @@ import { Icon } from '../../components/Icon';
 import { PageHeader, Sheet } from '../../components/ui';
 import { usePlatform, usePlatformQuery } from '../../lib/platform/context';
 import { bucket, daysOverdue, money, summarise } from '../../lib/platform/invoicing';
+import { BalanceCard, useBalance } from '../teach/Packages';
 import type { Invoice } from '../../lib/platform/types';
 import { InvoiceView } from '../teach/Invoices';
 import { DemoChip, Loading, Section, StudentNav } from './shared';
@@ -12,6 +13,7 @@ export function InvoicesPage() {
   const { me } = usePlatform();
   const invoices = usePlatformQuery((b) => b.invoices());
   const config = usePlatformQuery((b) => b.teacherConfig());
+  const { balance } = useBalance(me?.id);
   const [open, setOpen] = useState<Invoice | null>(null);
   const list = invoices.data ?? [];
   const s = summarise(list);
@@ -23,6 +25,7 @@ export function InvoicesPage() {
       {!invoices.data || !config.data ? <Loading what="your invoices" /> : (
         <>
           {s.outstanding > 0 && <div className={`mb-4 rounded-2xl p-4 text-sm ${s.overdue ? 'bg-terracotta-50' : 'bg-saffron-50'}`} data-testid="invoice-due"><b>{money(s.outstanding, config.data.currency)} to pay</b>{s.overdue ? ` · ${money(s.overdue, config.data.currency)} is overdue` : ''}. Open an invoice to see how to pay.</div>}
+          {balance?.hasPackages && <div className="mb-4"><BalanceCard balance={balance} currency={config.data.currency} /></div>}
           <Section title="Invoices" eyebrow={list.length ? `${list.length} total` : undefined}>
             {list.length === 0 ? <p className="text-sm text-ink-mute">No invoices yet.</p> : (
               <ul className="grid gap-2">

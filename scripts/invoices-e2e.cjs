@@ -1,4 +1,4 @@
-// Invoicing flow in the demo: Dina sets rates and payment details, bills Sam's taught lessons, sends, Sam sees it, Dina marks it paid.
+// Invoicing and packages in the demo: Dina sets rates, bills Sam's taught lessons, sends, Sam sees it, Dina marks it paid, defines a package, sells it to Sam, both see the balance.
 // Needs a build served on :4173. Usage: node scripts/invoices-e2e.cjs <outDir>
 const path = require('path'); const { execSync } = require('child_process');
 const { chromium } = require(path.join(execSync('npm root -g').toString().trim(), 'playwright'));
@@ -61,6 +61,28 @@ const HIDE = `[data-testid="demo-pill"], [title*="fictional"] { display: none !i
   ok(/paid/.test(await p.getByTestId('invoice-list').innerText()), 'marked as paid');
   const summary = await p.getByTestId('invoice-summary').innerText();
   const paidTile = summary.split(/paid this month/i)[1] || ''; ok(/£(?!0\.00)\d/.test(paidTile), 'summary shows paid this month: ' + paidTile.trim().split('\n')[0]);
+  // Packages: define one, sell it to Sam (paid), balance appears for both
+  await p.getByTestId('invoice-settings').click(); await p.waitForTimeout(400);
+  await p.getByTestId('add-package').click(); await p.waitForTimeout(200);
+  ok((await p.locator('[data-testid="package-list"] li').count()) >= 2, 'package row added in settings');
+  await shot('t-packages');
+  await p.getByTestId('save-settings').click(); await p.waitForTimeout(1200);
+  await p.getByTestId('sell-package-top').click(); await p.waitForTimeout(400);
+  await p.locator('#sp-student').selectOption('demo-sam'); await p.getByRole('checkbox', { name: /Already paid/ }).check();
+  await shot('t-sell-package');
+  await p.getByTestId('confirm-sell').click(); await p.waitForTimeout(1500);
+  ok(/Package sold/.test(await p.locator('[role=dialog]').innerText()), 'package sold with its invoice');
+  await p.getByRole('button', { name: 'Done' }).click(); await p.waitForTimeout(400);
+  ok(/LWD-\d{4}-0002/.test(await p.getByTestId('invoice-list').innerText()), 'package invoice LWD-…-0002 listed');
+  await p.goto(BASE + '#/teach/students'); await p.waitForTimeout(1500);
+  { const t = await p.locator('body').innerText(); ok(/lesson balance/i.test(t) && /of (5|10) left/.test(t), 'Students page shows Sam’s lesson balance'); }
+  await p.goto(BASE + '#/teach/student/demo-sam?tab=lessons'); await p.waitForTimeout(1500);
+  ok(await p.getByTestId('balance-card').isVisible() && await p.getByTestId('balance-chip').isVisible(), 'profile shows balance card and chip');
+  await shot('t-balance');
+  await p.goto(BASE + '#/demo'); await p.waitForTimeout(800); await p.getByTestId('demo-sam').click(); await p.waitForTimeout(1500);
+  await p.goto(BASE + '#/student'); await p.waitForTimeout(1500);
+  ok(await p.getByTestId('balance-card').isVisible(), 'Sam’s home shows his lesson balance');
+  await shot('s-balance');
   ok(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   await b.close();
 })().catch((e) => { console.error(e); process.exit(1); });

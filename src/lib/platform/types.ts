@@ -170,6 +170,35 @@ export interface Invoice {
   updatedAt: string;
 }
 
+/** A lesson package the teacher sells: N lessons of M minutes for a price. */
+export interface LessonPackage {
+  id: string;
+  name: string;
+  lessons: number;
+  minutesPerLesson: number;
+  price: number;
+  /** Months the package stays valid after purchase (0 = no expiry). */
+  validMonths: number;
+}
+
+/** A package bought by a student: credits that taught lessons consume. */
+export interface Credit {
+  id: string;
+  teacherId: string;
+  studentId: string;
+  packageId?: string;
+  name: string;
+  lessons: number;
+  minutesPerLesson: number;
+  price: number;
+  currency: string;
+  purchasedAt: string; // YYYY-MM-DD
+  expiresAt?: string; // YYYY-MM-DD
+  invoiceId?: string;
+  note?: string;
+  createdAt: string;
+}
+
 /** The teacher's invoicing settings (one row, hers). */
 export interface TeacherConfig {
   businessName: string;
@@ -183,9 +212,11 @@ export interface TeacherConfig {
   nextNumber: number;
   paymentInstructions: string;
   footer: string;
+  /** Packages the teacher offers. */
+  packages: LessonPackage[];
 }
 
-export const DEFAULT_TEACHER_CONFIG: TeacherConfig = { businessName: 'Learning with Dina', address: '', currency: 'GBP', hourlyRate: 35, dueDays: 14, invoicePrefix: 'LWD', nextNumber: 1, paymentInstructions: '', footer: 'Thank you — ¡gracias!' };
+export const DEFAULT_TEACHER_CONFIG: TeacherConfig = { businessName: 'Learning with Dina', address: '', currency: 'GBP', hourlyRate: 35, dueDays: 14, invoicePrefix: 'LWD', nextNumber: 1, paymentInstructions: '', footer: 'Thank you — ¡gracias!', packages: [] };
 
 /** Everything the teaching side stores (besides each learner's own AppState). */
 export interface PlatformData {
@@ -197,6 +228,7 @@ export interface PlatformData {
   activity: ActivityEvent[];
   invoices?: Invoice[];
   config?: TeacherConfig;
+  credits?: Credit[];
 }
 
 export const DEMO_TEACHER_ID = 'demo-dina';

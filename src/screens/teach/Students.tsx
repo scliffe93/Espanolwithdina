@@ -4,6 +4,7 @@ import { Icon } from '../../components/Icon';
 import { PageHeader } from '../../components/ui';
 import { usePlatform, usePlatformQuery } from '../../lib/platform/context';
 import { AddStudentForm } from './AddStudentForm';
+import { balanceFor, balanceLabel, isLow } from '../../lib/platform/packages';
 import { fmtDateTime } from '../../lib/platform/time';
 import { BookingForm } from './BookingForm';
 import { HomeworkAssignForm } from './HomeworkAssignForm';
@@ -19,6 +20,9 @@ export function Students() {
   const students = useStudents();
   const homework = usePlatformQuery((b) => b.homework());
   const bookings = usePlatformQuery((b) => b.bookings({ from: new Date(Date.now() - 86_400_000).toISOString() }));
+  const allBookings = usePlatformQuery((b) => b.bookings({ includeCancelled: true }));
+  const invoices = usePlatformQuery((b) => b.invoices());
+  const credits = usePlatformQuery((b) => b.credits());
   const [booking, setBooking] = useState<string | null>(null);
   const [assign, setAssign] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -58,6 +62,7 @@ export function Students() {
                   <Mini label="This week" value={`${i.weekMinutes} min`} sub={i.weekAccuracy !== null ? `${pct(i.weekAccuracy)} accuracy · ${i.weekStudyDays} day${i.weekStudyDays === 1 ? '' : 's'}` : 'no exercises yet'} />
                   <Mini label="Homework" value={`${i.pending.length} pending`} sub={`${i.awaiting.length} awaiting review${i.overdue.length ? ` · ${i.overdue.length} overdue` : ''}`} />
                   <Mini label="Next lesson" value={i.nextLesson ? fmtDateTime(i.nextLesson.startsAt, zone) : 'none booked'} sub={i.nextLesson?.topic} />
+                  {(() => { const bal = balanceFor(p.id, allBookings.data ?? [], invoices.data ?? [], credits.data ?? []); return bal.hasPackages ? <Mini label="Lesson balance" value={balanceLabel(bal)} sub={isLow(bal) ? 'nearly used up' : bal.upcoming ? `${bal.upcoming} booked` : undefined} /> : null; })()}
                 </div>
                 {i.support.length > 0 && (
                   <ul className="mx-5 mb-4 grid gap-1 rounded-2xl bg-terracotta-50 p-3 text-sm text-ink-soft">

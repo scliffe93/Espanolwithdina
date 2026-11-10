@@ -22,6 +22,7 @@ import { HomeworkAssignForm } from './HomeworkAssignForm';
 import { HomeworkReview } from './HomeworkReview';
 import { AnalyticsTab } from './AnalyticsTab';
 import { DebriefForm } from './DebriefForm';
+import { BalanceCard, BalanceChip, SellPackageSheet, useBalance } from './Packages';
 import { pct, studentInsight, studyAgo } from './insights';
 import { ActivityList, Avatar, ConfirmButton, DemoChip, ErrorText, Field, HomeworkRow, LessonCard, Loading, Section, Stat, toneFor, useAction, useStudents, useViewZone } from './shared';
 
@@ -53,6 +54,9 @@ export function StudentProfile({ id, params }: { id: string; params: URLSearchPa
   const [review, setReview] = useState<Homework | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [debrief, setDebrief] = useState(false);
+  const [selling, setSelling] = useState(false);
+  const { balance } = useBalance(id);
+  const config = usePlatformQuery((b) => b.teacherConfig());
   const downloadPdf = async () => {
     if (!state) return;
     setPdfBusy(true);
@@ -94,6 +98,7 @@ export function StudentProfile({ id, params }: { id: string; params: URLSearchPa
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <DemoChip />
+            <BalanceChip balance={balance} size="lg" />
             <button type="button" className="btn-primary !py-2.5" onClick={() => setDebrief(true)} data-testid="lesson-debrief"><Icon name="edit" size={16} /> Lesson debrief &amp; week plan</button>
             <button type="button" className="btn-ghost !py-2.5" onClick={() => setBooking({ open: true })}><Icon name="calendar" size={16} /> Book a lesson</button>
             <button type="button" className="btn-ghost !py-2.5" onClick={() => setAssign(true)}><Icon name="book" size={16} /> Assign homework</button>
@@ -120,6 +125,7 @@ export function StudentProfile({ id, params }: { id: string; params: URLSearchPa
 
       {tab === 'journey' && (state ? <JourneyTab state={state} name={person.firstName} /> : <Empty icon="chart" title={`No learning data for ${person.firstName} yet`} body="Their journey appears here as soon as they complete a chapter, a verb session or a game in the app." />)}
       {tab === 'analytics' && (state ? <AnalyticsTab state={state} homework={homework.data ?? []} name={person.firstName} onDownload={downloadPdf} busy={pdfBusy} /> : <Empty icon="chart" title={`No learning data for ${person.firstName} yet`} body="Analytics appear once they have used the app." />)}
+      {tab === 'lessons' && balance && config.data && <div className="mb-4"><BalanceCard balance={balance} currency={config.data.currency} onSell={() => setSelling(true)} /></div>}
       {tab === 'lessons' && <LessonsTab bookings={bookings.data} people={people} zone={zone} onEdit={(b) => setBooking({ open: true, edit: b })} onBook={() => setBooking({ open: true })} />}
       {tab === 'homework' && <HomeworkTab homework={homework.data} people={people} zone={zone} onOpen={setReview} onAssign={() => setAssign(true)} />}
       {tab === 'feedback' && <FeedbackTab studentId={id} name={person.firstName} feedback={feedback.data} zone={zone} />}
@@ -130,6 +136,7 @@ export function StudentProfile({ id, params }: { id: string; params: URLSearchPa
       )}
 
       <BookingForm open={booking.open} onClose={() => setBooking({ open: false })} people={people} booking={booking.edit} prefill={{ studentId: id }} viewZone={zone} />
+      {config.data && <SellPackageSheet open={selling} onClose={() => setSelling(false)} people={people} cfg={config.data} preselect={id} />}
       <DebriefForm open={debrief} onClose={() => setDebrief(false)} student={person} state={state} homework={homework.data ?? []} />
       <HomeworkAssignForm open={assign} onClose={() => setAssign(false)} people={people} progress={students.data.progress} initialStudentIds={[id]} viewZone={zone} />
       <HomeworkReview homework={review} people={people} viewZone={zone} onClose={() => setReview(null)} />

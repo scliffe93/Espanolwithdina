@@ -163,6 +163,12 @@ describe('teaching platform API', () => {
     expect((await put(sam.token, { kind: 'config', id: `config-${sam.id}`, studentId: sam.id, data: { hourlyRate: 1 } })).status).toBe(403);
     expect((await list(dina.token, 'config')).json.records[0].hourlyRate).toBe(40);
     expect((await list(sam.token, 'config')).json.records).toEqual([]);
+    // Package credits: teacher writes, student reads own only.
+    const credit = { name: '5 lessons', lessons: 5, minutesPerLesson: 60, price: 180, currency: 'GBP', purchasedAt: '2026-11-10', createdAt: at(0) };
+    expect((await put(sam.token, { kind: 'credit', id: 'cr-00000001', studentId: sam.id, data: credit })).status).toBe(403);
+    expect((await put(dina.token, { kind: 'credit', id: 'cr-00000001', studentId: sam.id, data: credit })).status).toBe(200);
+    expect((await list(sam.token, 'credit')).json.records).toHaveLength(1);
+    expect((await list(anneka.token, 'credit')).json.records).toEqual([]);
     // Deleting a draft invoice works for the teacher only.
     expect((await call('platform/records/delete', { token: sam.token, body: { id: 'inv-00000001' } })).status).toBe(403);
     expect((await call('platform/records/delete', { token: dina.token, body: { id: 'inv-00000001' } })).status).toBe(204);
