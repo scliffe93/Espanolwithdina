@@ -228,7 +228,7 @@ class CloudBackend implements PlatformBackend {
   async teacherConfig() {
     if (!this.isTeacher()) return DEFAULT_TEACHER_CONFIG;
     const rows = await this.records<TeacherConfig & { id: string }>('config');
-    const mine = rows.find((r) => r.id === `config-${this.actor.id}`) ?? rows[0];
+    const mine = rows.find((r) => r.id === `config-${this.actor.id}`);
     return { ...DEFAULT_TEACHER_CONFIG, ...(mine ?? {}) };
   }
   async saveTeacherConfig(cfg: TeacherConfig) {
