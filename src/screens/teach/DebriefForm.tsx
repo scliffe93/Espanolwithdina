@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../../components/Icon';
 import { Sheet } from '../../components/ui';
 import { INTERESTS } from '../../data/profileOptions';
@@ -9,6 +9,7 @@ import type { AppState } from '../../lib/platform/context';
 import { usePlatform, usePlatformQuery } from '../../lib/platform/context';
 import { describeActivity } from '../../lib/platform/homework';
 import { dueFor, generatePlan, planWeekFor, type PlanItem } from '../../lib/platform/plan';
+import { markedSlips } from '../../lib/platform/marking';
 import { FOCUS_TAG_LABEL, type FocusTag, type Homework, type LessonDebrief, type Person } from '../../lib/platform/types';
 import { homeworkStats, pct } from './insights';
 import { Field, useAction } from './shared';
@@ -42,6 +43,13 @@ export function DebriefForm({ open, onClose, student, state, homework }: { open:
     const items = planned.filter((h) => h.plan!.week === week);
     return { week, stats: homeworkStats(items), items, errors: state ? errorBreakdown(state, 14).slice(0, 3) : [] };
   }, [homework, state]);
+
+  // Slips marked in homework over the last 14 days (the teacher's corrections and the app's diagnoses) pre-tick "what to fix".
+  const slips = useMemo(() => markedSlips(homework, new Date(Date.now() - 14 * 86_400_000).toISOString()), [homework]);
+  useEffect(() => {
+    if (open) setToFix((cur) => (cur.length ? cur : slips.slice(0, 2).map((s) => s.tag)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const verbs = useMemo(() => verbText.split(/[,\s]+/).map((v) => v.trim().toLowerCase()).filter(Boolean), [verbText]);
   const unknownVerbs = verbs.filter((v) => !VERBS.some((x) => x.inf === v));
@@ -83,6 +91,7 @@ export function DebriefForm({ open, onClose, student, state, homework }: { open:
               {lastWeek.errors.length > 0 && <p className="mt-1 text-ink-soft">Recurring slips (14 days): {lastWeek.errors.map((e) => `${e.label} ${e.count}×`).join(', ')}</p>}
             </div>
           )}
+          {slips.length > 0 && <p className="rounded-2xl bg-olive-50 p-3 text-sm" data-testid="marked-slips"><b>From your marking (14 days):</b> {slips.slice(0, 4).map((s) => `${FOCUS_TAG_LABEL[s.tag]} ${s.count}×`).join(', ')}{slips[0].examples[0] ? ` — e.g. ${slips[0].examples[0]}` : ''}. The top ones are ticked below.</p>}
           <div className="grid gap-3 sm:grid-cols-2">
             <Field id="db-date" label="Lesson date"><input id="db-date" type="date" className="input" value={lessonDate} onChange={(e) => setLessonDate(e.target.value)} /></Field>
             <Field id="db-min" label="Minutes a day to aim for"><input id="db-min" type="number" min={5} max={90} step={5} className="input" value={minutes} onChange={(e) => setMinutes(Number(e.target.value))} /></Field>

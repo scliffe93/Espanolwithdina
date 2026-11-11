@@ -1,5 +1,5 @@
 import type { AppState } from '../../types';
-import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, PlatformData, Person, StudentSettings, TeacherConfig } from './types';
+import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, Marking, PlatformData, Person, StudentSettings, TeacherConfig } from './types';
 import { settingsId } from './level';
 import { DEFAULT_TEACHER_CONFIG } from './types';
 import { overlaps } from './time';
@@ -36,7 +36,8 @@ export interface PlatformBackend {
   updateHomework(id: string, patch: { instructions?: string; dueAt?: string; activity?: HomeworkActivity }): Promise<Homework>;
   deleteHomework(id: string): Promise<void>;
   submitHomework(id: string, result: HomeworkResult): Promise<Homework>;
-  reviewHomework(id: string, feedback: string): Promise<Homework>;
+  /** Teacher: feedback plus, optionally, the marking (mark, per-answer notes, corrections). Marks the homework reviewed. */
+  reviewHomework(id: string, feedback: string, marking?: Omit<Marking, 'at'>): Promise<Homework>;
   feedback(studentId?: string): Promise<Feedback[]>;
   addFeedback(input: { studentId: string; kind: FeedbackKind; body: string; debrief?: Feedback['debrief'] }): Promise<Feedback>;
   deleteFeedback(id: string): Promise<void>;
@@ -222,11 +223,11 @@ export class DemoBackend implements PlatformBackend {
     return next;
   }
 
-  async reviewHomework(id: string, feedback: string) {
+  async reviewHomework(id: string, feedback: string, marking?: Omit<Marking, 'at'>) {
     this.assertTeacher();
     const cur = this.data.homework.find((h) => h.id === id && h.teacherId === this.actor.id);
     if (!cur) throw new PlatformError('not_found', 'Homework not found.');
-    const next: Homework = { ...cur, status: 'reviewed', feedback: { body: feedback, at: this.iso() } };
+    const next: Homework = { ...cur, status: 'reviewed', feedback: { body: feedback, at: this.iso() }, ...(marking ? { marking: { ...marking, at: this.iso() } } : {}) };
     await this.commit((d) => { d.homework = d.homework.map((h) => (h.id === id ? next : h)); });
     return next;
   }

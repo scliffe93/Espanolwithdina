@@ -119,7 +119,7 @@ async function completeVerbSession(page) {
     await tap(await opener.isVisible().catch(() => false) ? opener : myRow.getByRole('button').first());
     await page.waitForTimeout(600);
     await page.locator('#rv-feedback').fill('¡Muy bien, Sam! Watch the yo form of tener: tengo.');
-    await tap(page.getByRole('button', { name: /Save review/ }));
+    await tap(page.getByRole('button', { name: /Save (review|marking)/ }));
     await page.waitForTimeout(800);
     await openAs(page, 'sam');
     await page.goto(`${BASE}#/student/homework`); await page.waitForTimeout(800);

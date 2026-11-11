@@ -16,6 +16,7 @@ import { useStore } from '../lib/store';
 import { CITY_THEMES } from '../data/cityThemes';
 import { useAccount } from '../lib/account';
 import { useHomeworkCompletion } from '../lib/platform/homework';
+import type { ResultItem } from '../lib/platform/types';
 import { confetti, haptic, sfx } from '../lib/fx';
 import { render, type TemplateCtx } from '../lib/template';
 import type { Interest } from '../types';
@@ -46,6 +47,7 @@ export function ScenePlayer({ id }: { id: string }) {
   const [flags, setFlags] = useState<Record<string, string>>({});
   const [rel, setRel] = useState<Record<string, number>>({});
   const [stats, setStats] = useState({ great: 0, ok: 0, off: 0 });
+  const answers = useRef<ResultItem[]>([]);
   const [finished, setFinished] = useState(false);
   const [showEn, setShowEn] = useState<Record<number, boolean>>({});
   const [inputText, setInputText] = useState('');
@@ -115,6 +117,7 @@ export function ScenePlayer({ id }: { id: string }) {
     stopSpeaking();
     const retry = resolveNext(c) === nodeId;
     setStats((s) => ({ ...s, [c.quality]: s[c.quality] + 1 }));
+    if (answers.current.length < 60) { const best = choices.find((x) => x.quality === 'great'); answers.current.push({ prompt: r(lineText.es), given: r(c.es), ...(best && best !== c ? { expected: r(best.es) } : {}), correct: c.quality !== 'off', ...(c.quality === 'off' && c.category ? { category: c.category } : {}) }); }
     const who = node!.speaker === 'narrator' ? scene.cast[0] : node!.speaker;
     if (c.rel) setRel((x) => ({ ...x, [who]: (x[who] ?? 0) + c.rel! }));
     if (c.setFlag) setFlags((f) => ({ ...f, [c.setFlag![0]]: c.setFlag![1] }));
@@ -206,7 +209,7 @@ export function ScenePlayer({ id }: { id: string }) {
       return n;
     });
     setFinished(true);
-    if (hw.isHomework) hw.submit({ score, attempts: total, correct: stats.great + stats.ok, summary: `${stats.great} natural, ${stats.ok} OK, ${stats.off} learning moments` });
+    if (hw.isHomework) hw.submit({ score, attempts: total, correct: stats.great + stats.ok, summary: `${stats.great} natural, ${stats.ok} OK, ${stats.off} learning moments`, items: answers.current });
     else hw.log('chapter', `Chapter completed: ${scene.title} (${Math.round(score * 100)}%)`);
     sfx.win();
     confetti({ count: 150 });

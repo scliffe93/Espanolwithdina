@@ -12,6 +12,7 @@ import { navigate } from '../../lib/router';
 import { addSpeakingAttempt } from '../../lib/state';
 import { mediaEnd, mediaStart, useStore } from '../../lib/store';
 import { DemoChip, ErrorCard, HomeworkStatus, Loading } from './shared';
+import { Marked } from './Marked';
 
 // ───────────────────────────────────────────────────────────────
 // Homework runner — performs written and speaking homework in place.
@@ -108,6 +109,7 @@ function Previous({ h, now }: { h: Homework; now: number }) {
           <p className="mt-1 leading-relaxed">{h.feedback.body}</p>
         </div>
       )}
+      <Marked h={h} />
       {h.status !== 'reviewed' && <p className="mt-2 text-xs text-ink-mute">Submitting again replaces this answer.</p>}
     </section>
   );

@@ -93,7 +93,7 @@ export function GameShell({ id, duration = 60, lives: startLives = 3, onExit, ch
     if (hw.isHomework) {
       const l = logRef.current;
       const correct = l.filter((x) => x.correct).length;
-      hw.submit({ score: l.length ? correct / l.length : 0, attempts: l.length, correct, summary: `${info.title}: ${h.score} points · ${correct}/${l.length} correct · best streak ${bestCombo}` });
+      hw.submit({ score: l.length ? correct / l.length : 0, attempts: l.length, correct, summary: `${info.title}: ${h.score} points · ${correct}/${l.length} correct · best streak ${bestCombo}`, items: l.slice(0, 60).map((x) => ({ prompt: info.title, expected: x.label, given: x.detail ?? x.label, correct: x.correct, ...(x.category ? { category: x.category } : {}) })) });
     }
   }, [id, update, state.games, bestCombo, hw, info.title]);
 

@@ -2,7 +2,7 @@ import type { AppState } from '../../types';
 import { ApiError, platformApi, type PlatformKind, type Session } from '../cloud';
 import { migrate } from '../state';
 import { PlatformError, findOverlap, uid, validateBooking, type PlatformBackend } from './backend';
-import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, Person, StudentSettings, TeacherConfig } from './types';
+import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, Marking, Person, StudentSettings, TeacherConfig } from './types';
 import { settingsId } from './level';
 import { DEFAULT_TEACHER_CONFIG } from './types';
 
@@ -170,11 +170,11 @@ class CloudBackend implements PlatformBackend {
     return r.record;
   }
 
-  async reviewHomework(id: string, feedback: string) {
+  async reviewHomework(id: string, feedback: string, marking?: Omit<Marking, 'at'>) {
     this.assertTeacher();
     const cur = (await this.records<Homework>('homework')).find((h) => h.id === id);
     if (!cur) throw new PlatformError('not_found', 'Homework not found.');
-    const next: Homework = { ...cur, status: 'reviewed', feedback: { body: feedback, at: this.iso() } };
+    const next: Homework = { ...cur, status: 'reviewed', feedback: { body: feedback, at: this.iso() }, ...(marking ? { marking: { ...marking, at: this.iso() } } : {}) };
     return this.put('homework', id, next.studentId, next);
   }
 

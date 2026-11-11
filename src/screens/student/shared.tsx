@@ -6,6 +6,7 @@ import { usePlatform, usePlatformQuery } from '../../lib/platform/context';
 import { describeActivity, homeworkRoute } from '../../lib/platform/homework';
 import { addMinutes, browserZone, fmtDate, fmtDateTime, fmtTime, relative, utcIsoToZoned, zoneLabel } from '../../lib/platform/time';
 import { HOMEWORK_KIND_LABEL, type Booking, type Feedback, type FeedbackKind, type Homework } from '../../lib/platform/types';
+import { markLabel } from '../../lib/platform/marking';
 import { navigate } from '../../lib/router';
 import { downloadIcs, isMeetingLink } from './ics';
 
@@ -294,7 +295,7 @@ export function HomeworkCard({ h, now, highlight, index = 0 }: { h: Homework; no
       )}
       {h.feedback && (
         <div className="mt-3 rounded-2xl bg-olive-50 p-3 text-sm">
-          <p className="eyebrow !text-olive">Dina’s feedback · {relative(h.feedback.at, now)}</p>
+          <p className="eyebrow !text-olive">Dina’s feedback · {relative(h.feedback.at, now)}{markLabel(h.marking) ? ` · marked ${markLabel(h.marking)}` : ''}{h.marking?.corrections?.length ? ` · ${h.marking.corrections.length} correction${h.marking.corrections.length === 1 ? '' : 's'}` : ''}</p>
           <p className="mt-1">{h.feedback.body}</p>
         </div>
       )}

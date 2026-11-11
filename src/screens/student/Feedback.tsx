@@ -1,6 +1,7 @@
 import { Icon } from '../../components/Icon';
 import { Empty, PageHeader } from '../../components/ui';
 import { describeActivity } from '../../lib/platform/homework';
+import { markLabel } from '../../lib/platform/marking';
 import { fmtDateTime, relative } from '../../lib/platform/time';
 import type { FeedbackKind } from '../../lib/platform/types';
 import { navigate } from '../../lib/router';
@@ -48,9 +49,9 @@ export function FeedbackPage() {
                       <p className="font-semibold">{h.activity.title}</p>
                       <p className="text-xs text-ink-mute">{fmtDateTime(h.feedback!.at)} · {relative(h.feedback!.at, now)}</p>
                     </div>
-                    <p className="text-xs text-ink-mute">{describeActivity(h.activity)}{h.result?.summary ? ` · ${h.result.summary}` : ''}</p>
+                    <p className="text-xs text-ink-mute">{describeActivity(h.activity)}{h.result?.summary ? ` · ${h.result.summary}` : ''}{markLabel(h.marking) ? ` · marked ${markLabel(h.marking)}` : ''}{h.marking?.corrections?.length ? ` · ${h.marking.corrections.length} correction${h.marking.corrections.length === 1 ? '' : 's'}` : ''}</p>
                     <p className="mt-2 rounded-xl bg-olive-50 px-3 py-2 text-sm leading-relaxed">{h.feedback!.body}</p>
-                    <button className="ctrl mt-2" onClick={() => navigate(`homework/${h.id}`)}><Icon name="eye" size={14} /> View homework</button>
+                    <button className="ctrl mt-2" onClick={() => navigate(`homework/${h.id}`)}><Icon name="eye" size={14} /> {h.marking ? 'See the marking' : 'View homework'}</button>
                   </li>
                 ))}
               </ul>

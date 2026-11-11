@@ -65,6 +65,19 @@ export interface HomeworkActivity {
 
 export type HomeworkStatus = 'assigned' | 'submitted' | 'reviewed';
 
+/** One answer the student gave inside an activity, kept so the teacher can go through the work item by item. */
+export interface ResultItem {
+  /** What was asked: a pronoun and verb, a sentence with a gap, a word to recall, a line to reply to. */
+  prompt: string;
+  /** The right answer, when the activity knows it. */
+  expected?: string;
+  /** What the student answered. */
+  given: string;
+  correct: boolean;
+  /** The app's diagnosis of the slip (an ErrorCategory) when wrong. */
+  category?: string;
+}
+
 export interface HomeworkResult {
   completedAt: string;
   /** 0..1 when the activity scores itself. */
@@ -77,6 +90,38 @@ export interface HomeworkResult {
   text?: string;
   /** Recording id in the device's IndexedDB (speaking homework; stays on the device). */
   recordingId?: string;
+  /** The answers, in order (capped at 60), for the teacher's marking. */
+  items?: ResultItem[];
+}
+
+/** The teacher's note on one answer in the result's item list. */
+export interface MarkedItem {
+  /** Index into HomeworkResult.items. */
+  index: number;
+  /** Overrides the app's verdict when set (the teacher accepts an answer the app rejected, or the reverse). */
+  ok?: boolean;
+  comment?: string;
+}
+
+/** A correction to a passage of written or spoken work. */
+export interface Correction {
+  /** The student's words, quoted exactly. */
+  quote: string;
+  /** What it should be. */
+  correction: string;
+  note?: string;
+  category?: FocusTag;
+}
+
+/** The teacher's marking of one piece of homework. */
+export interface Marking {
+  at: string;
+  /** The teacher's mark, 0..1 (shown as a percentage). */
+  score?: number;
+  /** A free grade label such as "B+" or "8/10". */
+  grade?: string;
+  items?: MarkedItem[];
+  corrections?: Correction[];
 }
 
 export interface Homework {
@@ -90,6 +135,8 @@ export interface Homework {
   status: HomeworkStatus;
   result?: HomeworkResult;
   feedback?: { body: string; at: string };
+  /** The teacher's marking (score or grade, per-answer notes, corrections). */
+  marking?: Marking;
   /** Set when the item belongs to a generated weekly plan; `adaptive` marks items the app added from results. */
   plan?: { week: string; goal?: string; day?: number; adaptive?: 'retry' | 'stretch'; sourceId?: string };
 }
@@ -97,10 +144,11 @@ export interface Homework {
 export type FeedbackKind = 'comment' | 'correction' | 'recommendation' | 'debrief';
 
 /** Things a lesson can surface that the week's work should target. */
-export type FocusTag = 'person-agreement' | 'accents' | 'stem-change' | 'irregular-verbs' | 'ser-estar' | 'vocabulary' | 'listening' | 'speaking' | 'pronunciation' | 'spelling' | 'confidence';
+export type FocusTag = 'person-agreement' | 'accents' | 'stem-change' | 'irregular-verbs' | 'ser-estar' | 'vocabulary' | 'listening' | 'speaking' | 'pronunciation' | 'spelling' | 'confidence' | 'gender-agreement' | 'tense-choice' | 'prepositions' | 'word-order' | 'punctuation';
 export const FOCUS_TAG_LABEL: Record<FocusTag, string> = {
   'person-agreement': 'Verb endings (person agreement)', accents: 'Accents', 'stem-change': 'Stem changes (e→ie, o→ue)', 'irregular-verbs': 'Irregular verbs', 'ser-estar': 'Ser vs estar',
   vocabulary: 'Vocabulary', listening: 'Listening', speaking: 'Speaking', pronunciation: 'Pronunciation', spelling: 'Spelling / writing', confidence: 'Confidence',
+  'gender-agreement': 'Gender and number agreement', 'tense-choice': 'Choosing the right tense', prepositions: 'Prepositions (a, de, en, por, para)', 'word-order': 'Word order', punctuation: 'Punctuation and capitals',
 };
 
 /** The teacher's notes after a lesson. Drives the generated weekly plan. */

@@ -14,6 +14,7 @@ import { completeLesson, recordAttempt } from '../lib/state';
 import { useStore } from '../lib/store';
 import { sfx } from '../lib/fx';
 import { useHomeworkCompletion } from '../lib/platform/homework';
+import type { ResultItem } from '../lib/platform/types';
 import { TECHNIQUE_LABEL } from '../lib/report';
 import type { ErrorCategory, MemoryTechnique, SrsCard } from '../types';
 
@@ -64,6 +65,7 @@ function ReviewSession({ items, onDone }: { items: Item[]; onDone: () => void })
   const [score, setScore] = useState({ ok: 0, total: 0 });
   const inputRef = useRef<HTMLInputElement>(null);
   const hw = useHomeworkCompletion();
+  const answers = useRef<ResultItem[]>([]);
   const it = items[i];
 
   const check = (given: string) => {
@@ -78,6 +80,7 @@ function ReviewSession({ items, onDone }: { items: Item[]; onDone: () => void })
       mistake: !ok || accent ? { expected: it.display, given, category: category ?? 'other', context: 'Memory review' } : undefined,
     }));
     setScore((s) => ({ ok: s.ok + (ok ? 1 : 0), total: s.total + 1 }));
+    if (answers.current.length < 60) answers.current.push({ prompt: it.prompt, expected: it.display, given, correct: ok, ...(category && !ok ? { category } : {}) });
     setRes({ ok, accent, category });
     if (ok) sfx.correct(); else sfx.wrong();
     setPhase('result');
@@ -90,7 +93,7 @@ function ReviewSession({ items, onDone }: { items: Item[]; onDone: () => void })
     setHint(false);
     if (i + 1 >= items.length) {
       update((s) => completeLesson(s));
-      if (hw.isHomework) hw.submit({ score: score.total ? (score.ok + 1) / (score.total + 1) : 0, attempts: score.total + 1, correct: score.ok + 1, summary: `${score.ok + 1}/${score.total + 1} recalled` });
+      if (hw.isHomework) hw.submit({ score: score.total ? (score.ok + 1) / (score.total + 1) : 0, attempts: score.total + 1, correct: score.ok + 1, summary: `${score.ok + 1}/${score.total + 1} recalled`, items: answers.current });
       else hw.log('review', `Memory review: ${score.ok + 1}/${score.total + 1} recalled`);
       setI(items.length);
       return;

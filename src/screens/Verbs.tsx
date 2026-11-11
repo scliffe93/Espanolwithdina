@@ -40,6 +40,20 @@ interface Result {
 
 // ─────────────────────────── Session player ───────────────────────────
 
+/** What the student was asked, in one line, for the teacher's answer sheet. */
+function promptFor(ex: Exercise): string {
+  const tenseLabel = (t: Tense) => TENSES.find((x) => x.id === t)?.label.toLowerCase() ?? t;
+  switch (ex.kind) {
+    case 'type': case 'choice': case 'listen': return `${ex.pronoun} + ${ex.verb} (${tenseLabel(ex.tense)})`;
+    case 'context': return `Fill the gap: ${ex.example.en}`;
+    case 'build': return `Build the sentence: ${ex.example.en}`;
+    case 'fix': return `Fix the mistake: ${ex.example.en}`;
+    case 'translate': return `Translate: ${ex.example.en}`;
+    case 'match': return `Match the forms of ${ex.verb} (${tenseLabel(ex.tense)})`;
+    case 'serEstar': return `${ex.item.before} ___ ${ex.item.after}`.trim();
+  }
+}
+
 function Session({ exercises: initial, tense, onExit }: { exercises: Exercise[]; tense: Tense; onExit: () => void }) {
   const { update } = useStore();
   const say = useSay();
@@ -47,7 +61,7 @@ function Session({ exercises: initial, tense, onExit }: { exercises: Exercise[];
   const [i, setI] = useState(0);
   const [result, setResult] = useState<Result | null>(null);
   const [hintUsed, setHintUsed] = useState(false);
-  const [log, setLog] = useState<{ verb: string; correct: boolean; category?: ErrorCategory; expected: string; given: string }[]>([]);
+  const [log, setLog] = useState<{ verb: string; correct: boolean; category?: ErrorCategory; expected: string; given: string; prompt: string }[]>([]);
   const [done, setDone] = useState(false);
   const requeued = useRef(new Set<number>());
   const hw = useHomeworkCompletion();
@@ -73,7 +87,7 @@ function Session({ exercises: initial, tense, onExit }: { exercises: Exercise[];
           })
         : s,
     );
-    setLog((l) => [...l, { verb: verbInf, correct: r.correct, category: r.category, expected: r.expected, given: r.given }]);
+    setLog((l) => [...l, { verb: verbInf, correct: r.correct, category: r.category, expected: r.expected, given: r.given, prompt: promptFor(ex) }]);
     // Revisit mistakes automatically later in the session, as a production exercise.
     // Revisit a mistake once; a retry that is also wrong is left for spaced repetition (no endless loops).
     if (!r.correct && card && !requeued.current.has(i) && ex.kind !== 'serEstar' && !(ex as { retry?: boolean }).retry) {
@@ -95,7 +109,7 @@ function Session({ exercises: initial, tense, onExit }: { exercises: Exercise[];
       if (hw.isHomework) {
         const correct = log.filter((l) => l.correct).length;
         const cats = [...new Set(log.filter((l) => !l.correct && l.category).map((l) => CATEGORY_LABEL[l.category!]))];
-        hw.submit({ score: log.length ? correct / log.length : 0, attempts: log.length, correct, summary: `${correct}/${log.length} correct${cats.length ? ` · ${cats.slice(0, 2).join(', ').toLowerCase()}` : ''}` });
+        hw.submit({ score: log.length ? correct / log.length : 0, attempts: log.length, correct, summary: `${correct}/${log.length} correct${cats.length ? ` · ${cats.slice(0, 2).join(', ').toLowerCase()}` : ''}`, items: log.slice(0, 60).map((l) => ({ prompt: l.prompt, expected: l.expected, given: l.given, correct: l.correct, ...(l.category ? { category: l.category } : {}) })) });
       }
       sfx.win();
       if (log.filter((l) => l.correct).length / Math.max(1, log.length) >= 0.7) confetti({ count: 120 });
