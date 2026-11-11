@@ -65,6 +65,7 @@ async function shot(p, name, opts = {}) { await clean(p); await p.waitForTimeout
   await p.locator('article', { hasText: 'From “Mi semana en Madrid”' }).first().locator('[data-testid^="hw-start-"]').click(); await p.waitForTimeout(1500);
   await shot(p, 's-material');
   await p.goto(BASE + '#/review'); await p.waitForTimeout(1500); await shot(p, 's-packs', { fullPage: true });
+  await clean(p); await p.locator('[data-testid="word-packs"]').screenshot({ path: `${OUT}/s-packs-section.png` }); console.log('•', 's-packs-section');
   // Dina marks the written homework
   await p.goto(BASE + '#/demo'); await p.waitForTimeout(800); await p.getByTestId('demo-dina').click(); await p.waitForTimeout(1800);
   await p.goto(BASE + '#/teach/student/demo-sam?tab=homework'); await p.waitForTimeout(1500);

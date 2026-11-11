@@ -217,7 +217,7 @@ const studentSections = [
     <ul class="ticks"><li>Accents matter: type them. On a phone, hold the letter; on a computer use the keys shown.</li><li>Add a personal association to a card you keep forgetting; the app tracks which memory techniques work for you.</li></ul>`],
   ['Grammar drills, tenses and word packs', `
     <p>In the verb gym you can drill ten tenses and five grammar points: ser vs estar, por vs para, preterite vs imperfect, subjunctive or not, and if-sentences. Each has the level it is recommended from.</p>
-    ${figure('s-packs', 'h3', 'Word packs on the Memory page: ten words on one theme, from A1 to C2. Learn a pack now, or add it to your deck for the reviews.')}
+    ${figure('s-packs-section', 'h3', 'Word packs on the Memory page: ten words on one theme, from A1 to C2. Learn a pack now, or add it to your deck for the reviews.')}
     <ul class="ticks"><li>If Dina has set a level for you, tenses, drills and packs above it are locked until she raises it; anything she assigns still opens.</li></ul>`],
   ['How the app adapts to you', `
     <p>You never have to decide what to practise. The app watches what you do and adjusts.</p>
