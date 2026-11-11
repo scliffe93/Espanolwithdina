@@ -41,5 +41,45 @@ async function shot(p, name, opts = {}) { await clean(p); await p.waitForTimeout
   const m = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }); const mp = await m.newPage();
   await mp.goto(BASE + '#/demo'); await mp.waitForTimeout(1200); await mp.getByTestId('demo-sam').click(); await mp.waitForTimeout(1800);
   await mp.goto(BASE + '#/student'); await mp.waitForTimeout(1800); await clean(mp); await mp.screenshot({ path: `${OUT}/s-home-phone.png` }); console.log('• s-home-phone');
+  // ── New screens: level access, marking, material, packs ──
+  const TEXT = 'El lunes fui al mercado con mi vecina Carmen. Compramos fruta, pan y un poco de queso. Por la tarde trabajé en casa y después cené con mis amigos en un bar de Lavapiés. El martes no pude salir porque llovía mucho. Leí un libro y escuché música toda la tarde. Ahora vivo en un piso pequeño cerca del metro. Me gusta mucho el barrio.';
+  await p.goto(BASE + '#/demo'); await p.waitForTimeout(800); await p.getByTestId('demo-dina').click(); await p.waitForTimeout(1800);
+  await p.goto(BASE + '#/teach/student/demo-sam'); await p.waitForTimeout(1500);
+  await p.getByRole('button', { name: 'Assign homework' }).first().click(); await p.waitForTimeout(900);
+  await p.locator('#hw-template').selectOption({ label: 'From a document or text (your own material)' }); await p.waitForTimeout(400);
+  await p.getByTestId('material-text').fill(TEXT); await p.getByTestId('material-title').fill('Mi semana en Madrid');
+  await p.getByTestId('material-analyse').click(); await p.waitForTimeout(1200);
+  await p.getByTestId('material-questions').fill('¿Qué compró el lunes?'); await p.waitForTimeout(300);
+  await shot(p, 't-material');
+  await p.getByTestId('hw-assign-submit').click({ noWaitAfter: true }); await p.waitForTimeout(1800);
+  await p.getByRole('button', { name: 'Assign homework' }).first().click(); await p.waitForTimeout(900);
+  await p.locator('#hw-template').selectOption({ label: 'Written homework' }); await p.waitForTimeout(300);
+  await p.locator('#hw-prompt').fill('Preséntate: de dónde eres y qué haces.'); await p.locator('#hw-minwords').fill('5'); await p.locator('#hw-title').fill('Written: present yourself');
+  await p.getByTestId('hw-assign-submit').click({ noWaitAfter: true }); await p.waitForTimeout(1800);
+  // Sam does the written homework and starts the material exercises
+  await p.goto(BASE + '#/demo'); await p.waitForTimeout(800); await p.getByTestId('demo-sam').click(); await p.waitForTimeout(1800);
+  await p.goto(BASE + '#/student/homework'); await p.waitForTimeout(1500);
+  await p.locator('article', { hasText: 'Written: present yourself' }).first().locator('[data-testid^="hw-start-"]').click(); await p.waitForTimeout(1200);
+  await p.getByTestId('hw-text').fill('Hola, yo estoy de Londres y trabajo en un banco. Me gusta mucho Madrid.'); await p.getByTestId('hw-submit').click(); await p.waitForTimeout(1500);
+  await p.goto(BASE + '#/student/homework'); await p.waitForTimeout(1500);
+  await p.locator('article', { hasText: 'From “Mi semana en Madrid”' }).first().locator('[data-testid^="hw-start-"]').click(); await p.waitForTimeout(1500);
+  await shot(p, 's-material');
+  await p.goto(BASE + '#/review'); await p.waitForTimeout(1500); await shot(p, 's-packs', { fullPage: true });
+  // Dina marks the written homework
+  await p.goto(BASE + '#/demo'); await p.waitForTimeout(800); await p.getByTestId('demo-dina').click(); await p.waitForTimeout(1800);
+  await p.goto(BASE + '#/teach/student/demo-sam?tab=homework'); await p.waitForTimeout(1500);
+  await p.locator('article', { hasText: 'Written: present yourself' }).first().getByRole('button', { name: /Review|Details/ }).click(); await p.waitForTimeout(900);
+  await p.getByTestId('rv-quote').fill('estoy de Londres'); await p.getByTestId('rv-correction').fill('soy de Londres'); await p.getByTestId('rv-category').selectOption('ser-estar'); await p.getByTestId('rv-add-correction').click(); await p.waitForTimeout(300);
+  await p.getByTestId('rv-mark').fill('70'); await p.getByTestId('rv-grade').fill('B'); await p.locator('#rv-feedback').fill('Buen trabajo. Recuerda: origen → ser.');
+  await shot(p, 't-marking');
+  await p.getByTestId('rv-save').click(); await p.waitForTimeout(1500);
+  await p.goto(BASE + '#/teach/student/demo-sam'); await p.waitForTimeout(1500);
+  await p.getByTestId('level-edit').click(); await p.getByTestId('level-select').selectOption('B1'); await p.getByTestId('level-save').click(); await p.waitForTimeout(1200);
+  await shot(p, 't-level');
+  // Sam sees the marking
+  await p.goto(BASE + '#/demo'); await p.waitForTimeout(800); await p.getByTestId('demo-sam').click(); await p.waitForTimeout(1800);
+  await p.goto(BASE + '#/student/feedback'); await p.waitForTimeout(1500);
+  await p.locator('li', { hasText: 'Written: present yourself' }).first().getByRole('button', { name: 'See the marking' }).click(); await p.waitForTimeout(1500);
+  await shot(p, 's-marked', { fullPage: true });
   await b.close();
 })().catch((e) => { console.error(e); process.exit(1); });

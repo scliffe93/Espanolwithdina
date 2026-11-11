@@ -103,7 +103,7 @@ function Previous({ h, now }: { h: Homework; now: number }) {
     <section className="card mt-4 p-5" aria-label="Your previous submission">
       <p className="eyebrow">{h.status === 'reviewed' ? 'Reviewed by Dina' : 'Already submitted'} · {relative(r.completedAt, now)}</p>
       {r.summary && <p className="mt-1 text-sm font-medium">{r.summary}</p>}
-      {r.text && <blockquote lang="es" className="mt-2 whitespace-pre-wrap rounded-2xl bg-cream-100 p-3 text-sm leading-relaxed">{r.text}</blockquote>}
+      {r.text && !h.marking?.corrections?.length && <blockquote lang="es" className="mt-2 whitespace-pre-wrap rounded-2xl bg-cream-100 p-3 text-sm leading-relaxed">{r.text}</blockquote>}
       {h.feedback && (
         <div className="mt-3 rounded-2xl bg-olive-50 p-3 text-sm">
           <p className="eyebrow !text-olive">Dina’s feedback · {relative(h.feedback.at, now)}</p>

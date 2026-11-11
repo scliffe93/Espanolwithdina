@@ -119,6 +119,9 @@ const teacherSections = [
     <p>Open any student to see their <b>Journey</b> (levels, verbs, vocabulary, storylines), <b>Analytics</b>, <b>Lessons</b>, <b>Homework</b>, <b>Feedback</b> and <b>Activity</b>. The buttons at the top are your main actions.</p>
     ${figure('t-profile', 'h2', 'The profile header with Lesson debrief &amp; week plan, Book a lesson and Assign homework.')}
     <ul class="ticks"><li><b>Lesson debrief &amp; week plan</b>: the main way to set the week’s work (next pages).</li><li><b>Book a lesson</b>: date, time, duration, online or face to face. Clashes with other lessons are refused. Students see the time in their own time zone.</li><li><b>Assign homework</b>: a single task when you need one outside the plan.</li></ul>`],
+  ['Level access: what a student can open', `
+    <p>On a student’s profile, <b>Level access</b> sets the highest level of work they can open on their own, from A1 to C2, with an optional note (“GCSE in June: stay on A2 until then”).</p>
+    <ul class="ticks"><li>In their app, tenses, grammar drills and word packs above the ceiling are locked, and they cannot choose a higher level for themselves.</li><li>Homework you assign always opens, whatever the ceiling; the assignment form and the debrief tell you when a task sits above it.</li><li>The app never adds a stretch task above the ceiling on its own.</li></ul>`],
   ['After each lesson: the debrief', `
     <p>Spend two minutes after every lesson. The debrief is both the note your student reads and the brief the app uses to build their week.</p>
     <ol class="steps"><li>Open the student and tap <b>Lesson debrief &amp; week plan</b>.</li><li>Tick the <b>tenses</b> and type the <b>verbs</b> you covered (the app suggests infinitives as you type), the <b>themes</b> you talked about and, if you used one, the <b>storyline chapter</b>.</li><li>Write a short <b>note for the student</b>: what went well, what you did.</li><li>Tick <b>what to fix this week</b>: verb endings, accents, stem changes, irregular verbs, ser vs estar, vocabulary, listening, speaking, pronunciation, spelling, confidence.</li><li>Add up to three <b>goals</b> and the <b>minutes a day</b> to aim for, then tap <b>Generate the week’s plan</b>.</li></ol>
@@ -131,11 +134,20 @@ const teacherSections = [
   ['Reviewing homework', `
     <p>Everything students submit appears under <b>Homework</b>, grouped by status. Games and drills score themselves; written and speaking homework show you the text or the recording.</p>
     ${figure('t-homework', 'h2', 'The Homework page: awaiting review, assigned, reviewed.')}
+    ${figure('t-marking', 'h2', 'The marking sheet: the student’s answers one by one, a mark or grade, and corrections quoted from their own words.')}
     <ol class="steps"><li>Open a submitted item. You see the score, attempts and a short summary, plus the written answer or the player for a recording.</li><li>Go through the answers one by one (accept one the app rejected, or leave a note on it), give a mark or a grade, and for written or spoken work add corrections: quote the student’s words, say what they should be and tag the type of slip. Then write your feedback and tap <b>Save marking</b>. The student sees the mark, the corrections over their own words and your notes on their home page and Feedback page, and the tagged slips pre-fill <i>what to fix</i> in your next debrief.</li><li>Outside homework, use the <b>Feedback</b> tab on a profile for comments, corrections and recommendations.</li></ol>`],
+  ['Homework from your own material', `
+    <p>Choose <b>From a document or text</b> when assigning homework, or <b>Add exercises from a document or text</b> in the plan step of a debrief. Drop in a PDF, a Word file or a text file, or paste a page from your course book.</p>
+    ${figure('t-material', 'h2', 'The builder reads the text in your browser, shows the verbs and tenses it found, and builds exercises from the document’s own sentences.')}
+    <ol class="steps"><li>Tap <b>Read the text and build exercises</b>. You see the words, the usable sentences, the verbs and tenses the app recognised and the vocabulary it knows.</li><li>Pick the exercise types (gap-fills on the verbs, sentence building, dictation, vocabulary meaning), the tenses to target, how many exercises, and add your own questions, one per line.</li><li>Check the preview, <b>Regenerate</b> for a different set, then assign. Nothing is uploaded anywhere.</li></ol>
+    <div class="tip"><b>Your questions are marked by you.</b> Everything else scores itself; every answer, including the open questions, appears on the marking sheet.</div>`],
   ['Analytics and reports', `
     <p>The <b>Analytics</b> tab on each profile is computed from the student’s recorded activity: nothing is estimated.</p>
     ${figure('t-analytics', 'h2', 'Consistency heatmap, eight-week trends, accuracy by exercise type, mistakes with real examples, tenses, vocabulary deck, homework and the generated focus for your next lesson.')}
     <ul class="ticks"><li><b>Download PDF report</b> on the Analytics tab gives you a printable report for one student.</li><li><b>Class summary (CSV)</b> on the Students page opens in Excel or Numbers: one row per student.</li></ul>`],
+  ['Tenses, grammar drills and word packs', `
+    <p>The verb gym drills ten tenses: present, present progressive, present perfect, preterite, imperfect, commands, future, conditional, present subjunctive and imperfect subjunctive, across 376 verbs from A1 to C2, each tense recommended from a level.</p>
+    <ul class="ticks"><li><b>Grammar drills</b>: ser vs estar (A1), por vs para (A2), preterite vs imperfect (B1), subjunctive or indicative (B1) and if-sentences (B2). Assign one from the homework templates, or let the debrief add one when you tick <i>prepositions</i> or <i>tense choice</i>.</li><li><b>Word packs</b>: fifteen packs of ten words from A1 (at home, food) to C2 (proverbs, literary register). Assign a pack as homework and it opens straight into its words; the week plan adds one at the student’s level when vocabulary needs work.</li><li>The placement assessment goes up to C2.</li></ul>`],
   ['Calendar and lessons', `
     <p>The <b>Calendar</b> shows the week or the month. Book, move or cancel lessons here or from a student’s profile.</p>
     ${figure('t-calendar', 'h2', 'Week view. Lessons show in your time zone; students see them in theirs.')}
@@ -179,6 +191,14 @@ const studentSections = [
     <p>The <b>Homework</b> page lists everything Dina has set, with the deadline and what each task involves.</p>
     ${figure('s-homework', 'h2', 'Homework: due soon, assigned, submitted and reviewed.')}
     <ul class="ticks"><li><b>Verb drills and games</b> score themselves; you see the result straight away and Dina sees it too.</li><li><b>Written homework</b> opens an editor with a word count. <b>Speaking homework</b> opens the recorder; listen back, re-record if you like, then submit. Recordings stay on your device unless you share them.</li><li>Dina’s feedback on a task appears under the task and on your Feedback page.</li></ul>`],
+  ['Marked homework and corrections', `
+    <p>When Dina marks your homework you see her mark or grade, your own words with her corrections highlighted, and her notes on single answers.</p>
+    ${figure('s-marked', 'h2', 'A marked piece of written homework: the correction over your words, the reason, and the type of slip.')}
+    <ul class="ticks"><li>Open it from <b>My homework</b> or from <b>Feedback</b> (“See the marking”).</li><li>Slips she tags come back as practice in your next week plan.</li></ul>`],
+  ['Exercises from Dina’s own material', `
+    <p>Some homework is built from a page Dina gave you: a reading, a worksheet, a transcript. The exercises use the text’s own sentences: fill the gap with the right verb form, rebuild a sentence, type what you hear, choose the meaning of a word, and answer Dina’s own questions.</p>
+    ${figure('s-material', 'h3', 'A gap-fill from the lesson text, with the verb and tense shown under it.')}
+    <ul class="ticks"><li>Every answer goes to Dina; her questions are marked by her, the rest scores itself.</li><li>Verb and vocabulary answers also join your memory deck.</li></ul>`],
   ['Learning on your own', `
     <p>Between lessons the whole app is yours. Ten minutes a day beats an hour once a week.</p>
     <div class="cards">
@@ -195,6 +215,10 @@ const studentSections = [
   ['Verbs and memory', `
     <div class="two"><div>${figure('s-verbs', '', 'Verb gym: choose a tense and the verbs to drill.')}</div><div>${figure('s-review', '', 'Memory review: the cards due today.')}</div></div>
     <ul class="ticks"><li>Accents matter: type them. On a phone, hold the letter; on a computer use the keys shown.</li><li>Add a personal association to a card you keep forgetting; the app tracks which memory techniques work for you.</li></ul>`],
+  ['Grammar drills, tenses and word packs', `
+    <p>In the verb gym you can drill ten tenses and five grammar points: ser vs estar, por vs para, preterite vs imperfect, subjunctive or not, and if-sentences. Each has the level it is recommended from.</p>
+    ${figure('s-packs', 'h3', 'Word packs on the Memory page: ten words on one theme, from A1 to C2. Learn a pack now, or add it to your deck for the reviews.')}
+    <ul class="ticks"><li>If Dina has set a level for you, tenses, drills and packs above it are locked until she raises it; anything she assigns still opens.</li></ul>`],
   ['How the app adapts to you', `
     <p>You never have to decide what to practise. The app watches what you do and adjusts.</p>
     <dl class="kv"><dt>Under 60% on a task</dt><dd>A shorter re-try appears two days later.</dd><dt>90% or more on a verb drill</dt><dd>A stretch task appears in the next tense.</dd><dt>Memory deck</dt><dd>Words and verbs come back just before you would forget them.</dd><dt>Your mistakes</dt><dd>Drills lean towards the verbs and patterns you get wrong most.</dd><dt>Dina’s debrief</dt><dd>Each week’s plan is built from her notes and your own data.</dd></dl>
