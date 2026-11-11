@@ -1,14 +1,14 @@
-Subject: What your students do between lessons
+Subject: The admin after your last lesson
 
-Hi {{first_name}},
+{{greeting}}
 
-Picture one of your students on the bus home, two days after their lesson. They open an app with your name on it. The home screen says "This week with {{school}}": the homework from that lesson, as a short plan. Ser o Estar first, because that is what tripped them up; then a penalty shoot-out for their city's club, in that city's Spanish.
+This is about the part of teaching nobody pays you for: after the last lesson, typing homework into WhatsApp, updating the notebook, promising someone an invoice tomorrow.
 
-You wrote none of it. After the lesson you spent two minutes ticking what went well and what to work on, and the app drafted the week. The moment they finish, you know how it went.
+I built an app that takes that off your evening. Two minutes of notes after each lesson, what went well and what to work on, and it drafts the week's homework. You change what you like. Your students open it on their phone, on the bus home, and the moment they finish you know how it went. Invoices come from the lessons you have taught, in one click.
 
-I built this for one tutor, Dina. Her students use it now. I have made a page showing {{school}}'s version, with your name already on the card.
+The tutor I built it for, Dina, has taught with it since [month]. Not a prototype. I have made a page with {{school}}'s name on it.
 
-YOUR TURN. One of the seven games, in miniature: fill the gap and take a penalty for {{city}}'s club.
+YOUR TURN. One of the seven games, in miniature. Take a penalty for {{city}}'s club: fill the gap, then shoot.
 
    tú ___ (hablar, to speak)
 
@@ -16,24 +16,22 @@ YOUR TURN. One of the seven games, in miniature: fill the gap and take a penalty
    Centre:      hablas  {{pitch_url}}&shot=hablas
    Right post:  habla   {{pitch_url}}&shot=habla
 
-Open one and the page tells you if it went in.
+Open the form that scores. Your page says ¡GOL! or ¡Parada!, then offers a full sixty-second round. If the keeper saves it, blame the verb, not the striker.
 
-YOUR SIDE OF IT
-One Today view: lessons, homework due, who has gone quiet, who needs an invoice. Taught lessons become a numbered PDF invoice in one click. Lesson packages count down and warn you when someone is nearly out. A progress report per student, one click, for parents.
+WHAT YOUR STUDENTS GET
+An app on their phone that works offline, so no signal needed on the bus. The home screen says "This week with {{school}}". Seven games and seven city storylines; the football games use the club of the city each student is learning in, in that city's Spanish: penalti in Sevilla, penal in Buenos Aires.
 
 WHAT IT IS, HONESTLY
-Your own copy of Dina's app, in your name and colours, with your own illustrated tutor character. Nothing to install on a computer; students add it to their phone and it works offline. Set-up takes [about two weeks].
+Your own copy of Dina's app, in your name and colours, with your own illustrated tutor character. It does not teach for you: it takes the homework, the chasing and the invoices, and leaves you the lessons. Nothing to install on your computer. Set-up takes [about two weeks].
 
-See {{school}}'s own app: {{pitch_url}}
-Your name on the brand card, a sample week, what you would see, the prices, and a thirty-minute walkthrough to book if you like it.
-
-If it is not for you, you have lost forty seconds and gained a penalty shoot-out.
+See what {{school}}'s app could look like: {{pitch_url}}
+Your name on the card, a sample week, what you would see, and the prices, so you do not have to ask. Two minutes, nothing to download.
 
 {{sender_name}}
 Learning with Dina · [phone]
 
-P.S. Every screen on that page is a screenshot of the live app, not a mock-up. The penalty is the real game.
+P.S. If anything above does not look like your students, reply and tell me. It is just me at the other end, not a sales team, and I would rather know than guess.
 
 --
-You are getting this because {{school}} lists this address for business enquiries and I thought the app might suit your students. I am {{sender_name}}, the person behind Learning with Dina, writing to tutors one at a time. If you would rather not hear from me again, reply "no thanks" and I will not write again.
-[Your trading name], [postal address]. Privacy: https://scliffe93.github.io/Espanolwithdina/#/privacy
+You are getting this because {{school}}'s email address is published on your website as a business contact, and I thought this might be useful. I am {{sender_name}}; I make Learning with Dina on my own and write to tutors one at a time. If you would rather not hear from me again, reply "no thanks" and I will not write again.
+{{sender_name}}, Learning with Dina ([your trading name]), [postal address]. Privacy: https://scliffe93.github.io/Espanolwithdina/#/privacy

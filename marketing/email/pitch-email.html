@@ -6,7 +6,7 @@
 <meta name="x-apple-disable-message-reformatting">
 <meta name="color-scheme" content="light">
 <meta name="supported-color-schemes" content="light">
-<title>What your students do between lessons</title>
+<title>The admin after your last lesson</title>
 <!--[if mso]>
 <xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml>
 <style>table, td, th { font-family: Georgia, 'Times New Roman', serif !important; } .body-text, .body-text * { font-family: Arial, Helvetica, sans-serif !important; }</style>
@@ -60,10 +60,10 @@
 
   <!-- Opening -->
   <tr><td class="pad body-text" style="padding:28px 40px 0 40px;font-family:Arial,Helvetica,sans-serif;font-size:17px;line-height:26px;color:#1E1B18;">
-    <p style="margin:0 0 16px 0;">Hi {{first_name}},</p>
-    <p style="margin:0 0 16px 0;">Picture one of your students on the bus home, two days after their lesson. They open an app with your name on it. The home screen says <i>“This week with {{school}}”</i>: the homework from that lesson, as a short plan. Ser o Estar first, because that is what tripped them up; then a penalty shoot-out for their city’s club, in that city’s Spanish.</p>
-    <p style="margin:0 0 16px 0;">You wrote none of it. After the lesson you spent two minutes ticking what went well and what to work on, and the app drafted the week. The moment they finish, you know how it went.</p>
-    <p style="margin:0;">I built this for one tutor, Dina. Her students use it now. I have made a page showing {{school}}’s version, with your name already on the card.</p>
+    <p style="margin:0 0 16px 0;">{{greeting}}</p>
+    <p style="margin:0 0 16px 0;">This is about the part of teaching nobody pays you for: after the last lesson, typing homework into WhatsApp, updating the notebook, promising someone an invoice tomorrow.</p>
+    <p style="margin:0 0 16px 0;">I built an app that takes that off your evening. Two minutes of notes after each lesson, what went well and what to work on, and it drafts the week’s homework. You change what you like. Your students open it on their phone, on the bus home, and the moment they finish you know how it went. Invoices come from the lessons you have taught, in one click.</p>
+    <p style="margin:0;">The tutor I built it for, Dina, has taught with it since [month]. Not a prototype. I have made a page with {{school}}’s name on it.</p>
   </td></tr>
 
   <!-- Hero: the loop in three screens (animated where the client allows; the first frame elsewhere) -->
@@ -82,7 +82,7 @@
 
   <!-- The penalty -->
   <tr><td class="pad" style="padding:28px 40px 0 40px;">
-    <p class="body-text" style="margin:0 0 12px 0;font-family:Arial,Helvetica,sans-serif;font-size:17px;line-height:26px;color:#1E1B18;"><b>Your turn.</b> One of the seven games, in miniature: fill the gap and take a penalty for {{city}}’s club.</p>
+    <p class="body-text" style="margin:0 0 12px 0;font-family:Arial,Helvetica,sans-serif;font-size:17px;line-height:26px;color:#1E1B18;"><b>Your turn.</b> One of the seven games, in miniature. Take a penalty for {{city}}’s club: fill the gap, then shoot.</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#2E8B3D;border-radius:18px;">
       <tr><td align="center" style="padding:22px 16px 18px 16px;">
         <div class="body-text" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:16px;letter-spacing:2px;text-transform:uppercase;color:#D7EBD9;">El penalti · tú · hablar <span style="letter-spacing:0;text-transform:none;color:#BFE0C3;">(to speak)</span></div>
@@ -96,10 +96,15 @@
                 <td width="33%" align="center" style="padding:0 4px;"><a class="post post-text" href="{{pitch_url}}&amp;shot=hablas" style="display:block;background:#FFFFFF;color:#1E1B18;font-family:Georgia,'Times New Roman',serif;font-size:20px;line-height:24px;font-weight:bold;text-decoration:none;padding:16px 4px;border-radius:12px;">hablas</a></td>
                 <td width="33%" align="center" style="padding:0 4px;"><a class="post post-text" href="{{pitch_url}}&amp;shot=habla" style="display:block;background:#FFFFFF;color:#1E1B18;font-family:Georgia,'Times New Roman',serif;font-size:20px;line-height:24px;font-weight:bold;text-decoration:none;padding:16px 4px;border-radius:12px;">habla</a></td>
               </tr>
+              <tr class="body-text" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:16px;color:#D7EBD9;">
+                <td width="33%" align="center" style="padding:6px 4px 0 4px;">Left post</td>
+                <td width="33%" align="center" style="padding:6px 4px 0 4px;">Centre</td>
+                <td width="33%" align="center" style="padding:6px 4px 0 4px;">Right post</td>
+              </tr>
             </table>
           </td></tr>
         </table>
-        <div class="body-text" style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:18px;color:#D7EBD9;padding-top:12px;">Left post, centre or right post. Tap one and the page tells you if it went in.</div>
+        <div class="body-text" style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:18px;color:#D7EBD9;padding-top:12px;">Tap the form that scores. Your page says ¡GOL! or ¡Parada!, then offers a full sixty-second round. If the keeper saves it, blame the verb, not the striker.</div>
       </td></tr>
     </table>
   </td></tr>
@@ -111,8 +116,8 @@
         <td class="stack stack-pad" width="50%" valign="top" style="padding:0 10px 0 0;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F3E9DA;border-radius:14px;">
             <tr><td class="body-text" style="padding:18px 18px 20px 18px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:22px;color:#4A4238;">
-              <div class="display" style="font-family:'Fraunces',Georgia,'Times New Roman',serif;font-size:19px;line-height:24px;font-weight:600;color:#1E1B18;padding-bottom:6px;">Your side of it</div>
-              One Today view: lessons, homework due, who has gone quiet, who needs an invoice. Taught lessons become a numbered PDF invoice in one click. Lesson packages count down and warn you when someone is nearly out. A progress report per student, one click, for parents.
+              <div class="display" style="font-family:'Fraunces',Georgia,'Times New Roman',serif;font-size:19px;line-height:24px;font-weight:600;color:#1E1B18;padding-bottom:6px;">What your students get</div>
+              An app on their phone that works offline, so no signal needed on the bus. The home screen says <i>“This week with {{school}}”</i>. Seven games and seven city storylines; the football games use the club of the city each student is learning in, in that city’s Spanish: penalti in Sevilla, penal in Buenos Aires.
             </td></tr>
           </table>
         </td>
@@ -120,7 +125,7 @@
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F3E9DA;border-radius:14px;">
             <tr><td class="body-text" style="padding:18px 18px 20px 18px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:22px;color:#4A4238;">
               <div class="display" style="font-family:'Fraunces',Georgia,'Times New Roman',serif;font-size:19px;line-height:24px;font-weight:600;color:#1E1B18;padding-bottom:6px;">What it is, honestly</div>
-              Your own copy of Dina’s app, in your name and colours, with your own illustrated tutor character. Nothing to install on a computer; students add it to their phone and it works offline. Set-up takes [about two weeks].
+              Your own copy of Dina’s app, in your name and colours, with your own illustrated tutor character. It does not teach for you: it takes the homework, the chasing and the invoices, and leaves you the lessons. Nothing to install on your computer. Set-up takes [about two weeks].
             </td></tr>
           </table>
         </td>
@@ -133,26 +138,25 @@
     <!--[if mso]>
     <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{pitch_url}}" style="height:52px;v-text-anchor:middle;width:320px;" arcsize="50%" strokecolor="#C2593A" fillcolor="#C2593A">
       <w:anchorlock/>
-      <center style="color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:17px;font-weight:bold;">See {{school}}’s own app</center>
+      <center style="color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:17px;font-weight:bold;">See what {{school}}’s app could look like</center>
     </v:roundrect>
     <![endif]-->
     <!--[if !mso]><!-->
-    <a class="btn body-text" href="{{pitch_url}}" style="display:inline-block;background:#C2593A;color:#FFFFFF;font-family:Arial,Helvetica,sans-serif;font-size:17px;line-height:20px;font-weight:bold;text-decoration:none;padding:16px 30px;border-radius:999px;mso-hide:all;">See {{school}}’s own app &rarr;</a>
+    <a class="btn body-text" href="{{pitch_url}}" style="display:inline-block;background:#C2593A;color:#FFFFFF;font-family:Arial,Helvetica,sans-serif;font-size:17px;line-height:20px;font-weight:bold;text-decoration:none;padding:16px 30px;border-radius:999px;mso-hide:all;">See what {{school}}’s app could look like &rarr;</a>
     <!--<![endif]-->
-    <p class="body-text" style="margin:14px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:21px;color:#6B5F51;">Your name on the brand card, a sample week, what you would see, the prices, and a thirty-minute walkthrough to book if you like it.</p>
+    <p class="body-text" style="margin:14px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:21px;color:#6B5F51;">Your name on the card, a sample week, what you would see, and the prices, so you do not have to ask. Two minutes, nothing to download.</p>
   </td></tr>
 
   <!-- Sign-off -->
   <tr><td class="pad body-text" style="padding:28px 40px 0 40px;font-family:Arial,Helvetica,sans-serif;font-size:17px;line-height:26px;color:#1E1B18;">
-    <p style="margin:0 0 16px 0;">If it is not for you, you have lost forty seconds and gained a penalty shoot-out.</p>
     <p style="margin:0;">{{sender_name}}<br><span style="font-size:14px;color:#6B5F51;">Learning with Dina · [phone]</span></p>
-    <p style="margin:16px 0 0 0;font-size:15px;line-height:22px;color:#4A4238;"><i>P.S. Every screen on that page is a screenshot of the live app, not a mock-up. The penalty is the real game.</i></p>
+    <p style="margin:16px 0 0 0;font-size:15px;line-height:22px;color:#4A4238;"><i>P.S. If anything above does not look like your students, reply and tell me. It is just me at the other end, not a sales team, and I would rather know than guess.</i></p>
   </td></tr>
 
   <!-- Footer: who, why, how to say no -->
   <tr><td class="pad body-text" style="padding:28px 40px 28px 40px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#7A6E60;border-top:1px solid #E8DCC8;">
-    You are getting this because {{school}} lists this address for business enquiries and I thought the app might suit your students. I am {{sender_name}}, the person behind Learning with Dina, writing to tutors one at a time. If you would rather not hear from me again, reply “no thanks” and I will not write again.<br>
-    [Your trading name], [postal address]. <a href="https://scliffe93.github.io/Espanolwithdina/#/privacy" style="color:#7A6E60;">Privacy</a>
+    You are getting this because {{school}}’s email address is published on your website as a business contact, and I thought this might be useful. I am {{sender_name}}; I make Learning with Dina on my own and write to tutors one at a time. If you would rather not hear from me again, reply “no thanks” and I will not write again.<br>
+    {{sender_name}}, Learning with Dina ([your trading name]), [postal address]. <a href="https://scliffe93.github.io/Espanolwithdina/#/privacy" style="color:#7A6E60;">Privacy</a>
   </td></tr>
 
 </table>

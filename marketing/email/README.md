@@ -27,13 +27,13 @@ Email clients strip scripts and most of them block forms, so nothing cleverer th
 
 | Field | Meaning | Example |
 |---|---|---|
-| `{{first_name}}` | The person you are writing to | Laura |
-| `{{school}}` | The business name, or the tutor's own first name for a sole tutor | Academia Sol |
-| `{{city}}` | How the city reads in the sentence "a penalty for {{city}}'s club"; use `your city` when unknown | Valencia |
+| `{{greeting}}` | "Hi Laura," or, with no first name, "Hello," | Hi Laura, |
+| `{{school}}` | The business name, or the tutor's own first name for a sole tutor (it appears as "This week with …", exactly as on the page) | Academia Sol |
+| `{{city}}` | The Spanish-speaking city whose club the penalty is for, as it reads in "a penalty for {{city}}'s club" | Valencia |
 | `{{pitch_url}}` | The personal page link; the merge script builds it | `…/#/pitch?to=Laura&school=Academia%20Sol&city=valencia` |
 | `{{sender_name}}` | You | |
 
-The page accepts seven cities: `madrid`, `valencia`, `barcelona`, `sevilla`, `cdmx`, `buenosaires`, `medellin`. For anyone else leave the city blank; the page falls back to Madrid and the email says "your city".
+The page knows seven cities: `madrid`, `valencia`, `barcelona`, `sevilla`, `cdmx`, `buenosaires`, `medellin`. Pick the one closest to where the tutor's students are heading (a Spanish tutor in Leeds whose students holiday in Valencia gets Valencia). When you do not know, leave it blank: the email and the page both use Madrid.
 
 ## Sending
 
@@ -53,15 +53,17 @@ Open each `out/*.html` in Chrome, select all, copy, and paste into a new Gmail o
 
 (columns: A email, B first name, C school, D city as it reads, E city id). Turn off the tool's click tracking: wrapped links break the `#/pitch` fragment in some clients, and the footer promises nothing is tracked.
 
-**Pace and deliverability.** Send from a mailbox on your own domain with SPF and DKIM set up (Google Workspace or Microsoft 365 do this for you), no more than twenty or thirty a day, no tracking pixels, a plain subject line, and always the plain-text part. Replies, even "no thanks", help your sender reputation; silence does not.
+**Pace and deliverability.** Send from a mailbox on your own domain with SPF, DKIM and a DMARC record set up (Google Workspace or Microsoft 365 do the first two for you; add a DMARC record of `p=none` to start), no more than twenty or thirty a day, no tracking pixels, a plain subject line, and always the plain-text part. Replies, even "no thanks", help your sender reputation; silence does not.
 
 ## Subject lines
 
 Pick one per batch and keep it:
 
-- `What your students do between lessons`
+- `The admin after your last lesson`
 - `Two minutes of notes, a week of homework`
-- `A Spanish app with your name on it`
+- `I built this for one Spanish tutor`
+
+Avoid subjects with a blank or a bracket in them ("tú ___") and anything that promises "a page with your name on it": from a stranger, both read like a broken mail merge or phishing.
 
 Preheader (already in the HTML): *A week's homework from your last lesson, seven games, and one penalty for you to take.*
 

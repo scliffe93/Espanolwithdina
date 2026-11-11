@@ -4,9 +4,10 @@
 //
 // CSV columns (header row, any order; extra columns are ignored):
 //   email, first_name, school, city, city_id
-// city    = how the city reads in the email ("Valencia", or "your city" when unknown)
-// city_id = one of madrid valencia barcelona sevilla cdmx buenosaires medellin (blank → madrid on the page)
+// city    = how the city reads in the email ("Valencia"); blank → "Madrid"
+// city_id = one of madrid valencia barcelona sevilla cdmx buenosaires medellin; blank → madrid
 // school  = the business name, or the tutor's own first name for a sole tutor ("This week with Laura")
+// first_name blank → the email opens "Hello," and the page is addressed to the school only
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -47,13 +48,15 @@ const rows = parseCsv(readFileSync(csvPath, 'utf8'));
 let n = 0;
 for (const r of rows) {
   if (!r.email) continue;
-  const first = r.first_name || 'there';
-  const school = r.school || first;
-  const cityId = CITIES.includes((r.city_id || '').toLowerCase()) ? r.city_id.toLowerCase() : '';
-  const city = r.city || 'your city';
-  const url = `${base}#/pitch?to=${encodeURIComponent(first)}&school=${encodeURIComponent(school)}${cityId ? `&city=${cityId}` : ''}`;
+  const first = r.first_name;
+  const school = r.school || first || 'your school';
+  const greeting = first ? `Hi ${first},` : 'Hello,';
+  // The page falls back to Madrid when no city is given, so the email says the same.
+  const cityId = CITIES.includes((r.city_id || '').toLowerCase()) ? r.city_id.toLowerCase() : 'madrid';
+  const city = r.city || 'Madrid';
+  const url = `${base}#/pitch?${first ? `to=${encodeURIComponent(first)}&` : ''}school=${encodeURIComponent(school)}&city=${cityId}`;
   const fill = (tpl, esc) => tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => {
-    const v = { first_name: first, school, city, sender_name: sender, pitch_url: url }[k];
+    const v = { greeting, first_name: first || '', school, city, sender_name: sender, pitch_url: url }[k];
     if (v === undefined) throw new Error(`unknown field {{${k}}}`);
     return k === 'pitch_url' ? v : esc(v);
   });
