@@ -100,7 +100,7 @@ export const api = {
 };
 
 export interface PlatformPerson { id: string; username: string; firstName: string; role: 'student' | 'teacher' | 'admin' }
-export type PlatformKind = 'booking' | 'homework' | 'feedback' | 'activity' | 'invoice' | 'config' | 'credit';
+export type PlatformKind = 'booking' | 'homework' | 'feedback' | 'activity' | 'invoice' | 'config' | 'credit' | 'student';
 
 /** Teaching platform endpoints (same Edge Function). Every call is scoped server-side to the signed-in person's role. */
 export const platformApi = {

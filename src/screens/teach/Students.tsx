@@ -23,6 +23,7 @@ export function Students() {
   const allBookings = usePlatformQuery((b) => b.bookings({ includeCancelled: true }));
   const invoices = usePlatformQuery((b) => b.invoices());
   const credits = usePlatformQuery((b) => b.credits());
+  const ceilings = usePlatformQuery(async (b) => Object.fromEntries(await Promise.all((await b.people()).map(async (p) => [p.id, (await b.studentSettings(p.id).catch(() => null))?.maxLevel ?? null]))));
   const [booking, setBooking] = useState<string | null>(null);
   const [assign, setAssign] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -53,7 +54,7 @@ export function Students() {
                   <Avatar name={p.firstName} tone={tone} size={56} />
                   <div className="min-w-0 flex-1">
                     <h2 className="font-display text-3xl font-semibold leading-none">{p.firstName}</h2>
-                    <p className="mt-1 text-sm text-ink-soft">{i.level ? <b className={tone.text}>{i.level}</b> : 'No level yet'}{i.cityName ? ` · ${i.cityName}` : ''}{i.state?.profile ? ` · goal ${i.state.profile.dailyMinutes} min/day` : ''}</p>
+                    <p className="mt-1 text-sm text-ink-soft">{i.level ? <b className={tone.text}>{i.level}</b> : 'No level yet'}{ceilings.data?.[p.id] ? ` · access up to ${ceilings.data[p.id]}` : ''}{i.cityName ? ` · ${i.cityName}` : ''}{i.state?.profile ? ` · goal ${i.state.profile.dailyMinutes} min/day` : ''}</p>
                   </div>
                   {i.support.length > 0 && <span className="inline-flex items-center gap-1 rounded-full bg-terracotta px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white"><Icon name="info" size={12} /> Needs support</span>}
                 </div>

@@ -2,8 +2,8 @@
 // VIVA domain model. Everything persisted lives in `AppState`.
 // ───────────────────────────────────────────────────────────────
 
-export type Cefr = 'A1' | 'A2' | 'B1' | 'B2' | 'C1';
-export const CEFR_LEVELS: Cefr[] = ['A1', 'A2', 'B1', 'B2', 'C1'];
+export type Cefr = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+export const CEFR_LEVELS: Cefr[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
 export type Skill = 'vocabulary' | 'grammar' | 'reading' | 'listening' | 'speaking' | 'verbs';
 export const SKILLS: Skill[] = ['vocabulary', 'grammar', 'reading', 'listening', 'speaking', 'verbs'];

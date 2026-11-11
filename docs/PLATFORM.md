@@ -13,6 +13,10 @@ The app then adapts on its own (`supabase/functions/_shared/adapt.ts`, the same 
 
 Guides for Dina and for students are in the app under **How to use** (`#/guide`).
 
+## Level access (what a student can open)
+
+From a student's profile the teacher sets a **level ceiling** (A1 to C2, or none) with an optional note. It is saved as a platform record of kind `student` (one row per student, `student-<id>`, teacher-written, readable by that student only). In the student's own app, tenses above the ceiling are locked in the verb gym, the app never picks verbs above it, and levels above it cannot be self-selected in the profile or at onboarding. The automatic stretch task (next tense after a 90%+ score) is never created above the ceiling, on the server and in the demo alike. **Homework the teacher assigns always opens**, whatever the ceiling; the assignment form and the debrief flag when a chosen tense is above it. Logic: `src/lib/platform/level.ts`, `src/lib/platform/useLevelAccess.ts`, `src/screens/teach/LevelAccess.tsx`; tests: `tests/level.test.ts`, `tests/plan.test.ts`, `tests/platform-api.test.ts`; browser check: `scripts/level-e2e.cjs`.
+
 ## Invoicing
 
 The teacher bills lessons from **Invoices**: settings once (business name, currency, rate per 60 minutes, days until due, numbering prefix, how students pay), then **New invoice** offers the taught, not-yet-billed lessons of a student plus free lines, with a running total. Invoices are numbered `PREFIX-YYYY-NNNN`, saved as records of kind `invoice` (students read only their own; drafts are hidden from them), can be sent (visible in the student's app), emailed (mailto summary), downloaded as a branded PDF (`src/lib/invoicePdf.ts`), marked paid, voided (sent) or deleted (drafts). Money-owed banners appear on the teacher's Today and the student's home. No online payment is built in; payment instructions print on every invoice. Logic and tests: `src/lib/platform/invoicing.ts`, `tests/invoicing.test.ts`, `scripts/invoices-e2e.cjs`.

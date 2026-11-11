@@ -103,6 +103,30 @@ describe('teaching platform API', () => {
     expect((await list(dina.token, 'booking', sam.id)).json.records).toHaveLength(1);
   });
 
+  it('student settings: the teacher sets a level ceiling, the student reads only their own', async () => {
+    const dina = await register('dina', 'Dina');
+    const sam = await register('sam', 'Sam');
+    const anneka = await register('anneka', 'Anneka');
+    const row = { studentId: sam.id, maxLevel: 'A2', updatedAt: at(0) };
+    expect((await put(sam.token, { kind: 'student', id: `student-${sam.id}`, studentId: sam.id, data: row })).status).toBe(403);
+    expect((await put(dina.token, { kind: 'student', id: 'student-00000001', studentId: sam.id, data: row })).status).toBe(400); // one row per student, fixed id
+    expect((await put(dina.token, { kind: 'student', id: `student-${sam.id}`, studentId: sam.id, data: row })).status).toBe(200);
+    expect((await list(sam.token, 'student')).json.records).toMatchObject([{ id: `student-${sam.id}`, maxLevel: 'A2', teacherId: dina.id }]);
+    expect((await list(anneka.token, 'student')).json.records).toEqual([]);
+    expect((await list(dina.token, 'student', sam.id)).json.records).toHaveLength(1);
+    // The ceiling stops the automatic stretch task (next tense) but not a re-try.
+    const hw = { activity: { kind: 'verbs', title: 'Verb gym: tener (present)', verbs: ['tener'], tense: 'present' }, instructions: '', assignedAt: at(0), dueAt: at(20), status: 'assigned', plan: { week: '2026-11-09', day: 2 } };
+    await put(dina.token, { kind: 'student', id: `student-${sam.id}`, studentId: sam.id, data: { ...row, maxLevel: 'A1' } });
+    expect((await put(dina.token, { kind: 'homework', id: 'hw-00000009', studentId: sam.id, data: hw })).status).toBe(200);
+    const done = await call('platform/homework/submit', { token: sam.token, body: { id: 'hw-00000009', result: { score: 1 } } });
+    expect(done.status).toBe(200);
+    expect(done.json.followUp).toBeNull();
+    await put(dina.token, { kind: 'student', id: `student-${sam.id}`, studentId: sam.id, data: { ...row, maxLevel: null } });
+    expect((await put(dina.token, { kind: 'homework', id: 'hw-00000010', studentId: sam.id, data: hw })).status).toBe(200);
+    const done2 = await call('platform/homework/submit', { token: sam.token, body: { id: 'hw-00000010', result: { score: 1 } } });
+    expect(done2.json.followUp?.plan?.adaptive).toBe('stretch');
+  });
+
   it('homework: the teacher assigns and reviews, the student submits only their own', async () => {
     const dina = await register('dina', 'Dina');
     const sam = await register('sam', 'Sam');

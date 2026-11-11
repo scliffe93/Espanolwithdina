@@ -20,6 +20,11 @@ describe('adaptive follow-ups', () => {
     expect(f?.plan?.adaptive).toBe('stretch');
     expect(f?.activity.tense).toBe('progressive');
   });
+  it('respects the teacher\'s level ceiling: no stretch above it', () => {
+    expect(followUpFor({ ...base, result: { score: 0.95 } }, '2026-11-10T18:00:00Z', 'x', { maxLevel: 'A1' })).toBeNull();
+    expect(followUpFor({ ...base, result: { score: 0.95 } }, '2026-11-10T18:00:00Z', 'x', { maxLevel: 'A2' })?.plan?.adaptive).toBe('stretch');
+    expect(followUpFor({ ...base, result: { score: 0.4 } }, '2026-11-10T18:00:00Z', 'x', { maxLevel: 'A1' })?.plan?.adaptive).toBe('retry'); // re-tries are never blocked
+  });
   it('does nothing for middling scores, non-plan items, re-tries or the last tense', () => {
     expect(followUpFor({ ...base, result: { score: 0.75 } }, '2026-11-10T18:00:00Z', 'x')).toBeNull();
     expect(followUpFor({ ...base, plan: undefined, result: { score: 0.2 } }, '2026-11-10T18:00:00Z', 'x')).toBeNull();

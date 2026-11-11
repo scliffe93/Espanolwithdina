@@ -25,9 +25,15 @@ export interface AdaptHomework {
 }
 
 const NEXT_TENSE: Record<string, string | undefined> = { present: 'progressive', progressive: 'perfect', perfect: undefined };
+const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+/** Lowest level each tense is recommended from (mirrors TENSES in src/data/verbs.ts). */
+const TENSE_MIN_LEVEL: Record<string, string> = { present: 'A1', progressive: 'A2', perfect: 'A2' };
 
-/** Returns the follow-up homework to create for a submitted item, or null. `id` must be supplied by the caller. */
-export function followUpFor(h: AdaptHomework, nowIso: string, id: string): AdaptHomework | null {
+/**
+ * Returns the follow-up homework to create for a submitted item, or null. `id` must be supplied by the caller.
+ * `opts.maxLevel` is the student's level ceiling set by the teacher: no stretch task is created above it.
+ */
+export function followUpFor(h: AdaptHomework, nowIso: string, id: string, opts: { maxLevel?: string | null } = {}): AdaptHomework | null {
   if (!h.plan || h.plan.adaptive === 'retry') return null;
   const score = typeof h.result?.score === 'number' ? h.result.score : null;
   if (score === null) return null;
@@ -44,6 +50,7 @@ export function followUpFor(h: AdaptHomework, nowIso: string, id: string): Adapt
   if (score >= 0.9 && h.plan.adaptive !== 'stretch' && h.activity.kind === 'verbs') {
     const next = NEXT_TENSE[String(h.activity.tense ?? 'present')];
     if (!next) return null;
+    if (opts.maxLevel && LEVELS.indexOf(TENSE_MIN_LEVEL[next] ?? 'A1') > LEVELS.indexOf(opts.maxLevel)) return null;
     return {
       id, teacherId: h.teacherId, studentId: h.studentId, status: 'assigned', assignedAt: nowIso, dueAt: due(3),
       activity: { ...h.activity, tense: next, title: `Stretch: ${h.activity.title.replace(/\((present|progressive|perfect)\)/i, '').trim()} (${next})` },

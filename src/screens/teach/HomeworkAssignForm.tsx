@@ -4,7 +4,8 @@ import { Segmented, Sheet } from '../../components/ui';
 import { CITY_THEMES } from '../../data/cityThemes';
 import { SCENES, scenesForCity, type CityId, type Scene } from '../../data/story';
 import { TENSES, VERBS, type Tense } from '../../data/verbs';
-import { usePlatform, type AppState } from '../../lib/platform/context';
+import { usePlatform, usePlatformQuery, type AppState } from '../../lib/platform/context';
+import { levelIdx } from '../../lib/platform/level';
 import { HOMEWORK_TEMPLATES, describeActivity } from '../../lib/platform/homework';
 import { fmtDateTime, zoneLabel, zonedToUtcIso } from '../../lib/platform/time';
 import { HOMEWORK_KIND_LABEL, type Homework, type HomeworkActivity, type Person } from '../../lib/platform/types';
@@ -105,6 +106,10 @@ export function HomeworkAssignForm({ open, onClose, people, progress, initialStu
       return '';
     }
   }, [dueDate, dueTime, dueZone]);
+
+  // Level ceilings of the chosen students: a tense above one is allowed (the teacher chose it) but flagged.
+  const settings = usePlatformQuery(async (b) => Object.fromEntries(await Promise.all(people.map(async (p) => [p.id, await b.studentSettings(p.id).catch(() => null)]))), [people.map((p) => p.id).join(',')]);
+  const aboveCeiling = kind === 'verbs' ? studentIds.filter((id) => { const m = settings.data?.[id]?.maxLevel; return !!m && levelIdx(TENSES.find((t) => t.id === tense)!.minLevel) > levelIdx(m); }) : [];
 
   const q = verbQuery.trim().toLowerCase();
   const verbMatches = useMemo(() => VERBS.filter((v) => !verbs.includes(v.inf) && (!q || v.inf.includes(q) || v.en.toLowerCase().includes(q))).slice(0, q ? 16 : 10), [q, verbs]);
@@ -228,9 +233,10 @@ export function HomeworkAssignForm({ open, onClose, people, progress, initialStu
             {activity.prompt && <p className="mt-1 italic text-ink-soft">“{activity.prompt}”</p>}
             <p className="mt-2 text-ink-mute">For {studentIds.length ? studentIds.map((id) => nameOf(people, id)).join(' & ') : '—'}</p>
             {dueAt && <p className="text-ink-mute">Due {fmtDateTime(dueAt, dueZone)} · {zoneLabel(dueZone)}{dueZone !== viewZone ? ` (= ${fmtDateTime(dueAt, viewZone)} in ${zoneLabel(viewZone)})` : ''}</p>}
+            {aboveCeiling.length > 0 && <p className="mt-2 rounded-xl bg-saffron-50 px-3 py-2 text-xs text-ink-soft" data-testid="above-ceiling">Above the level ceiling you set for {aboveCeiling.map((id) => `${nameOf(people, id)} (${settings.data?.[id]?.maxLevel})`).join(' and ')}. They can still do it because you assigned it.</p>}
           </div>
           <ErrorText error={error} />
-          <button type="submit" className="btn-primary" disabled={busy}><Icon name="send" size={16} /> {busy ? 'Assigning…' : `Assign to ${studentIds.length === 1 ? nameOf(people, studentIds[0]) : `${studentIds.length} students`}`}</button>
+          <button type="submit" className="btn-primary" disabled={busy} data-testid="hw-assign-submit"><Icon name="send" size={16} /> {busy ? 'Assigning…' : `Assign to ${studentIds.length === 1 ? nameOf(people, studentIds[0]) : `${studentIds.length} students`}`}</button>
         </div>
       </form>
     </Sheet>

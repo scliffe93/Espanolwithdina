@@ -17,6 +17,8 @@ import { defaultState } from '../lib/state';
 import { useStore } from '../lib/store';
 import { recorderSupported, playUrl } from '../hooks/useRecorder';
 import { CEFR_LEVELS, SKILLS, type Cefr, type LearnerProfile, type Skill } from '../types';
+import { withinLevel } from '../lib/platform/level';
+import { useLevelAccess } from '../lib/platform/useLevelAccess';
 
 function Section({ title, children, hint }: { title: string; children: ReactNode; hint?: string }) {
   return (
@@ -162,6 +164,7 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
     set({ [k]: arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v] } as Partial<LearnerProfile>);
   };
   const setSkill = (s: Skill, l: Cefr) => set({ levels: { ...p.levels, [s]: l }, levelOverridden: true });
+  const access = useLevelAccess();
 
   const finish = () => {
     update((s) => ({ ...s, onboardingDone: true }));
@@ -234,14 +237,14 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
             <CityPicker value={p.city} onChange={(c) => set({ city: c, region: CITY_THEMES[c].variety, destinationCity: CITY_THEMES[c].name, destinationCountry: CITY_THEMES[c].country, citiesVisited: p.citiesVisited.includes(c) ? p.citiesVisited : [...p.citiesVisited, c] })} />
           </Section>
 
-          <Section title="Skill levels" hint={`Source: ${p.levelSource === 'assessment' ? 'placement assessment' : p.levelSource === 'zero' ? 'starting from zero' : 'self-selected'}${p.levelOverridden ? ' · manually adjusted' : ''}. Each skill is tracked separately.`}>
+          <Section title="Skill levels" hint={`Source: ${p.levelSource === 'assessment' ? 'placement assessment' : p.levelSource === 'zero' ? 'starting from zero' : 'self-selected'}${p.levelOverridden ? ' · manually adjusted' : ''}. Each skill is tracked separately.${access.maxLevel ? ` Your teacher has set your level to ${access.maxLevel}, so higher levels are locked.` : ''}`}>
             <div className="grid gap-2">
               {SKILLS.map((s) => (
                 <div key={s} className="flex flex-wrap items-center justify-between gap-2">
                   <span className="capitalize">{s}</span>
                   <div className="flex gap-1" role="radiogroup" aria-label={`${s} level`}>
                     {CEFR_LEVELS.map((l) => (
-                      <button key={l} role="radio" aria-checked={p.levels[s] === l} onClick={() => setSkill(s, l)} className={`h-9 w-10 rounded-xl text-sm font-semibold ring-1 transition ${p.levels[s] === l ? 'bg-ink text-cream ring-ink' : 'ring-ink/10 hover:ring-ink/30'}`}>{l}</button>
+                      <button key={l} role="radio" aria-checked={p.levels[s] === l} disabled={!withinLevel(l, access.maxLevel)} onClick={() => setSkill(s, l)} className={`h-9 w-10 rounded-xl text-sm font-semibold ring-1 transition disabled:opacity-40 ${p.levels[s] === l ? 'bg-ink text-cream ring-ink' : 'ring-ink/10 hover:ring-ink/30'}`}>{l}</button>
                     ))}
                   </div>
                 </div>

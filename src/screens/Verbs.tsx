@@ -14,6 +14,7 @@ import { completeLesson, recordAttempt } from '../lib/state';
 import { useStore } from '../lib/store';
 import { confetti, haptic, sfx } from '../lib/fx';
 import { useHomeworkCompletion } from '../lib/platform/homework';
+import { useLevelAccess } from '../lib/platform/useLevelAccess';
 import type { ErrorCategory } from '../types';
 import type { Grade } from '../lib/srs';
 
@@ -505,10 +506,19 @@ export function Verbs({ params }: { params: URLSearchParams }) {
   const [filter, setFilter] = useState<'all' | 'learning' | 'new' | 'mastered'>('all');
   const mastery = useMemo(() => allVerbMastery(state, tense, region), [state, tense, region]);
   const masteryBy = Object.fromEntries(mastery.map((m) => [m.inf, m]));
+  // The teacher's level ceiling: tenses above it are locked, unless this is homework the teacher set (?hw=).
+  const access = useLevelAccess();
+  const ceiling = params.get('hw') ? null : access.maxLevel;
+  const tenseLocked = (t: (typeof TENSES)[number]) => !!ceiling && levelIndex(t.minLevel) > levelIndex(ceiling);
+  useEffect(() => {
+    if (tenseLocked(TENSES.find((t) => t.id === tense)!)) setTense('present');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ceiling]);
 
   const start = (opts: { focus?: string[]; mode?: 'ser-estar'; tense?: Tense } = {}) => {
     const t = opts.tense ?? tense;
-    setSession({ ex: buildSession({ state, focus: opts.focus ?? (focus.length ? focus : undefined), tense: t, mode: opts.mode }), tense: t });
+    if (!opts.mode && tenseLocked(TENSES.find((x) => x.id === t)!)) return;
+    setSession({ ex: buildSession({ state, focus: opts.focus ?? (focus.length ? focus : undefined), tense: t, mode: opts.mode, maxLevel: ceiling }), tense: t });
   };
 
   // Deep links (coach, scene completion) start a session immediately.
@@ -540,11 +550,12 @@ export function Verbs({ params }: { params: URLSearchParams }) {
           <p className="eyebrow mb-2">Tense</p>
           <div className="flex flex-wrap gap-2">
             {TENSES.map((t) => (
-              <button key={t.id} className="chip" aria-pressed={tense === t.id} onClick={() => setTense(t.id)}>
-                {t.label}{!tenseAllowed(t) && <span className="text-xs opacity-70">· from {t.minLevel}</span>}
+              <button key={t.id} className="chip" aria-pressed={tense === t.id} disabled={tenseLocked(t)} title={tenseLocked(t) ? `Locked by your teacher (from ${t.minLevel})` : undefined} onClick={() => setTense(t.id)} data-testid={`tense-${t.id}`}>
+                {t.label}{tenseLocked(t) ? <span className="text-xs opacity-70"> · locked</span> : !tenseAllowed(t) && <span className="text-xs opacity-70">· from {t.minLevel}</span>}
               </button>
             ))}
           </div>
+          {ceiling && <p className="mt-2 text-sm text-ink-mute" data-testid="level-note">Your teacher has set your level to {ceiling}: tenses above it are locked until they raise it.</p>}
           {!tenseAllowed(TENSES.find((t) => t.id === tense)!) && <p className="mt-2 text-sm text-ink-mute">Recommended from {TENSES.find((t) => t.id === tense)!.minLevel}. You can still try it — your verbs level is {level}.</p>}
           <p className="eyebrow mb-2 mt-5">Focus</p>
           {focus.length ? (

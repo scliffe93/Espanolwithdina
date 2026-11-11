@@ -2,7 +2,8 @@ import type { AppState } from '../../types';
 import { ApiError, platformApi, type PlatformKind, type Session } from '../cloud';
 import { migrate } from '../state';
 import { PlatformError, findOverlap, uid, validateBooking, type PlatformBackend } from './backend';
-import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, Person, TeacherConfig } from './types';
+import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, Person, StudentSettings, TeacherConfig } from './types';
+import { settingsId } from './level';
 import { DEFAULT_TEACHER_CONFIG } from './types';
 
 // ───────────────────────────────────────────────────────────────
@@ -249,6 +250,18 @@ class CloudBackend implements PlatformBackend {
     this.assertTeacher();
     await this.wrap(() => platformApi.remove(this.token, id));
     this.cache.clear();
+  }
+
+  // ── Per-student settings ──
+  async studentSettings(studentId: string) {
+    if (!this.isTeacher() && studentId !== this.actor.id) throw new PlatformError('forbidden', 'You can only see your own settings.');
+    const rows = await this.records<StudentSettings>('student', this.isTeacher() ? studentId : undefined);
+    return rows.find((r) => r.studentId === studentId) ?? null;
+  }
+  async saveStudentSettings(input: { studentId: string; maxLevel: StudentSettings['maxLevel']; note?: string }) {
+    this.assertTeacher();
+    const s: StudentSettings = { id: settingsId(input.studentId), studentId: input.studentId, teacherId: this.actor.id, maxLevel: input.maxLevel, ...(input.note?.trim() ? { note: input.note.trim() } : {}), updatedAt: this.iso() };
+    return this.put('student', s.id, s.studentId, s);
   }
 
   async addStudent(input: { username: string; firstName: string; password?: string }) {

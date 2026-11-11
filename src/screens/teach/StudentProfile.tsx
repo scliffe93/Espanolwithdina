@@ -22,6 +22,7 @@ import { HomeworkAssignForm } from './HomeworkAssignForm';
 import { HomeworkReview } from './HomeworkReview';
 import { AnalyticsTab } from './AnalyticsTab';
 import { DebriefForm } from './DebriefForm';
+import { LevelAccess } from './LevelAccess';
 import { BalanceCard, BalanceChip, SellPackageSheet, useBalance } from './Packages';
 import { pct, studentInsight, studyAgo } from './insights';
 import { ActivityList, Avatar, ConfirmButton, DemoChip, ErrorText, Field, HomeworkRow, LessonCard, Loading, Section, Stat, toneFor, useAction, useStudents, useViewZone } from './shared';
@@ -114,6 +115,7 @@ export function StudentProfile({ id, params }: { id: string; params: URLSearchPa
             ))}
           </div>
         )}
+        <LevelAccess studentId={id} name={person.firstName} />
         {insight.support.length > 0 && (
           <ul className="mx-4 mb-4 grid gap-1 rounded-2xl bg-terracotta-50 p-3 text-sm text-ink-soft" aria-label="Needs support">
             {insight.support.map((s) => <li key={s} className="flex gap-2"><Icon name="info" size={15} className="mt-0.5 shrink-0 text-terracotta" /> {s}</li>)}

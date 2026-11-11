@@ -11,6 +11,8 @@ import { navigate } from '../lib/router';
 import { speak, ttsSupported } from '../lib/speech';
 import { useStore } from '../lib/store';
 import { CEFR_LEVELS, SKILLS, type Cefr } from '../types';
+import { withinLevel } from '../lib/platform/level';
+import { useLevelAccess } from '../lib/platform/useLevelAccess';
 import { useTtsSpeaking } from '../hooks/useSpeech';
 
 const CEFR_DESC: Record<Cefr, string> = {
@@ -19,11 +21,13 @@ const CEFR_DESC: Record<Cefr, string> = {
   B1: 'Intermediate — handle most situations, tell stories',
   B2: 'Upper-intermediate — fluent conversation, opinions',
   C1: 'Advanced — nuance, humour, professional Spanish',
+  C2: 'Mastery — precise, effortless Spanish in any situation',
 };
 
 export function LevelChoice() {
   const { update, state } = useStore();
   const [pick, setPick] = useState<Cefr | null>(null);
+  const access = useLevelAccess();
 
   const setLevel = (level: Cefr, source: 'zero' | 'self-selected') => {
     update((s) => ({ ...s, profile: { ...(s.profile ?? blankProfile()), levels: uniformLevels(level), levelSource: source, levelOverridden: false } }));
@@ -51,7 +55,7 @@ export function LevelChoice() {
             <span className="text-xl font-semibold">I know my level</span>
             <div className="grid gap-1.5" role="radiogroup" aria-label="CEFR level">
               {CEFR_LEVELS.map((l) => (
-                <button key={l} role="radio" aria-checked={pick === l} onClick={() => setPick(l)} className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm ring-1 transition ${pick === l ? 'bg-ink text-cream ring-ink' : 'ring-ink/10 hover:ring-ink/25'}`}>
+                <button key={l} role="radio" aria-checked={pick === l} disabled={!withinLevel(l, access.maxLevel)} onClick={() => setPick(l)} className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm ring-1 transition disabled:opacity-40 ${pick === l ? 'bg-ink text-cream ring-ink' : 'ring-ink/10 hover:ring-ink/25'}`}>
                   <span className="w-7 font-bold">{l}</span>
                   <span className={pick === l ? 'text-cream/80' : 'text-ink-soft'}>{CEFR_DESC[l]}</span>
                 </button>

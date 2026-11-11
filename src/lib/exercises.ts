@@ -1,4 +1,5 @@
-import type { Activity, AppState, Region } from '../types';
+import type { Activity, AppState, Cefr, Region } from '../types';
+import { withinLevel } from './platform/level';
 import { VERBS, VERB_BY_INF, conjugate, getActiveVariety, parseExample, personsForRegion, verbKey, type Tense, type Verb, type VerbExample } from '../data/verbs';
 import { regularPresent } from './answer';
 
@@ -125,14 +126,16 @@ export interface PlanInput {
   now?: number;
   rng?: Rng;
   mode?: 'ser-estar';
+  /** The teacher's level ceiling for this student (null/undefined = none): verbs above it are never picked by the app. */
+  maxLevel?: Cefr | null;
 }
 
 /** Picks which verbs to practise: due → weak → in-progress → new (by frequency, within level). */
-export function pickVerbs(state: AppState, tense: Tense, count: number, now = Date.now()): string[] {
+export function pickVerbs(state: AppState, tense: Tense, count: number, now = Date.now(), maxLevel: Cefr | null = null): string[] {
   const region = state.profile?.region ?? 'spain';
   const persons = personsForRegion(region);
-  // Frequency order; A2 verbs come later for A1 learners naturally (they rank lower).
-  const eligible = [...VERBS].sort((a, b) => a.frequencyRank - b.frequencyRank);
+  // Frequency order; A2 verbs come later for A1 learners naturally (they rank lower). A teacher's ceiling removes verbs above it.
+  const eligible = VERBS.filter((v) => withinLevel(v.level, maxLevel)).sort((a, b) => a.frequencyRank - b.frequencyRank);
   const info = eligible.map((v) => {
     const cards = persons.map((p) => state.srs[verbKey(v.inf, tense, p)]).filter(Boolean);
     const attempts = cards.reduce((a, c) => a + c!.attempts, 0);
@@ -160,7 +163,7 @@ const KIND_PREF: Record<Activity, ExKind[]> = {
 };
 
 /** Builds a varied session. Preferences tilt the mix but every learner sees every kind. */
-export function buildSession({ state, focus, tense, length = 12, now = Date.now(), rng = Math.random, mode }: PlanInput): Exercise[] {
+export function buildSession({ state, focus, tense, length = 12, now = Date.now(), rng = Math.random, mode, maxLevel = null }: PlanInput): Exercise[] {
   const region = state.profile?.region ?? 'spain';
   if (mode === 'ser-estar') {
     const items = shuffle(SER_ESTAR, rng).slice(0, Math.min(length, SER_ESTAR.length));
@@ -171,7 +174,7 @@ export function buildSession({ state, focus, tense, length = 12, now = Date.now(
     return fillPronouns(mixed, rng);
   }
 
-  const verbs = focus?.length ? focus.filter((v) => VERB_BY_INF[v]) : pickVerbs(state, tense, 5, now);
+  const verbs = focus?.length ? focus.filter((v) => VERB_BY_INF[v]) : pickVerbs(state, tense, 5, now, maxLevel);
   const persons = personsForRegion(region);
   const prefs = state.profile?.activities ?? [];
   const base: ExKind[] = ['choice', 'type', 'match', 'listen', 'fix', 'type', 'choice', 'build'];

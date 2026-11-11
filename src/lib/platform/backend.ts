@@ -1,5 +1,6 @@
 import type { AppState } from '../../types';
-import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, PlatformData, Person, TeacherConfig } from './types';
+import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, PlatformData, Person, StudentSettings, TeacherConfig } from './types';
+import { settingsId } from './level';
 import { DEFAULT_TEACHER_CONFIG } from './types';
 import { overlaps } from './time';
 import { followUpFor, type AdaptHomework } from '../../../supabase/functions/_shared/adapt';
@@ -57,6 +58,11 @@ export interface PlatformBackend {
   credits(opts?: { studentId?: string }): Promise<Credit[]>;
   saveCredit(c: Credit): Promise<Credit>;
   deleteCredit(id: string): Promise<void>;
+  // ── Per-student settings (level access) ──
+  /** Teacher: any of her students; student: their own. Null until the teacher has set something. */
+  studentSettings(studentId: string): Promise<StudentSettings | null>;
+  /** Teacher only. */
+  saveStudentSettings(input: { studentId: string; maxLevel: StudentSettings['maxLevel']; note?: string }): Promise<StudentSettings>;
 }
 
 export const uid = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`);
@@ -111,7 +117,7 @@ export class DemoBackend implements PlatformBackend {
     if (!this.isTeacher()) throw new PlatformError('forbidden', 'Only the teacher can do that.');
   }
   private async commit(mutate: (d: PlatformData) => void) {
-    const next: PlatformData = { ...this.data, bookings: [...this.data.bookings], homework: [...this.data.homework], feedback: [...this.data.feedback], activity: [...this.data.activity], invoices: [...(this.data.invoices ?? [])], credits: [...(this.data.credits ?? [])] };
+    const next: PlatformData = { ...this.data, bookings: [...this.data.bookings], homework: [...this.data.homework], feedback: [...this.data.feedback], activity: [...this.data.activity], invoices: [...(this.data.invoices ?? [])], credits: [...(this.data.credits ?? [])], students: [...(this.data.students ?? [])] };
     mutate(next);
     this.data = next;
     await this.storage.saveData(next);
@@ -208,7 +214,8 @@ export class DemoBackend implements PlatformBackend {
     if (!this.isTeacher() && cur.studentId !== this.actor.id) throw new PlatformError('forbidden', 'This homework belongs to someone else.');
     const next: Homework = { ...cur, status: cur.status === 'reviewed' ? 'reviewed' : 'submitted', result: { ...result, completedAt: result.completedAt || this.iso() } };
     const fid = `${id}-fu`;
-    const followUp = this.data.homework.some((h) => h.id === fid) ? null : (followUpFor(next as unknown as AdaptHomework, this.iso(), fid) as unknown as Homework | null);
+    const maxLevel = (this.data.students ?? []).find((s) => s.studentId === cur.studentId)?.maxLevel ?? null;
+    const followUp = this.data.homework.some((h) => h.id === fid) ? null : (followUpFor(next as unknown as AdaptHomework, this.iso(), fid, { maxLevel }) as unknown as Homework | null);
     await this.commit((d) => { d.homework = d.homework.map((h) => (h.id === id ? next : h)); if (followUp) d.homework.push(followUp); });
     if (followUp) await this.logActivity('homework', `${followUp.plan?.adaptive === 'retry' ? 'Re-try added' : 'Stretch task added'}: ${followUp.activity.title}`, next.studentId);
     await this.logActivity('homework', `Homework completed: ${next.activity.title}${result.summary ? ` — ${result.summary}` : ''}`, next.studentId);
@@ -295,5 +302,18 @@ export class DemoBackend implements PlatformBackend {
   async deleteCredit(id: string) {
     this.assertTeacher();
     await this.commit((d) => { d.credits = d.credits!.filter((x) => !(x.id === id && x.teacherId === this.actor.id)); });
+  }
+
+  // ── Per-student settings ──
+  async studentSettings(studentId: string) {
+    this.assertStudentAccess(studentId);
+    return (this.data.students ?? []).find((s) => s.studentId === studentId) ?? null;
+  }
+  async saveStudentSettings(input: { studentId: string; maxLevel: StudentSettings['maxLevel']; note?: string }) {
+    this.assertTeacher();
+    this.assertStudentAccess(input.studentId);
+    const s: StudentSettings = { id: settingsId(input.studentId), studentId: input.studentId, teacherId: this.actor.id, maxLevel: input.maxLevel, ...(input.note?.trim() ? { note: input.note.trim() } : {}), updatedAt: this.iso() };
+    await this.commit((d) => { d.students = [...(d.students ?? []).filter((x) => x.studentId !== s.studentId), s]; });
+    return s;
   }
 }

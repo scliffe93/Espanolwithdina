@@ -6,7 +6,7 @@ import { scenesForCity } from '../../data/story';
 import { TENSES, VERBS } from '../../data/verbs';
 import { errorBreakdown } from '../../lib/analytics';
 import type { AppState } from '../../lib/platform/context';
-import { usePlatform } from '../../lib/platform/context';
+import { usePlatform, usePlatformQuery } from '../../lib/platform/context';
 import { describeActivity } from '../../lib/platform/homework';
 import { dueFor, generatePlan, planWeekFor, type PlanItem } from '../../lib/platform/plan';
 import { FOCUS_TAG_LABEL, type FocusTag, type Homework, type LessonDebrief, type Person } from '../../lib/platform/types';
@@ -32,6 +32,7 @@ export function DebriefForm({ open, onClose, student, state, homework }: { open:
   const [minutes, setMinutes] = useState(state?.profile?.dailyMinutes ?? 15);
   const [plan, setPlan] = useState<PlanItem[]>([]);
   const planWeek = useMemo(() => planWeekFor(), []);
+  const settings = usePlatformQuery((b) => b.studentSettings(student.id), [student.id]);
 
   // Last plan, for evidence at the top.
   const lastWeek = useMemo(() => {
@@ -86,7 +87,7 @@ export function DebriefForm({ open, onClose, student, state, homework }: { open:
             <Field id="db-date" label="Lesson date"><input id="db-date" type="date" className="input" value={lessonDate} onChange={(e) => setLessonDate(e.target.value)} /></Field>
             <Field id="db-min" label="Minutes a day to aim for"><input id="db-min" type="number" min={5} max={90} step={5} className="input" value={minutes} onChange={(e) => setMinutes(Number(e.target.value))} /></Field>
           </div>
-          <fieldset><legend className="mb-1 text-sm font-medium">Tenses covered</legend><div className="flex flex-wrap gap-2">{TENSES.map((t) => <Chip key={t.id} on={tenses.includes(t.id)} onClick={() => setTenses((l) => toggle(l, t.id) as typeof tenses)}>{t.label}</Chip>)}</div></fieldset>
+          <fieldset><legend className="mb-1 text-sm font-medium">Tenses covered</legend><div className="flex flex-wrap gap-2">{TENSES.map((t) => <Chip key={t.id} on={tenses.includes(t.id)} onClick={() => setTenses((l) => toggle(l, t.id) as typeof tenses)}>{t.label}</Chip>)}</div>{settings.data?.maxLevel && <p className="mt-1 text-xs text-ink-mute">{student.firstName}’s level ceiling is {settings.data.maxLevel}. Tenses above it are still sent when you choose them here.</p>}</fieldset>
           <Field id="db-verbs" label="Verbs covered" hint={unknownVerbs.length ? `Not in the app’s verb bank (will be skipped): ${unknownVerbs.join(', ')}` : 'Infinitives, separated by commas or spaces.'}>
             <input id="db-verbs" className="input" value={verbText} onChange={(e) => setVerbText(e.target.value)} placeholder="querer, poder, salir" autoComplete="off" />
             {suggestions.length > 0 && <div className="mt-1 flex flex-wrap gap-1">{suggestions.map((v) => <button key={v.inf} type="button" className="rounded-full bg-cream-100 px-2.5 py-1 text-xs" onClick={() => setVerbText((t) => t.replace(/[^,\s]*$/, v.inf + ', '))}>{v.inf} <span className="text-ink-mute">{v.en}</span></button>)}</div>}

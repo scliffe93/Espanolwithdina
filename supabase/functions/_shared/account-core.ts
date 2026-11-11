@@ -373,7 +373,7 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
     // may only log activity or submit homework); the teacher reads all and writes all.
     const isAdmin = user.role === 'admin';
     const isTeacher = user.role === 'teacher' || isAdmin; // the admin can do everything the teacher can
-    const KINDS = ['booking', 'homework', 'feedback', 'activity', 'invoice', 'config', 'credit'];
+    const KINDS = ['booking', 'homework', 'feedback', 'activity', 'invoice', 'config', 'credit', 'student'];
     const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const parseRow = (r: { data: unknown }) => (typeof r.data === 'string' ? JSON.parse(r.data) : r.data) as Record<string, unknown>;
     const studentExists = async (id: string) => UUID.test(id) && (await db.query("select 1 from public.lwd_users where id = $1 and role = 'student'", [id])).length > 0;
@@ -449,6 +449,7 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
       } else if (kind === 'config') {
         if (studentId !== user.id) throw new HttpError(400, 'invalid', 'Settings belong to the teacher.'); // the teacher's own row
       } else if (!(await studentExists(studentId))) throw new HttpError(404, 'not_found', 'Unknown student.');
+      if (kind === 'student' && id !== `student-${studentId}`) throw new HttpError(400, 'invalid', 'A student has one settings row.'); // one row per student, so a stale ceiling can never shadow a newer one
       const rec: Record<string, unknown> = { ...(b.data as Record<string, unknown>), id, studentId };
       if (kind !== 'activity') rec.teacherId = user.id; // never trust the client's teacherId
       if (kind === 'booking' && rec.status === 'scheduled') {
@@ -486,7 +487,9 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
       let followUp: AdaptHomework | null = null;
       const fid = `${str(b.id)}-fu`;
       if (!(await db.query('select 1 from public.lwd_platform where id = $1', [fid])).length) {
-        followUp = followUpFor(next as unknown as AdaptHomework, iso(now()), fid);
+        const lvl = await db.query<{ data: unknown }>("select data from public.lwd_platform where kind = 'student' and student_id = $1", [row.student_id]);
+        const maxLevel = lvl[0] ? ((parseRow(lvl[0]).maxLevel as string | null) ?? null) : null;
+        followUp = followUpFor(next as unknown as AdaptHomework, iso(now()), fid, { maxLevel });
         if (followUp) await db.query("insert into public.lwd_platform (id, kind, teacher_id, student_id, data, updated_at) values ($1, 'homework', $2, $3, $4::jsonb, $5) on conflict (id) do nothing", [fid, followUp.teacherId, row.student_id, JSON.stringify(followUp), iso(now())]);
       }
       return { status: 200, json: { record: next, followUp } };

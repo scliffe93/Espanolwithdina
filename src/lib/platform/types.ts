@@ -5,6 +5,8 @@
 // zone a lesson was scheduled in, so it can be shown as intended.
 // ───────────────────────────────────────────────────────────────
 
+import type { Cefr } from '../../types';
+
 export type Role = 'student' | 'teacher' | 'admin';
 
 export interface Person {
@@ -218,6 +220,18 @@ export interface TeacherConfig {
 
 export const DEFAULT_TEACHER_CONFIG: TeacherConfig = { businessName: 'Learning with Dina', address: '', currency: 'GBP', hourlyRate: 35, dueDays: 14, invoicePrefix: 'LWD', nextNumber: 1, paymentInstructions: '', footer: 'Thank you — ¡gracias!', packages: [] };
 
+/** What a student may open on their own, set by the teacher from the student's profile. One row per student. */
+export interface StudentSettings {
+  /** `student-<studentId>` */
+  id: string;
+  studentId: string;
+  teacherId?: string;
+  /** Highest CEFR level of work the student can open by themselves (null = no ceiling). Homework the teacher assigns is always available. */
+  maxLevel: Cefr | null;
+  note?: string;
+  updatedAt: string;
+}
+
 /** Everything the teaching side stores (besides each learner's own AppState). */
 export interface PlatformData {
   version: 1;
@@ -229,6 +243,7 @@ export interface PlatformData {
   invoices?: Invoice[];
   config?: TeacherConfig;
   credits?: Credit[];
+  students?: StudentSettings[];
 }
 
 export const DEMO_TEACHER_ID = 'demo-dina';
