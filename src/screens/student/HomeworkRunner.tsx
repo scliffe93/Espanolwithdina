@@ -13,6 +13,7 @@ import { addSpeakingAttempt } from '../../lib/state';
 import { mediaEnd, mediaStart, useStore } from '../../lib/store';
 import { DemoChip, ErrorCard, HomeworkStatus, Loading } from './shared';
 import { Marked } from './Marked';
+import { MaterialRunner } from './MaterialRunner';
 
 // ───────────────────────────────────────────────────────────────
 // Homework runner — performs written and speaking homework in place.
@@ -358,7 +359,7 @@ export function HomeworkRunner({ id }: { id: string }) {
   const kind = h.activity.kind;
   return (
     <Frame h={h} now={now} readOnly={readOnly}>
-      {kind === 'written' ? <WrittenRunner key={h.id} h={h} now={now} readOnly={readOnly} /> : kind === 'speaking' ? <SpeakingRunner key={h.id} h={h} now={now} readOnly={readOnly} /> : <ActivityRunner h={h} now={now} />}
+      {kind === 'written' ? <WrittenRunner key={h.id} h={h} now={now} readOnly={readOnly} /> : kind === 'speaking' ? <SpeakingRunner key={h.id} h={h} now={now} readOnly={readOnly} /> : kind === 'material' ? <MaterialRunner key={h.id} h={h} now={now} readOnly={readOnly} /> : <ActivityRunner h={h} now={now} />}
     </Frame>
   );
 }

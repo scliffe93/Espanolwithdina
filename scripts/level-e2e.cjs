@@ -19,7 +19,7 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
   // The assignment form flags a tense above the ceiling but still allows it.
   await p.getByRole('button', { name: 'Assign homework' }).first().click(); await p.waitForTimeout(600);
   await p.locator('#hw-template').selectOption({ index: 0 });
-  await p.getByRole('radio', { name: 'Present perfect' }).click(); await p.waitForTimeout(300);
+  await p.locator('#hw-tense').selectOption('perfect'); await p.waitForTimeout(300);
   ok(await p.getByTestId('above-ceiling').isVisible(), 'assignment form flags a tense above the ceiling');
   await p.locator('#hw-title').fill('Perfect tense practice (set by Dina)');
   await p.waitForTimeout(900); // let the sheet finish animating

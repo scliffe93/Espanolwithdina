@@ -12,6 +12,8 @@ import { HOMEWORK_KIND_LABEL, type Homework, type HomeworkActivity, type Person 
 import { useStore } from '../../lib/store';
 import { shiftDate, todayIn } from './calendarMath';
 import { ErrorText, Field, StudentPicker, ZoneSelect, nameOf, useAction } from './shared';
+import { MaterialBuilder } from './MaterialBuilder';
+import type { MaterialSet } from '../../lib/material';
 
 type VocabVia = 'review' | 'swipe' | 'serestar' | 'order' | 'metro';
 const VOCAB_VIA: { value: VocabVia; label: string }[] = [
@@ -50,6 +52,7 @@ export function HomeworkAssignForm({ open, onClose, people, progress, initialStu
   const [dueZone, setDueZone] = useState(viewZone);
   const [dueDate, setDueDate] = useState('');
   const [dueTime, setDueTime] = useState('20:00');
+  const [material, setMaterial] = useState<MaterialSet | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -69,6 +72,7 @@ export function HomeworkAssignForm({ open, onClose, people, progress, initialStu
     setDueZone(viewZone);
     setDueDate(shiftDate(todayIn(viewZone), 3));
     setDueTime('20:00');
+    setMaterial(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -95,8 +99,9 @@ export function HomeworkAssignForm({ open, onClose, people, progress, initialStu
     if (a.kind === 'verbs') a = { ...a, tense };
     if (a.kind === 'written') a = { ...a, minWords: minWords > 0 ? minWords : undefined };
     if (a.kind === 'vocabulary' && vocabVia !== 'review') a = { ...a, review: undefined, game: vocabVia };
+    if (a.kind === 'material' && material) a = { ...a, material, title: titleTouched && title.trim() ? title.trim() : `From “${material.title}”` };
     return a;
-  }, [template, kind, verbs, effectiveScene, prompt, title, titleTouched, tense, minWords, vocabVia]);
+  }, [template, kind, verbs, effectiveScene, prompt, title, titleTouched, tense, minWords, vocabVia, material]);
 
   const dueAt = useMemo(() => {
     if (!dueDate || !dueTime) return '';
@@ -121,6 +126,7 @@ export function HomeworkAssignForm({ open, onClose, people, progress, initialStu
     if (!activity.title.trim()) return setError('Give the homework a title.');
     if (kind === 'story' && !activity.sceneId) return setError('Choose a story chapter.');
     if (wantsPrompt && !activity.prompt?.trim()) return setError('Write the prompt the student should answer.');
+    if (kind === 'material' && !activity.material?.items.length) return setError('Read a document or paste text and build at least one exercise first.');
     if (!dueAt) return setError('Choose a deadline.');
     if (new Date(dueAt).getTime() < Date.now()) return setError('The deadline is in the past — pick a later date or time.');
     const items = await run(() => backend.assignHomework({ studentIds, activity, instructions: instructions.trim(), dueAt }), people, dueZone);
@@ -194,6 +200,12 @@ export function HomeworkAssignForm({ open, onClose, people, progress, initialStu
                 {VOCAB_VIA.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </Field>
+          )}
+
+          {kind === 'material' && (
+            <div className="rounded-2xl bg-cream-50 p-3 ring-1 ring-ink/5">
+              <MaterialBuilder onChange={setMaterial} maxLevel={studentIds.length === 1 ? (settings.data?.[studentIds[0]]?.maxLevel ?? null) : null} compact />
+            </div>
           )}
 
           {wantsPrompt && (

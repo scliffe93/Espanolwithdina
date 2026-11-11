@@ -7,6 +7,7 @@
 
 import type { Cefr } from '../../types';
 import type { Tense } from '../../data/verbs';
+import type { MaterialSet } from '../material';
 
 export type Role = 'student' | 'teacher' | 'admin';
 
@@ -41,7 +42,7 @@ export interface Booking {
 
 export type BookingInput = Omit<Booking, 'id' | 'teacherId' | 'status' | 'createdAt' | 'updatedAt'>;
 
-export type HomeworkKind = 'vocabulary' | 'verbs' | 'grammar' | 'speaking' | 'listening' | 'story' | 'written';
+export type HomeworkKind = 'vocabulary' | 'verbs' | 'grammar' | 'speaking' | 'listening' | 'story' | 'written' | 'material';
 
 /** What the student actually does — maps onto an existing activity in the app. */
 export interface HomeworkActivity {
@@ -62,6 +63,8 @@ export interface HomeworkActivity {
   prompt?: string;
   /** written: minimum words; speaking: expect a recording. */
   minWords?: number;
+  /** material: exercises built from the teacher's own document or text. */
+  material?: MaterialSet;
 }
 
 export type HomeworkStatus = 'assigned' | 'submitted' | 'reviewed';
@@ -306,4 +309,5 @@ export const HOMEWORK_KIND_LABEL: Record<HomeworkKind, string> = {
   listening: 'Listening comprehension',
   story: 'Storyline chapter',
   written: 'Written homework',
+  material: 'From your lesson material',
 };

@@ -34,6 +34,7 @@ export function homeworkRoute(h: Homework): string {
       return a.game ? `game/${a.game}?${hw}` : `review?${hw}`;
     case 'speaking':
     case 'written':
+    case 'material':
       return `homework/${h.id}`;
   }
 }
@@ -48,6 +49,7 @@ export function describeActivity(a: HomeworkActivity): string {
     case 'vocabulary': return a.game ? `Vocabulary game: ${a.game}` : 'Memory review of the vocabulary deck';
     case 'speaking': return 'Speaking challenge (record yourself)';
     case 'written': return `Written homework${a.minWords ? ` (${a.minWords}+ words)` : ''}`;
+    case 'material': return a.material ? `${a.material.items.length} exercise${a.material.items.length === 1 ? '' : 's'} from “${a.material.title}”` : 'Exercises from your material';
   }
 }
 
@@ -64,6 +66,7 @@ export const HOMEWORK_TEMPLATES: { kind: HomeworkKind; label: string; build: (p:
   { kind: 'story', label: 'Storyline chapter', build: (p) => ({ kind: 'story', title: p.title ?? (p.sceneId && SCENE_BY_ID[p.sceneId] ? `${SCENE_BY_ID[p.sceneId].titleEs} chapter` : 'Story chapter'), sceneId: p.sceneId }) },
   { kind: 'speaking', label: 'Speaking challenge', build: (p) => ({ kind: 'speaking', title: p.title ?? 'Speaking challenge', prompt: p.prompt ?? 'Preséntate en español: quién eres, de dónde eres y qué te gusta hacer.' }) },
   { kind: 'written', label: 'Written homework', build: (p) => ({ kind: 'written', title: p.title ?? 'Written homework', prompt: p.prompt ?? 'Escribe 6 frases sobre tu día de hoy.', minWords: 40 }) },
+  { kind: 'material', label: 'From a document or text (your own material)', build: (p) => ({ kind: 'material', title: p.title ?? 'Exercises from your material' }) },
 ];
 
 /**

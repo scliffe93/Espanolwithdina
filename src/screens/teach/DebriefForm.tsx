@@ -13,6 +13,8 @@ import { markedSlips } from '../../lib/platform/marking';
 import { FOCUS_TAG_LABEL, type FocusTag, type Homework, type LessonDebrief, type Person } from '../../lib/platform/types';
 import { homeworkStats, pct } from './insights';
 import { Field, useAction } from './shared';
+import { MaterialBuilder } from './MaterialBuilder';
+import type { MaterialSet } from '../../lib/material';
 
 const TAGS = Object.keys(FOCUS_TAG_LABEL) as FocusTag[];
 const DAY = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -32,6 +34,8 @@ export function DebriefForm({ open, onClose, student, state, homework }: { open:
   const [goals, setGoals] = useState(['', '', '']);
   const [minutes, setMinutes] = useState(state?.profile?.dailyMinutes ?? 15);
   const [plan, setPlan] = useState<PlanItem[]>([]);
+  const [addingMaterial, setAddingMaterial] = useState(false);
+  const [material, setMaterial] = useState<MaterialSet | null>(null);
   const planWeek = useMemo(() => planWeekFor(), []);
   const settings = usePlatformQuery((b) => b.studentSettings(student.id), [student.id]);
 
@@ -124,6 +128,18 @@ export function DebriefForm({ open, onClose, student, state, homework }: { open:
             ))}
           </ul>
           {plan.length === 0 && <p className="text-sm text-ink-mute">Nothing left in the plan. Go back and add something, or send just the notes.</p>}
+          {!addingMaterial ? (
+            <div><button type="button" className="btn-soft !py-2 !text-sm" onClick={() => setAddingMaterial(true)} data-testid="plan-add-material"><Icon name="book" size={15} /> Add exercises from a document or text</button></div>
+          ) : (
+            <div className="rounded-2xl bg-cream-50 p-3 ring-1 ring-ink/5" data-testid="plan-material">
+              <p className="mb-2 text-sm font-semibold">Exercises from your lesson material</p>
+              <MaterialBuilder onChange={setMaterial} maxLevel={settings.data?.maxLevel ?? null} compact />
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" className="btn-dark !py-2 !text-sm" disabled={!material?.items.length} onClick={() => { if (!material) return; setPlan((p) => [...p, { day: 3, goal: goals[0] || undefined, activity: { kind: 'material' as const, title: `From “${material.title}”`, material }, instructions: 'Exercises built from our lesson material. Dina sees every answer.' }].sort((a, b) => a.day - b.day)); setAddingMaterial(false); setMaterial(null); }} data-testid="plan-material-add">Add to the plan</button>
+                <button type="button" className="ctrl" onClick={() => { setAddingMaterial(false); setMaterial(null); }}>Cancel</button>
+              </div>
+            </div>
+          )}
           <p className="text-xs text-ink-mute">During the week the app adapts on its own: a score under 60% adds a shorter re-try two days later; 90% or more on a verb drill adds a stretch task in the next tense.</p>
           {error && <p role="alert" className="rounded-xl bg-terracotta-50 px-3 py-2 text-sm text-terracotta-dark">{error}</p>}
           <div className="flex flex-wrap gap-2"><button type="button" className="btn-primary" onClick={send} disabled={busy} data-testid="send-plan"><Icon name="send" size={16} /> {busy ? 'Sending…' : `Send notes and ${plan.length} task${plan.length === 1 ? '' : 's'}`}</button><button type="button" className="ctrl" onClick={() => setStep('notes')}>Back</button></div>

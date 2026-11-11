@@ -271,7 +271,7 @@ export function LessonCard({ b, now, index = 0 }: { b: Booking; now: number; ind
 
 export function HomeworkCard({ h, now, highlight, index = 0 }: { h: Homework; now: number; highlight?: boolean; index?: number }) {
   const kind = h.activity.kind;
-  const viewable = kind === 'written' || kind === 'speaking';
+  const viewable = kind === 'written' || kind === 'speaking' || kind === 'material';
   const start = () => navigate(homeworkRoute(h));
   return (
     <motion.article initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index, 6) * 0.04 }} className={`card flex flex-col p-4 sm:p-5 ${highlight ? 'ring-2 ring-olive' : ''}`} aria-label={h.activity.title} data-testid={`hw-card-${h.id}`}>
