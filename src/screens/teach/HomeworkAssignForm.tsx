@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Icon } from '../../components/Icon';
-import { Segmented, Sheet } from '../../components/ui';
+import { Sheet } from '../../components/ui';
 import { CITY_THEMES } from '../../data/cityThemes';
 import { SCENES, scenesForCity, type CityId, type Scene } from '../../data/story';
 import { TENSES, VERBS, type Tense } from '../../data/verbs';
@@ -167,10 +167,11 @@ export function HomeworkAssignForm({ open, onClose, people, progress, initialStu
                 {!verbMatches.length && <span className="text-xs text-ink-mute">No verb matches “{verbQuery}”.</span>}
               </div>
               {kind === 'verbs' && (
-                <div className="grid gap-1 text-sm font-medium">
-                  <span>Tense</span>
-                  <Segmented label="Tense" value={tense} onChange={setTense} options={TENSES.map((t) => ({ value: t.id, label: t.label }))} />
-                </div>
+                <Field id="hw-tense" label="Tense">
+                  <select id="hw-tense" className="input" value={tense} onChange={(e) => setTense(e.target.value as Tense)} data-testid="hw-tense">
+                    {TENSES.map((t) => <option key={t.id} value={t.id}>{t.label} · {t.es} (from {t.minLevel})</option>)}
+                  </select>
+                </Field>
               )}
             </div>
           )}

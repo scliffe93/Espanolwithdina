@@ -14,7 +14,7 @@ import type { FocusTag, HomeworkActivity, LessonDebrief } from './types';
 
 export interface PlanItem { activity: HomeworkActivity; instructions: string; day: number; goal?: string }
 
-const TENSE_LABEL: Record<string, string> = { present: 'present', progressive: 'progressive', perfect: 'perfect' };
+const TENSE_LABEL: Record<string, string> = { present: 'present', progressive: 'progressive', perfect: 'perfect', preterite: 'preterite', imperfect: 'imperfect', future: 'future', conditional: 'conditional', subjunctive: 'present subjunctive', 'imperfect-subjunctive': 'imperfect subjunctive', imperative: 'commands' };
 
 /** Student's weakest practised verbs (lowest accuracy, 3+ attempts), falling back to the debrief's verbs. */
 function weakVerbs(state: AppState | null, fallback: string[], n = 4): string[] {

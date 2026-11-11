@@ -8,23 +8,29 @@
 // `trick`  = an invented memory aid, always labelled as such in the UI.
 // ───────────────────────────────────────────────────────────────
 
-export type Tense = 'present' | 'progressive' | 'perfect';
-export const TENSES: { id: Tense; label: string; es: string; minLevel: 'A1' | 'A2' | 'B1' }[] = [
+import { conjugateSimple, type SimpleTense } from './conjugation';
+import { LEXICON, type VerbLevel } from './lexicon';
+
+export type Tense = 'present' | 'progressive' | 'perfect' | SimpleTense;
+export const TENSES: { id: Tense; label: string; es: string; minLevel: VerbLevel }[] = [
   { id: 'present', label: 'Present', es: 'Presente', minLevel: 'A1' },
   { id: 'progressive', label: 'Present progressive', es: 'Presente continuo', minLevel: 'A2' },
   { id: 'perfect', label: 'Present perfect', es: 'Pretérito perfecto', minLevel: 'A2' },
+  { id: 'preterite', label: 'Preterite', es: 'Pretérito indefinido', minLevel: 'A2' },
+  { id: 'imperfect', label: 'Imperfect', es: 'Pretérito imperfecto', minLevel: 'A2' },
+  { id: 'imperative', label: 'Commands', es: 'Imperativo', minLevel: 'A2' },
+  { id: 'future', label: 'Future', es: 'Futuro simple', minLevel: 'B1' },
+  { id: 'conditional', label: 'Conditional', es: 'Condicional', minLevel: 'B1' },
+  { id: 'subjunctive', label: 'Present subjunctive', es: 'Presente de subjuntivo', minLevel: 'B1' },
+  { id: 'imperfect-subjunctive', label: 'Imperfect subjunctive', es: 'Imperfecto de subjuntivo', minLevel: 'B2' },
 ];
+export const TENSE_BY_ID: Record<Tense, (typeof TENSES)[number]> = Object.fromEntries(TENSES.map((t) => [t.id, t])) as Record<Tense, (typeof TENSES)[number]>;
 
 /** Tenses in the curriculum roadmap that are not yet implemented as drills. */
 export const ROADMAP_TENSES = [
-  'Preterite (pretérito indefinido)',
-  'Imperfect (pretérito imperfecto)',
-  'Future (futuro simple)',
-  'Conditional (condicional)',
-  'Imperative (imperativo)',
-  'Present subjunctive',
-  'Past subjunctive',
+  'Negative commands',
   'Pluperfect & other compound tenses',
+  'Future perfect & conditional perfect',
 ];
 
 export const PERSONS = ['yo', 'tú', 'él / ella / usted', 'nosotros', 'vosotros', 'ellos / ellas / ustedes'] as const;
@@ -47,7 +53,7 @@ export interface Verb {
   gerund: string;
   participle: string;
   frequencyRank: number; // 1 = most common in our curriculum ordering
-  level: 'A1' | 'A2';
+  level: VerbLevel;
   origin?: string;
   trick: string;
   note?: string;
@@ -540,6 +546,12 @@ export const VERBS: Verb[] = [
   },
 ];
 
+/** The wider bank (A1–C2, generated from the rules) follows the hand-written verbs in frequency order; it has no example sentences. */
+for (const [i, l] of LEXICON.entries()) {
+  if (VERBS.some((v) => v.inf === l.inf)) continue;
+  VERBS.push({ inf: l.inf, en: l.en, group: l.group, present: l.present as Verb['present'], gerund: l.gerund, participle: l.participle, frequencyRank: 100 + i, level: l.level, trick: l.trick, examples: [] });
+}
+
 export const VERB_BY_INF: Record<string, Verb> = Object.fromEntries(VERBS.map((v) => [v.inf, v]));
 
 const ESTAR = VERB_BY_INF.estar.present;
@@ -571,10 +583,11 @@ export function voseo(verb: Verb): string {
   return stem + (end === 'ar' ? 'ás' : end === 'er' ? 'és' : 'ís');
 }
 
-/** Returns the conjugated form for any supported tense and person (0–5). */
+/** Returns the conjugated form for any supported tense and person (0–5). Commands have no yo form (''). */
 export function conjugate(verb: Verb, tense: Tense, person: number, variety: Variety = activeVariety): string {
   const vos = variety === 'argentina' && person === 1;
   if (tense === 'present') return vos ? voseo(verb) : verb.present[person];
+  if (tense !== 'progressive' && tense !== 'perfect') return conjugateSimple(verb, tense, person, vos);
   if (verb.pronominal) {
     // gustar-type: me está gustando / me ha gustado (3rd-person singular agreement).
     const aux = tense === 'progressive' ? `está ${verb.gerund}` : `ha ${verb.participle}`;
@@ -613,6 +626,12 @@ export function groupLabel(g: VerbGroup): string {
 /** Persons available for the learner's region (Mexico doesn't use vosotros). */
 export function personsForRegion(region: Variety = activeVariety): number[] {
   return region === 'spain' ? [0, 1, 2, 3, 4, 5] : [0, 1, 2, 3, 5];
+}
+
+/** Persons that exist for a tense in the learner's region: commands have no yo form. */
+export function personsForTense(tense: Tense, region: Variety = activeVariety): number[] {
+  const all = personsForRegion(region);
+  return tense === 'imperative' ? all.filter((p) => p !== 0) : all;
 }
 
 export function verbKey(inf: string, tense: Tense, person: number): string {

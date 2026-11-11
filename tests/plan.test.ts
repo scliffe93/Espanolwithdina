@@ -29,7 +29,8 @@ describe('adaptive follow-ups', () => {
     expect(followUpFor({ ...base, result: { score: 0.75 } }, '2026-11-10T18:00:00Z', 'x')).toBeNull();
     expect(followUpFor({ ...base, plan: undefined, result: { score: 0.2 } }, '2026-11-10T18:00:00Z', 'x')).toBeNull();
     expect(followUpFor({ ...base, plan: { week: '2026-11-09', adaptive: 'retry' }, result: { score: 0.2 } }, '2026-11-10T18:00:00Z', 'x')).toBeNull();
-    expect(followUpFor({ ...base, activity: { ...base.activity, tense: 'perfect' }, result: { score: 1 } }, '2026-11-10T18:00:00Z', 'x')).toBeNull();
+    expect(followUpFor({ ...base, activity: { ...base.activity, tense: 'imperfect-subjunctive' }, result: { score: 1 } }, '2026-11-10T18:00:00Z', 'x')).toBeNull();
+    expect(followUpFor({ ...base, activity: { ...base.activity, tense: 'perfect' }, result: { score: 1 } }, '2026-11-10T18:00:00Z', 'x')?.activity.tense).toBe('preterite');
   });
 });
 

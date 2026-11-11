@@ -24,10 +24,10 @@ export interface AdaptHomework {
   plan?: { week: string; goal?: string; day?: number; adaptive?: 'retry' | 'stretch'; sourceId?: string };
 }
 
-const NEXT_TENSE: Record<string, string | undefined> = { present: 'progressive', progressive: 'perfect', perfect: undefined };
+const NEXT_TENSE: Record<string, string | undefined> = { present: 'progressive', progressive: 'perfect', perfect: 'preterite', preterite: 'imperfect', imperfect: 'future', future: 'conditional', conditional: 'subjunctive', subjunctive: 'imperfect-subjunctive', 'imperfect-subjunctive': undefined, imperative: undefined };
 const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 /** Lowest level each tense is recommended from (mirrors TENSES in src/data/verbs.ts). */
-const TENSE_MIN_LEVEL: Record<string, string> = { present: 'A1', progressive: 'A2', perfect: 'A2' };
+const TENSE_MIN_LEVEL: Record<string, string> = { present: 'A1', progressive: 'A2', perfect: 'A2', preterite: 'A2', imperfect: 'A2', imperative: 'A2', future: 'B1', conditional: 'B1', subjunctive: 'B1', 'imperfect-subjunctive': 'B2' };
 
 /**
  * Returns the follow-up homework to create for a submitted item, or null. `id` must be supplied by the caller.
@@ -53,7 +53,7 @@ export function followUpFor(h: AdaptHomework, nowIso: string, id: string, opts: 
     if (opts.maxLevel && LEVELS.indexOf(TENSE_MIN_LEVEL[next] ?? 'A1') > LEVELS.indexOf(opts.maxLevel)) return null;
     return {
       id, teacherId: h.teacherId, studentId: h.studentId, status: 'assigned', assignedAt: nowIso, dueAt: due(3),
-      activity: { ...h.activity, tense: next, title: `Stretch: ${h.activity.title.replace(/\((present|progressive|perfect)\)/i, '').trim()} (${next})` },
+      activity: { ...h.activity, tense: next, title: `Stretch: ${h.activity.title.replace(/\(([a-z -]+)\)\s*$/i, '').trim()} (${next})` },
       instructions: `${Math.round(score * 100)}% — excellent. Same verbs, next tense.`,
       plan: { week: h.plan.week, goal: h.plan.goal, adaptive: 'stretch', sourceId: h.id },
     };

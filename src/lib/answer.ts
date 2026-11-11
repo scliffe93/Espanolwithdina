@@ -1,5 +1,6 @@
 import type { ErrorCategory } from '../types';
 import { conjugate, getActiveVariety, type Tense, type Verb } from '../data/verbs';
+import { conjugateSimple } from '../data/conjugation';
 
 /** Lower-case, trim, remove punctuation (keeps accents and ñ). */
 export function normalize(s: string): string {
@@ -64,11 +65,16 @@ export function classifyVerbError(verb: Verb, tense: Tense, person: number, give
   const sameTenseForms = [0, 1, 2, 3, 4, 5].map((p) => normalize(conjugate(verb, tense, p)));
   if (sameTenseForms.includes(g) || sameTenseForms.map(stripAccents).includes(stripAccents(g))) return 'person-agreement';
 
-  if (tense !== 'present' && !verb.pronominal) {
+  if ((tense === 'progressive' || tense === 'perfect') && !verb.pronominal) {
     const [aux, ...rest] = g.split(' ');
     const [expAux, ...expRest] = expected.split(' ');
     if (rest.join(' ') === expRest.join(' ') && aux !== expAux) return 'auxiliary';
     if (aux === expAux) return verb.group === 'regular' ? 'spelling' : 'irregular-verb';
+  }
+  if (tense !== 'present' && tense !== 'progressive' && tense !== 'perfect' && !verb.pronominal && verb.group !== 'regular') {
+    // Treated the verb as regular in a simple tense (tení for tuve, haceré for haré).
+    const reg = normalize(conjugateSimple({ inf: verb.inf, group: 'regular', present: verb.present }, tense, person));
+    if (g === reg || stripAccents(g) === stripAccents(reg)) return verb.group.startsWith('stem') ? 'stem-change' : 'irregular-verb';
   }
 
   if (tense === 'present' && !verb.pronominal) {

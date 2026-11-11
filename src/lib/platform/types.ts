@@ -6,6 +6,7 @@
 // ───────────────────────────────────────────────────────────────
 
 import type { Cefr } from '../../types';
+import type { Tense } from '../../data/verbs';
 
 export type Role = 'student' | 'teacher' | 'admin';
 
@@ -48,7 +49,7 @@ export interface HomeworkActivity {
   title: string;
   /** verbs / grammar: infinitives to drill (empty = let the app choose). */
   verbs?: string[];
-  tense?: 'present' | 'progressive' | 'perfect';
+  tense?: Tense;
   /** grammar: the ser-vs-estar drill. */
   mode?: 'ser-estar';
   /** story: a scene id (e.g. 'piso', 'val-piso'). */
@@ -154,7 +155,7 @@ export const FOCUS_TAG_LABEL: Record<FocusTag, string> = {
 /** The teacher's notes after a lesson. Drives the generated weekly plan. */
 export interface LessonDebrief {
   lessonDate: string; // YYYY-MM-DD
-  covered: { tenses: ('present' | 'progressive' | 'perfect')[]; verbs: string[]; themes: string[]; sceneId?: string };
+  covered: { tenses: Tense[]; verbs: string[]; themes: string[]; sceneId?: string };
   wentWell: string;
   toFix: FocusTag[];
   goals: string[];

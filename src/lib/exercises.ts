@@ -1,6 +1,7 @@
 import type { Activity, AppState, Cefr, Region } from '../types';
 import { withinLevel } from './platform/level';
-import { VERBS, VERB_BY_INF, conjugate, getActiveVariety, parseExample, personsForRegion, verbKey, type Tense, type Verb, type VerbExample } from '../data/verbs';
+import { VERBS, VERB_BY_INF, conjugate, getActiveVariety, parseExample, personsForRegion, personsForTense, verbKey, type Tense, type Verb, type VerbExample } from '../data/verbs';
+import { conjugateSimple } from '../data/conjugation';
 import { regularPresent } from './answer';
 
 export type ExKind = 'type' | 'choice' | 'match' | 'build' | 'listen' | 'fix' | 'translate' | 'context' | 'serEstar';
@@ -105,7 +106,12 @@ export function formOptions(verb: Verb, tense: Tense, person: number, region: Re
     const reg = regularPresent(verb.inf, person);
     if (reg !== answer) pool.add(reg);
   }
-  for (const p of shuffle(personsForRegion(region), rng)) {
+  if (tense !== 'present' && tense !== 'progressive' && tense !== 'perfect' && verb.group !== 'regular' && !verb.pronominal) {
+    // The "regularised" mistake for irregular verbs in the simple tenses (tener → tení, ser → sé…).
+    const reg = conjugateSimple({ inf: verb.inf, group: 'regular', present: verb.present }, tense, person);
+    if (reg && reg !== answer) pool.add(reg);
+  }
+  for (const p of shuffle(personsForTense(tense, region), rng)) {
     const f = conjugate(verb, tense, p);
     if (f !== answer) pool.add(f);
   }
@@ -133,7 +139,7 @@ export interface PlanInput {
 /** Picks which verbs to practise: due → weak → in-progress → new (by frequency, within level). */
 export function pickVerbs(state: AppState, tense: Tense, count: number, now = Date.now(), maxLevel: Cefr | null = null): string[] {
   const region = state.profile?.region ?? 'spain';
-  const persons = personsForRegion(region);
+  const persons = personsForTense(tense, region);
   // Frequency order; A2 verbs come later for A1 learners naturally (they rank lower). A teacher's ceiling removes verbs above it.
   const eligible = VERBS.filter((v) => withinLevel(v.level, maxLevel)).sort((a, b) => a.frequencyRank - b.frequencyRank);
   const info = eligible.map((v) => {
@@ -175,7 +181,7 @@ export function buildSession({ state, focus, tense, length = 12, now = Date.now(
   }
 
   const verbs = focus?.length ? focus.filter((v) => VERB_BY_INF[v]) : pickVerbs(state, tense, 5, now, maxLevel);
-  const persons = personsForRegion(region);
+  const persons = personsForTense(tense, region);
   const prefs = state.profile?.activities ?? [];
   const base: ExKind[] = ['choice', 'type', 'match', 'listen', 'fix', 'type', 'choice', 'build'];
   if (tense === 'present') base.push('context', 'translate', 'context');
