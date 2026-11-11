@@ -74,7 +74,7 @@ async function shot(p, name, opts = {}) { await clean(p); await p.waitForTimeout
   await shot(p, 't-marking');
   await p.getByTestId('rv-save').click(); await p.waitForTimeout(1500);
   await p.goto(BASE + '#/teach/student/demo-sam'); await p.waitForTimeout(1500);
-  await p.getByTestId('level-edit').click(); await p.getByTestId('level-select').selectOption('B1'); await p.getByTestId('level-save').click(); await p.waitForTimeout(1200);
+  await p.getByTestId('level-edit').click(); await p.getByTestId('level-select').selectOption('B1'); await p.getByTestId('level-save').click(); await p.waitForTimeout(6500); // let the toasts fade
   await shot(p, 't-level');
   // Sam sees the marking
   await p.goto(BASE + '#/demo'); await p.waitForTimeout(800); await p.getByTestId('demo-sam').click(); await p.waitForTimeout(1800);
