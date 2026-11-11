@@ -1,4 +1,5 @@
-import type { Interest, Region } from '../types';
+import type { Cefr, Interest, Region } from '../types';
+import { PACK_ITEMS } from './vocabPacks';
 
 // Vocabulary bank. `mx` gives the Mexican Spanish form where it differs.
 // Memory aids: `origin` is real etymology; `trick`, `visual` and `story`
@@ -16,7 +17,7 @@ export interface VocabItem {
   co?: string;
   en: string;
   theme: VocabTheme;
-  level: 'A1' | 'A2' | 'B1';
+  level: Cefr;
   gender?: 'm' | 'f';
   origin?: string;
   trick?: string;
@@ -129,6 +130,13 @@ export const VOCAB: VocabItem[] = [
 ];
 
 export const VOCAB_BY_ID: Record<string, VocabItem> = Object.fromEntries(VOCAB.map((v) => [v.id, v]));
+
+// The level packs (A1 to C2) join the bank after the storyline words.
+for (const v of PACK_ITEMS) {
+  if (VOCAB_BY_ID[v.id]) continue;
+  VOCAB.push(v);
+  VOCAB_BY_ID[v.id] = v;
+}
 
 /** Adds city-specific vocabulary to the bank (called once per city story at load). */
 export function registerVocab(items: VocabItem[] = []) {

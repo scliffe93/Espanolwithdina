@@ -2,9 +2,10 @@ import type { Activity, AppState, Cefr, Region } from '../types';
 import { withinLevel } from './platform/level';
 import { VERBS, VERB_BY_INF, conjugate, getActiveVariety, parseExample, personsForRegion, personsForTense, verbKey, type Tense, type Verb, type VerbExample } from '../data/verbs';
 import { conjugateSimple } from '../data/conjugation';
+import { GRAMMAR_DRILLS, type GrammarItem, type GrammarMode } from '../data/grammar';
 import { regularPresent } from './answer';
 
-export type ExKind = 'type' | 'choice' | 'match' | 'build' | 'listen' | 'fix' | 'translate' | 'context' | 'serEstar';
+export type ExKind = 'type' | 'choice' | 'match' | 'build' | 'listen' | 'fix' | 'translate' | 'context' | 'serEstar' | 'grammar';
 
 export const EX_LABEL: Record<ExKind, string> = {
   type: 'Conjugate',
@@ -16,6 +17,7 @@ export const EX_LABEL: Record<ExKind, string> = {
   translate: 'Translate',
   context: 'In conversation',
   serEstar: 'Ser or estar?',
+  grammar: 'Grammar',
 };
 
 export interface SerEstarItem {
@@ -74,7 +76,8 @@ export type Exercise =
   | { kind: 'build'; verb: string; example: VerbExample; tiles: string[] }
   | { kind: 'fix'; verb: string; example: VerbExample; wrong: string; options: string[] }
   | { kind: 'translate'; verb: string; example: VerbExample; options: string[] }
-  | { kind: 'serEstar'; item: SerEstarItem };
+  | { kind: 'serEstar'; item: SerEstarItem }
+  | { kind: 'grammar'; mode: Exclude<GrammarMode, 'ser-estar'>; index: number; item: GrammarItem };
 
 export type Rng = () => number;
 
@@ -131,7 +134,7 @@ export interface PlanInput {
   length?: number;
   now?: number;
   rng?: Rng;
-  mode?: 'ser-estar';
+  mode?: GrammarMode;
   /** The teacher's level ceiling for this student (null/undefined = none): verbs above it are never picked by the app. */
   maxLevel?: Cefr | null;
 }
@@ -179,6 +182,11 @@ export function buildSession({ state, focus, tense, length = 12, now = Date.now(
     mixed.splice(7, 0, { kind: 'match', verb: 'estar', tense: 'present', persons: shuffle(personsForRegion(region), rng).slice(0, 4), pronouns: [] });
     return fillPronouns(mixed, rng);
   }
+  if (mode) {
+    // The other grammar drills: items within the student's level ceiling, shuffled.
+    const pool = GRAMMAR_DRILLS[mode].map((item, index) => ({ item, index })).filter((x) => withinLevel(x.item.level, maxLevel));
+    return shuffle(pool, rng).slice(0, Math.min(length, pool.length)).map((x) => ({ kind: 'grammar' as const, mode, index: x.index, item: x.item }));
+  }
 
   const verbs = focus?.length ? focus.filter((v) => VERB_BY_INF[v]) : pickVerbs(state, tense, 5, now, maxLevel);
   const persons = personsForTense(tense, region);
@@ -191,7 +199,7 @@ export function buildSession({ state, focus, tense, length = 12, now = Date.now(
   const out: Exercise[] = [];
   let i = 0;
   // Progression within a session: recognition first, production later.
-  const order = (k: ExKind) => ({ match: 0, choice: 1, listen: 2, translate: 3, fix: 4, build: 5, context: 6, type: 7, serEstar: 1 })[k];
+  const order = (k: ExKind) => ({ match: 0, choice: 1, listen: 2, translate: 3, fix: 4, build: 5, context: 6, type: 7, serEstar: 1, grammar: 1 })[k];
   const picks = shuffle(kinds, rng).slice(0, length).sort((a, b) => order(a) - order(b));
   for (const kind of picks) {
     const inf = verbs[i++ % verbs.length];
@@ -255,6 +263,7 @@ export function cardKeyFor(e: Exercise): { key: string; person: number; tense: T
     case 'type': case 'choice': case 'listen': return { key: verbKey(e.verb, e.tense, e.person), person: e.person, tense: e.tense };
     case 'context': case 'build': case 'fix': case 'translate': return { key: verbKey(e.verb, 'present', e.example.person), person: e.example.person, tense: 'present' };
     case 'serEstar': return { key: verbKey(e.item.verb, 'present', e.item.person), person: e.item.person, tense: 'present' };
+    case 'grammar': return { key: `grammar:${e.mode}|${e.index}`, person: 0, tense: 'present' };
     case 'match': return null;
   }
 }

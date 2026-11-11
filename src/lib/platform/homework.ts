@@ -1,6 +1,8 @@
 import { useCallback, useRef } from 'react';
 import { SCENE_BY_ID } from '../../data/story';
 import { VERB_BY_INF } from '../../data/verbs';
+import { GRAMMAR_MODES, GRAMMAR_MODE_BY_ID } from '../../data/grammar';
+import { PACK_BY_ID, VOCAB_PACKS } from '../../data/vocabPacks';
 import { useRoute, navigate } from '../router';
 import { usePlatform } from './context';
 import type { ActivityType, Homework, HomeworkActivity, HomeworkKind, HomeworkResult } from './types';
@@ -25,13 +27,13 @@ export function homeworkRoute(h: Homework): string {
       return `verbs?${q.toString()}&${hw}`;
     }
     case 'grammar':
-      return a.mode === 'ser-estar' ? `verbs?mode=ser-estar&${hw}` : `verbs?${a.verbs?.length ? `focus=${a.verbs.join(',')}&start=1&` : ''}${hw}`;
+      return a.mode ? `verbs?mode=${a.mode}&${hw}` : `verbs?${a.verbs?.length ? `focus=${a.verbs.join(',')}&start=1&` : ''}${hw}`;
     case 'story':
       return `scene/${a.sceneId ?? 'llegada'}?${hw}`;
     case 'listening':
       return `game/${a.game ?? 'order'}?${a.verbs?.length ? `focus=${a.verbs.join(',')}&` : ''}${hw}`;
     case 'vocabulary':
-      return a.game ? `game/${a.game}?${hw}` : `review?${hw}`;
+      return a.game ? `game/${a.game}?${hw}` : a.pack ? `review?pack=${encodeURIComponent(a.pack)}&${hw}` : `review?${hw}`;
     case 'speaking':
     case 'written':
     case 'material':
@@ -43,10 +45,10 @@ export function homeworkRoute(h: Homework): string {
 export function describeActivity(a: HomeworkActivity): string {
   switch (a.kind) {
     case 'verbs': return `Verb gym${a.verbs?.length ? `: ${a.verbs.map((v) => VERB_BY_INF[v]?.inf ?? v).join(', ')}` : ''} (${a.tense ?? 'present'})`;
-    case 'grammar': return a.mode === 'ser-estar' ? 'Ser vs estar drill' : 'Grammar practice in the verb gym';
+    case 'grammar': return a.mode ? `${GRAMMAR_MODE_BY_ID[a.mode].label} drill` : 'Grammar practice in the verb gym';
     case 'story': return `Story chapter: ${a.sceneId && SCENE_BY_ID[a.sceneId] ? `${SCENE_BY_ID[a.sceneId].titleEs} — ${SCENE_BY_ID[a.sceneId].title}` : a.sceneId ?? ''}`;
     case 'listening': return `Listening game: ${{ metro: 'Metro Rush', order: 'Order Up!', swipe: '¿Sí o no?', serestar: 'Ser o Estar', penalty: 'Penalty Shoot-out', derbi: 'The Derby Quiz', lineup: 'Line-up' }[a.game ?? 'order']}`;
-    case 'vocabulary': return a.game ? `Vocabulary game: ${a.game}` : 'Memory review of the vocabulary deck';
+    case 'vocabulary': return a.game ? `Vocabulary game: ${a.game}` : a.pack && PACK_BY_ID[a.pack] ? `Word pack: ${PACK_BY_ID[a.pack].title} (${PACK_BY_ID[a.pack].level})` : 'Memory review of the vocabulary deck';
     case 'speaking': return 'Speaking challenge (record yourself)';
     case 'written': return `Written homework${a.minWords ? ` (${a.minWords}+ words)` : ''}`;
     case 'material': return a.material ? `${a.material.items.length} exercise${a.material.items.length === 1 ? '' : 's'} from “${a.material.title}”` : 'Exercises from your material';
@@ -54,9 +56,10 @@ export function describeActivity(a: HomeworkActivity): string {
 }
 
 /** Activities Dina can assign, grouped for the assignment form. */
-export const HOMEWORK_TEMPLATES: { kind: HomeworkKind; label: string; build: (p: { verbs?: string[]; sceneId?: string; game?: HomeworkActivity['game']; prompt?: string; title?: string }) => HomeworkActivity }[] = [
+export const HOMEWORK_TEMPLATES: { kind: HomeworkKind; label: string; build: (p: { verbs?: string[]; sceneId?: string; game?: HomeworkActivity['game']; prompt?: string; title?: string; pack?: string }) => HomeworkActivity }[] = [
   { kind: 'verbs', label: 'Verb conjugation (verb gym)', build: (p) => ({ kind: 'verbs', title: p.title ?? `Verb practice: ${p.verbs?.join(', ') || 'app’s choice'}`, verbs: p.verbs ?? [], tense: 'present' }) },
-  { kind: 'grammar', label: 'Grammar: ser vs estar drill', build: (p) => ({ kind: 'grammar', title: p.title ?? 'Ser or estar? drill', mode: 'ser-estar', verbs: ['ser', 'estar'] }) },
+  ...GRAMMAR_MODES.map((m) => ({ kind: 'grammar' as const, label: `Grammar: ${m.label} (from ${m.minLevel})`, build: (p: { title?: string }) => ({ kind: 'grammar' as const, title: p.title ?? `${m.label} drill`, mode: m.id, ...(m.id === 'ser-estar' ? { verbs: ['ser', 'estar'] } : {}) }) })),
+  { kind: 'vocabulary', label: 'Vocabulary: a word pack by level', build: (p) => { const pack = VOCAB_PACKS.find((x) => x.id === p.pack) ?? VOCAB_PACKS[0]; return { kind: 'vocabulary', title: p.title ?? `Word pack: ${pack.title}`, pack: pack.id }; } },
   { kind: 'vocabulary', label: 'Vocabulary: memory review', build: (p) => ({ kind: 'vocabulary', title: p.title ?? 'Review your vocabulary deck', review: true }) },
   { kind: 'listening', label: 'Listening: Order Up! game', build: (p) => ({ kind: 'listening', title: p.title ?? 'Order Up! — listen and serve', game: 'order' }) },
   { kind: 'listening', label: 'Listening: Line-up (football commentary)', build: (p) => ({ kind: 'listening', title: p.title ?? 'Line-up — listen and order the commentary', game: 'lineup' }) },

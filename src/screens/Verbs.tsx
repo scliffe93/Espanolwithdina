@@ -15,6 +15,8 @@ import { useStore } from '../lib/store';
 import { confetti, haptic, sfx } from '../lib/fx';
 import { useHomeworkCompletion } from '../lib/platform/homework';
 import { useLevelAccess } from '../lib/platform/useLevelAccess';
+import { GRAMMAR_MODES, type GrammarMode } from '../data/grammar';
+import type { FocusTag } from '../lib/platform/types';
 import type { ErrorCategory } from '../types';
 import type { Grade } from '../lib/srs';
 
@@ -33,6 +35,8 @@ interface Result {
   expected: string;
   given: string;
   category?: ErrorCategory;
+  /** The debrief tag a grammar-drill slip maps to (por/para → prepositions, tense choice…). */
+  focus?: FocusTag;
   accentOnly?: boolean;
   explain?: string;
   sayText?: string;
@@ -51,6 +55,7 @@ function promptFor(ex: Exercise): string {
     case 'translate': return `Translate: ${ex.example.en}`;
     case 'match': return `Match the forms of ${ex.verb} (${tenseLabel(ex.tense)})`;
     case 'serEstar': return `${ex.item.before} ___ ${ex.item.after}`.trim();
+    case 'grammar': return `${ex.item.before} ___ ${ex.item.after}${ex.item.hint ? ` (${ex.item.hint})` : ''}`.trim();
   }
 }
 
@@ -61,7 +66,7 @@ function Session({ exercises: initial, tense, onExit }: { exercises: Exercise[];
   const [i, setI] = useState(0);
   const [result, setResult] = useState<Result | null>(null);
   const [hintUsed, setHintUsed] = useState(false);
-  const [log, setLog] = useState<{ verb: string; correct: boolean; category?: ErrorCategory; expected: string; given: string; prompt: string }[]>([]);
+  const [log, setLog] = useState<{ verb: string; correct: boolean; category?: ErrorCategory; focus?: FocusTag; expected: string; given: string; prompt: string }[]>([]);
   const [done, setDone] = useState(false);
   const requeued = useRef(new Set<number>());
   const hw = useHomeworkCompletion();
@@ -74,23 +79,23 @@ function Session({ exercises: initial, tense, onExit }: { exercises: Exercise[];
   const submit = (r: Result) => {
     if (result) return;
     const card = cardKeyFor(ex);
-    const verbInf = ex.kind === 'serEstar' ? ex.item.verb : ex.verb;
+    const verbInf = ex.kind === 'serEstar' ? ex.item.verb : ex.kind === 'grammar' ? '' : ex.verb;
     update((s) =>
       card
         ? recordAttempt(s, {
             key: card.key,
             grade: grade(r.correct, !!r.accentOnly),
-            exerciseType: ex.kind,
-            verb: verbInf,
-            tense: card.tense,
-            mistake: !r.correct || r.accentOnly ? { expected: r.expected, given: r.given, category: r.category ?? 'other', context: `${EX_LABEL[ex.kind]} · ${verbInf}` } : undefined,
+            exerciseType: ex.kind === 'grammar' ? `grammar-${ex.mode}` : ex.kind,
+            verb: verbInf || undefined,
+            tense: ex.kind === 'grammar' ? undefined : card.tense,
+            mistake: !r.correct || r.accentOnly ? { expected: r.expected, given: r.given, category: r.category ?? 'other', context: ex.kind === 'grammar' ? `${GRAMMAR_MODES.find((m) => m.id === ex.mode)?.label} drill` : `${EX_LABEL[ex.kind]} · ${verbInf}` } : undefined,
           })
         : s,
     );
-    setLog((l) => [...l, { verb: verbInf, correct: r.correct, category: r.category, expected: r.expected, given: r.given, prompt: promptFor(ex) }]);
+    setLog((l) => [...l, { verb: verbInf, correct: r.correct, category: r.category, focus: r.focus, expected: r.expected, given: r.given, prompt: promptFor(ex) }]);
     // Revisit mistakes automatically later in the session, as a production exercise.
     // Revisit a mistake once; a retry that is also wrong is left for spaced repetition (no endless loops).
-    if (!r.correct && card && !requeued.current.has(i) && ex.kind !== 'serEstar' && !(ex as { retry?: boolean }).retry) {
+    if (!r.correct && card && !requeued.current.has(i) && ex.kind !== 'serEstar' && ex.kind !== 'grammar' && !(ex as { retry?: boolean }).retry) {
       requeued.current.add(i);
       setQueue((q) => [...q, { kind: 'type', verb: verbInf, tense: card.tense, person: card.person, pronoun: (ex as { pronoun?: string }).pronoun || personLabel(card.person).split(' ')[0], retry: true } as Exercise]);
     }
@@ -109,7 +114,7 @@ function Session({ exercises: initial, tense, onExit }: { exercises: Exercise[];
       if (hw.isHomework) {
         const correct = log.filter((l) => l.correct).length;
         const cats = [...new Set(log.filter((l) => !l.correct && l.category).map((l) => CATEGORY_LABEL[l.category!]))];
-        hw.submit({ score: log.length ? correct / log.length : 0, attempts: log.length, correct, summary: `${correct}/${log.length} correct${cats.length ? ` · ${cats.slice(0, 2).join(', ').toLowerCase()}` : ''}`, items: log.slice(0, 60).map((l) => ({ prompt: l.prompt, expected: l.expected, given: l.given, correct: l.correct, ...(l.category ? { category: l.category } : {}) })) });
+        hw.submit({ score: log.length ? correct / log.length : 0, attempts: log.length, correct, summary: `${correct}/${log.length} correct${cats.length ? ` · ${cats.slice(0, 2).join(', ').toLowerCase()}` : ''}`, items: log.slice(0, 60).map((l) => ({ prompt: l.prompt, expected: l.expected, given: l.given, correct: l.correct, ...(l.focus ? { category: l.focus } : l.category ? { category: l.category } : {}) })) });
       }
       sfx.win();
       if (log.filter((l) => l.correct).length / Math.max(1, log.length) >= 0.7) confetti({ count: 120 });
@@ -151,7 +156,7 @@ function Session({ exercises: initial, tense, onExit }: { exercises: Exercise[];
     );
   }
 
-  const verb = ex.kind === 'serEstar' ? VERB_BY_INF[ex.item.verb] : VERB_BY_INF[ex.verb];
+  const verb = ex.kind === 'serEstar' ? VERB_BY_INF[ex.item.verb] : ex.kind === 'grammar' ? null : VERB_BY_INF[ex.verb];
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -162,7 +167,7 @@ function Session({ exercises: initial, tense, onExit }: { exercises: Exercise[];
       </div>
       <AnimatePresence mode="wait">
         <motion.div key={i} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
-          <p className="eyebrow">{EX_LABEL[ex.kind]}{ex.kind !== 'serEstar' && <> · <span className="normal-case tracking-normal">{verb.inf} — {verb.en}</span></>}</p>
+          <p className="eyebrow">{ex.kind === 'grammar' ? GRAMMAR_MODES.find((m) => m.id === ex.mode)?.label : EX_LABEL[ex.kind]}{verb && <> · <span className="normal-case tracking-normal">{verb.inf} — {verb.en}</span></>}</p>
           <ExerciseView key={i} ex={ex} locked={!!result} onSubmit={submit} onHint={() => setHintUsed(true)} />
         </motion.div>
       </AnimatePresence>
@@ -177,7 +182,7 @@ function Session({ exercises: initial, tense, onExit }: { exercises: Exercise[];
             {(!result.correct || result.accentOnly) && <p className="mt-1">Answer: <b>{result.expected}</b>{result.given && <span className="text-ink-mute"> · you wrote “{result.given}”</span>}</p>}
             {result.category && !result.correct && <p className="mt-2 text-sm"><b>{CATEGORY_LABEL[result.category]}.</b> {CATEGORY_TIP[result.category]}</p>}
             {result.explain && <p className="mt-2 text-sm text-ink-soft">{result.explain}</p>}
-            {!result.correct && cardKeyFor(ex) && (
+            {!result.correct && verb && cardKeyFor(ex) && (
               <div className="mt-3"><HelpMeRemember source={memoryFor(verb, result.expected, cardKeyFor(ex)!.key)} /></div>
             )}
             <div className="mt-4 flex flex-wrap gap-2">
@@ -352,6 +357,23 @@ function ExerciseView({ ex, locked, onSubmit, onHint }: { ex: Exercise; locked: 
         </div>
       );
     }
+    case 'grammar': {
+      const it = ex.item;
+      const focus = GRAMMAR_MODES.find((m) => m.id === ex.mode)?.focus;
+      return (
+        <div>
+          <div className="mt-3 rounded-3xl bg-white p-5 shadow-soft">
+            <p className="font-display text-2xl leading-relaxed" lang="es">{it.before} <span className="inline-block min-w-[4ch] border-b-2 border-dashed border-terracotta">&nbsp;</span>{it.hint && <span className="ml-1 align-middle text-sm text-ink-mute">({it.hint})</span>} {it.after}</p>
+            <p className="mt-2 text-ink-mute">{it.en}</p>
+          </div>
+          <Options options={it.options} locked={locked} answer={it.answer} picked={picked} onPick={(o) => {
+            setPicked(o);
+            const full = `${it.before} ${it.answer} ${it.after}`.trim();
+            onSubmit(o === it.answer ? { correct: true, expected: it.answer, given: o, explain: it.why, sayText: full } : { correct: false, expected: it.answer, given: o, category: 'other', focus, explain: it.why, sayText: full });
+          }} />
+        </div>
+      );
+    }
     case 'serEstar': {
       const it = ex.item;
       return (
@@ -512,7 +534,8 @@ export function Verbs({ params }: { params: URLSearchParams }) {
   const region = state.profile?.region ?? 'spain';
   const level = state.profile?.levels.verbs ?? 'A1';
   const focusParam = params.get('focus')?.split(',').filter((v) => VERB_BY_INF[v]) ?? [];
-  const mode = params.get('mode') === 'ser-estar' ? 'ser-estar' : undefined;
+  const modeParam = params.get('mode');
+  const mode = GRAMMAR_MODES.some((m) => m.id === modeParam) ? (modeParam as GrammarMode) : undefined;
   const [tense, setTense] = useState<Tense>((params.get('tense') as Tense) || 'present');
   const [focus, setFocus] = useState<string[]>(focusParam);
   const [session, setSession] = useState<{ ex: Exercise[]; tense: Tense } | null>(null);
@@ -529,7 +552,7 @@ export function Verbs({ params }: { params: URLSearchParams }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ceiling]);
 
-  const start = (opts: { focus?: string[]; mode?: 'ser-estar'; tense?: Tense } = {}) => {
+  const start = (opts: { focus?: string[]; mode?: GrammarMode; tense?: Tense } = {}) => {
     const t = opts.tense ?? tense;
     if (!opts.mode && tenseLocked(TENSES.find((x) => x.id === t)!)) return;
     setSession({ ex: buildSession({ state, focus: opts.focus ?? (focus.length ? focus : undefined), tense: t, mode: opts.mode, maxLevel: ceiling }), tense: t });
@@ -582,7 +605,13 @@ export function Verbs({ params }: { params: URLSearchParams }) {
           )}
           <div className="mt-5 flex flex-wrap gap-2">
             <button className="btn-primary" onClick={() => start()}><Icon name="play" size={18} filled /> Start 12-exercise session</button>
-            <button className="btn-ghost" onClick={() => start({ mode: 'ser-estar', tense: 'present' })}>Ser vs estar drill</button>
+          </div>
+          <p className="eyebrow mb-2 mt-5">Grammar drills</p>
+          <div className="flex flex-wrap gap-2">
+            {GRAMMAR_MODES.map((m) => {
+              const locked = !!ceiling && levelIndex(m.minLevel) > levelIndex(ceiling);
+              return <button key={m.id} className="chip" disabled={locked} title={locked ? `Locked by your teacher (from ${m.minLevel})` : m.blurb} onClick={() => start({ mode: m.id, tense: 'present' })} data-testid={`drill-${m.id}`}>{m.label} <span className="text-xs opacity-60">{locked ? 'locked' : m.minLevel}</span></button>;
+            })}
           </div>
         </div>
         <div className="card flex items-center gap-4 p-5">

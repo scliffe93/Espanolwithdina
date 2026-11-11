@@ -54,8 +54,9 @@ describe('spaced repetition', () => {
 describe('assessment scoring', () => {
   it('all correct → top levels; none correct → A1', () => {
     const all = Object.fromEntries(ASSESSMENT.map((q) => [q.id, q.answer]));
-    expect(scoreAssessment(all).levels.grammar).toBe('B2');
-    expect(scoreAssessment(all).levels.vocabulary).toBe('C1');
+    expect(scoreAssessment(all).levels.grammar).toBe('C2');
+    expect(scoreAssessment(all).levels.vocabulary).toBe('C2');
+    expect(scoreAssessment(all).overall).toBe('C2');
     const none = Object.fromEntries(ASSESSMENT.map((q) => [q.id, (q.answer + 1) % q.options.length]));
     const r = scoreAssessment(none);
     expect(r.overall).toBe('A1');

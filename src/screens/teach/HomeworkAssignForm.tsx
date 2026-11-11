@@ -13,6 +13,7 @@ import { useStore } from '../../lib/store';
 import { shiftDate, todayIn } from './calendarMath';
 import { ErrorText, Field, StudentPicker, ZoneSelect, nameOf, useAction } from './shared';
 import { MaterialBuilder } from './MaterialBuilder';
+import { VOCAB_PACKS } from '../../data/vocabPacks';
 import type { MaterialSet } from '../../lib/material';
 
 type VocabVia = 'review' | 'swipe' | 'serestar' | 'order' | 'metro';
@@ -53,6 +54,7 @@ export function HomeworkAssignForm({ open, onClose, people, progress, initialStu
   const [dueDate, setDueDate] = useState('');
   const [dueTime, setDueTime] = useState('20:00');
   const [material, setMaterial] = useState<MaterialSet | null>(null);
+  const [packId, setPackId] = useState(VOCAB_PACKS[0].id);
 
   useEffect(() => {
     if (!open) return;
@@ -78,6 +80,7 @@ export function HomeworkAssignForm({ open, onClose, people, progress, initialStu
 
   const template = HOMEWORK_TEMPLATES[tpl];
   const kind = template.kind;
+  const wantsPack = template.label.includes('word pack');
   const wantsVerbs = kind === 'verbs' || (kind === 'listening' && template.label.includes('Metro'));
   const wantsPrompt = kind === 'speaking' || kind === 'written';
 
@@ -91,6 +94,7 @@ export function HomeworkAssignForm({ open, onClose, people, progress, initialStu
 
   const activity: HomeworkActivity = useMemo(() => {
     let a = template.build({
+      pack: packId,
       verbs: verbs.length ? verbs : undefined,
       sceneId: kind === 'story' ? effectiveScene || undefined : undefined,
       prompt: prompt.trim() || undefined,
@@ -101,7 +105,7 @@ export function HomeworkAssignForm({ open, onClose, people, progress, initialStu
     if (a.kind === 'vocabulary' && vocabVia !== 'review') a = { ...a, review: undefined, game: vocabVia };
     if (a.kind === 'material' && material) a = { ...a, material, title: titleTouched && title.trim() ? title.trim() : `From “${material.title}”` };
     return a;
-  }, [template, kind, verbs, effectiveScene, prompt, title, titleTouched, tense, minWords, vocabVia, material]);
+  }, [template, kind, verbs, effectiveScene, prompt, title, titleTouched, tense, minWords, vocabVia, material, packId]);
 
   const dueAt = useMemo(() => {
     if (!dueDate || !dueTime) return '';
@@ -194,7 +198,14 @@ export function HomeworkAssignForm({ open, onClose, people, progress, initialStu
             </Field>
           )}
 
-          {kind === 'vocabulary' && (
+          {wantsPack && (
+            <Field id="hw-pack" label="Word pack">
+              <select id="hw-pack" className="input" value={packId} onChange={(e) => setPackId(e.target.value)} data-testid="hw-pack">
+                {VOCAB_PACKS.map((p) => <option key={p.id} value={p.id}>{p.level} · {p.title} ({p.es})</option>)}
+              </select>
+            </Field>
+          )}
+          {kind === 'vocabulary' && !wantsPack && (
             <Field id="hw-vocab-via" label="Practise with">
               <select id="hw-vocab-via" className="input" value={vocabVia} onChange={(e) => setVocabVia(e.target.value as VocabVia)}>
                 {VOCAB_VIA.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}

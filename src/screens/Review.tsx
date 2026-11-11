@@ -1,16 +1,20 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { HelpMeRemember, type MemorySource } from '../components/HelpMeRemember';
 import { Icon } from '../components/Icon';
 import { Bar, Empty, PageHeader } from '../components/ui';
 import { personLabel, VERB_BY_INF, conjugate, groupLabel, type Tense } from '../data/verbs';
-import { VOCAB_BY_ID, acceptedAnswers, vocabForm } from '../data/vocab';
+import { VOCAB_BY_ID, acceptedAnswers, vocabForm, vocabKey } from '../data/vocab';
+import { PACK_BY_ID, VOCAB_PACKS } from '../data/vocabPacks';
+import { withinLevel } from '../lib/platform/level';
+import { useLevelAccess } from '../lib/platform/useLevelAccess';
+import { useRoute } from '../lib/router';
 import { useSay } from '../hooks/useSpeech';
 import { checkAnswer, classifyVerbError, CATEGORY_TIP } from '../lib/answer';
 import { DAY_MS } from '../lib/dates';
 import { navigate } from '../lib/router';
 import { mastery, type Grade } from '../lib/srs';
-import { completeLesson, recordAttempt } from '../lib/state';
+import { addToDeck, completeLesson, recordAttempt } from '../lib/state';
 import { useStore } from '../lib/store';
 import { sfx } from '../lib/fx';
 import { useHomeworkCompletion } from '../lib/platform/homework';
@@ -165,10 +169,38 @@ function ReviewSession({ items, onDone }: { items: Item[]; onDone: () => void })
 }
 
 export function Review() {
-  const { state } = useStore();
+  const { state, update, notify } = useStore();
   const region = state.profile?.region ?? 'spain';
   const [session, setSession] = useState<Item[] | null>(null);
   const now = Date.now();
+  const route = useRoute();
+  const access = useLevelAccess();
+  const packParam = route.params.get('pack');
+  const packIds = (id: string) => PACK_BY_ID[id]?.ids.map(vocabKey) ?? [];
+  const inDeck = (id: string) => packIds(id).filter((k) => state.srs[k]).length;
+
+  /** Adds a pack's words to the deck (new cards) and, when `go`, starts a session on them. */
+  const addPack = (id: string, go = false) => {
+    const pack = PACK_BY_ID[id];
+    if (!pack) return;
+    const keys = packIds(id);
+    // Computed from the current state so the session can start at once; the store applies the same change.
+    const next = keys.some((k) => !state.srs[k]) ? addToDeck(state, keys) : state;
+    if (next !== state) {
+      update((s) => addToDeck(s, keys));
+      if (!go) notify('Added to your deck', `${pack.title}: ${pack.ids.length} words. They come up in your reviews from now on.`);
+    }
+    if (go) {
+      const items = keys.map((k) => next.srs[k]).filter(Boolean).map((c) => toItem(c, region)).filter((x): x is Item => !!x);
+      if (items.length) setSession(items);
+    }
+  };
+  // Deep link (homework): ?pack=<id> adds the pack and starts straight away.
+  useEffect(() => {
+    if (packParam && PACK_BY_ID[packParam]) addPack(packParam, true);
+    else setSession(null); // back on the plain Memory page: leave the pack session
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [packParam]);
   const cards = Object.values(state.srs);
   const due = useMemo(
     () => cards.filter((c) => c.due <= now && (c.attempts > 0 || c.key.startsWith('vocab:'))).sort((a, b) => (a.attempts === 0 ? 1 : 0) - (b.attempts === 0 ? 1 : 0) || a.due - b.due),
@@ -241,8 +273,28 @@ export function Review() {
         )}
       </section>
 
+      <section className="card mt-6 p-5" data-testid="word-packs">
+        <h2 className="text-xl font-semibold">Word packs by level</h2>
+        <p className="mt-1 text-sm text-ink-soft">Ten words on one theme. Add a pack and the words join your deck; learn them in a session now or let the reviews bring them up.{access.maxLevel ? ` Packs above your level (${access.maxLevel}, set by your teacher) are hidden.` : ''}</p>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {VOCAB_PACKS.filter((p) => withinLevel(p.level, access.maxLevel)).map((p) => {
+            const have = inDeck(p.id);
+            return (
+              <div key={p.id} className="flex flex-col gap-2 rounded-2xl bg-cream-100 p-3" data-testid={`pack-${p.id}`}>
+                <div className="flex items-start justify-between gap-2"><p className="font-semibold leading-tight">{p.title}<span className="block text-xs font-normal text-ink-mute" lang="es">{p.es}</span></p><span className="rounded-full bg-ink px-2 py-0.5 text-[11px] font-bold text-cream">{p.level}</span></div>
+                <p className="text-xs text-ink-mute">{have === p.ids.length ? 'All in your deck' : have ? `${have} of ${p.ids.length} in your deck` : `${p.ids.length} words`}</p>
+                <div className="mt-auto flex gap-2">
+                  <button className="btn-dark !py-1.5 !text-xs" onClick={() => addPack(p.id, true)} data-testid={`pack-learn-${p.id}`}><Icon name="play" size={12} /> Learn now</button>
+                  {have < p.ids.length && <button className="ctrl !py-1.5 !text-xs" onClick={() => addPack(p.id)} data-testid={`pack-add-${p.id}`}>Add to deck</button>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
       {cards.length === 0 && (
-        <div className="mt-6"><Empty icon="brain" title="Your deck is empty" body="Words from each Madrid chapter join your deck automatically." action={<button className="btn-primary" onClick={() => navigate('world')}>Go to Madrid</button>} /></div>
+        <div className="mt-6"><Empty icon="brain" title="Your deck is empty" body="Words from each Madrid chapter join your deck automatically, or add a word pack above." action={<button className="btn-primary" onClick={() => navigate('world')}>Go to Madrid</button>} /></div>
       )}
     </div>
   );

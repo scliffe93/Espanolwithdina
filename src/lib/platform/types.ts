@@ -8,6 +8,7 @@
 import type { Cefr } from '../../types';
 import type { Tense } from '../../data/verbs';
 import type { MaterialSet } from '../material';
+import type { GrammarMode } from '../../data/grammar';
 
 export type Role = 'student' | 'teacher' | 'admin';
 
@@ -51,14 +52,16 @@ export interface HomeworkActivity {
   /** verbs / grammar: infinitives to drill (empty = let the app choose). */
   verbs?: string[];
   tense?: Tense;
-  /** grammar: the ser-vs-estar drill. */
-  mode?: 'ser-estar';
+  /** grammar: which drill (ser vs estar, por vs para, preterite vs imperfect, subjunctive, if-sentences). */
+  mode?: GrammarMode;
   /** story: a scene id (e.g. 'piso', 'val-piso'). */
   sceneId?: string;
   /** listening / vocabulary: an arcade game. */
   game?: 'metro' | 'order' | 'swipe' | 'serestar' | 'penalty' | 'derbi' | 'lineup';
   /** vocabulary: review the memory deck. */
   review?: boolean;
+  /** vocabulary: a level word pack to add to the deck and review (VOCAB_PACKS id). */
+  pack?: string;
   /** written / speaking: the prompt the student answers. */
   prompt?: string;
   /** written: minimum words; speaking: expect a recording. */

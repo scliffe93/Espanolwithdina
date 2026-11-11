@@ -1,6 +1,9 @@
 import type { AppState } from '../../types';
 import { scenesForCity } from '../../data/story';
 import { VERB_BY_INF } from '../../data/verbs';
+import { VOCAB_PACKS } from '../../data/vocabPacks';
+import { vocabKey } from '../../data/vocab';
+import { CEFR_LEVELS } from '../../types';
 import { allVerbMastery } from '../analytics';
 import { dayKey, weekStart } from '../dates';
 import type { FocusTag, HomeworkActivity, LessonDebrief } from './types';
@@ -54,8 +57,21 @@ export function generatePlan(d: LessonDebrief, state: AppState | null): PlanItem
     const what = [fix.has('person-agreement') && 'verb endings', fix.has('stem-change') && 'stem changes', fix.has('irregular-verbs') && 'irregular forms', fix.has('accents') && 'accents'].filter(Boolean).join(', ');
     items.push({ day: 2, goal: goal(1), activity: { kind: 'verbs', title: `Typed drill: ${wv.join(', ')} (${TENSE_LABEL[tense]})`, verbs: wv, tense }, instructions: `Focus: ${what}. These are the verbs you most often slip on, so type each form carefully.` });
   }
+  if (fix.has('prepositions')) {
+    items.push({ day: 2, goal: goal(1), activity: { kind: 'grammar', title: 'Por vs para drill', mode: 'por-para' }, instructions: 'Cause, exchange and movement through take por; purpose, destination and deadlines take para.' });
+  }
+  if (fix.has('tense-choice')) {
+    const mode = d.covered.tenses.includes('subjunctive') ? 'subjunctive' : d.covered.tenses.includes('conditional') ? 'conditional' : 'pret-imp';
+    items.push({ day: 2, goal: goal(1), activity: { kind: 'grammar', title: mode === 'subjunctive' ? 'Subjunctive or not drill' : mode === 'conditional' ? 'If-sentences drill' : 'Preterite vs imperfect drill', mode }, instructions: 'Read the whole sentence before choosing: the clue is usually in the other half.' });
+  } else if (d.covered.tenses.includes('subjunctive')) {
+    items.push({ day: 4, goal: goal(0), activity: { kind: 'grammar', title: 'Subjunctive or not drill', mode: 'subjunctive' }, instructions: 'Wishes, doubts, emotions and purpose take the subjunctive; facts and beliefs do not.' });
+  }
   if (fix.has('vocabulary')) {
     items.push({ day: 2, goal: goal(1), activity: { kind: 'vocabulary', title: 'Memory review of your deck', review: true }, instructions: 'Clear your due cards; add a personal association to anything you forgot.' });
+    // A word pack at the student's level that is not in their deck yet.
+    const lvl = state?.profile ? state.profile.levels.vocabulary : 'A1';
+    const pack = VOCAB_PACKS.filter((p) => CEFR_LEVELS.indexOf(p.level) <= CEFR_LEVELS.indexOf(lvl)).reverse().find((p) => !state || !p.ids.every((id) => state.srs[vocabKey(id)]));
+    if (pack) items.push({ day: 5, goal: goal(1), activity: { kind: 'vocabulary', title: `Word pack: ${pack.title}`, pack: pack.id }, instructions: `Ten new words on ${pack.title.toLowerCase()} (${pack.level}). Learn them, then they come back in your reviews.` });
     if (likesFootball) items.push({ day: 6, goal: goal(1), activity: { kind: 'vocabulary', title: 'The Derby Quiz', game: 'derbi' }, instructions: 'Football words the way your city says them.' });
   }
   if (fix.has('listening')) {
