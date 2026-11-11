@@ -16,7 +16,12 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
   ok(/students in Valencia would play for Valencia CF/.test(t) && /el Levante/.test(t), 'penalty section names the city club and its rival');
   ok(/This week with Academia Sol/i.test(await p.getByTestId('pitch-plan').innerText()), 'sample week is in the school’s name');
   ok(/Walkthrough|Reply to/.test(await p.getByTestId('pitch-book').first().innerText()), 'book-a-walkthrough call to action present');
-  ok(await p.getByRole('heading', { name: 'Simple pricing' }).isVisible(), 'pricing section present');
+  ok(await p.getByRole('heading', { name: 'Pricing that grows with your students' }).isVisible(), 'pricing section present');
+  ok(/£120/.test(await p.getByTestId('plan-tutor-price').innerText()) && /£199/.test(await p.getByTestId('plan-school-price').innerText()), 'default 20 students: tutor £120, school at its £199 minimum');
+  await p.getByTestId('pitch-students').fill('150'); await p.waitForTimeout(200);
+  ok(/£900/.test(await p.getByTestId('plan-tutor-price').innerText()) && /£750/.test(await p.getByTestId('plan-school-price').innerText()), '150 students: tutor £900, school £750');
+  await p.getByTestId('pitch-students').fill('3'); await p.waitForTimeout(200);
+  ok(/£39/.test(await p.getByTestId('plan-tutor-price').innerText()), '3 students: tutor minimum £39');
   await p.screenshot({ path: OUT + '/pitch-desktop.png', fullPage: true });
   // Play the real game: ¡Vamos!, countdown, one shot
   await p.getByRole('button', { name: /¡Vamos!/ }).click(); await p.waitForTimeout(3400);
@@ -44,6 +49,8 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
   ok(/Hi <b>Laura<\/b>, this is what your own app/.test(t3) && (await p.locator('h1 b').count()) === 0, 'name renders as text, never as markup');
   await p.goto(BASE + '#/pitch'); await p.waitForTimeout(1000);
   ok(/this is what your own app could look like/.test(await p.locator('body').innerText()) && /Dina\./.test(await p.getByTestId('pitch-brand').innerText()), 'no parameters: generic headline, Dina on the card');
+  await p.goto(BASE + '#/pitch?school=Academia%20Sol&students=80'); await p.waitForTimeout(1000);
+  ok(/£480/.test(await p.getByTestId('plan-tutor-price').innerText()) && /£400/.test(await p.getByTestId('plan-school-price').innerText()), 'students=80 in the link sets the calculator');
   // Phone
   const m = await b.newContext({ ...devices['iPhone 13'] }); const pm = await m.newPage(); pm.on('pageerror', (e) => errors.push(String(e)));
   await pm.goto(BASE + '#/pitch?to=Laura&school=Academia%20Sol&city=valencia&shot=hablas'); await pm.waitForTimeout(1800);

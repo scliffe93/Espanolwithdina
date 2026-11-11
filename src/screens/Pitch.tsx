@@ -1,10 +1,10 @@
 import { motion } from 'motion/react';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { DINA_CARD_LINE, DINA_VIEWBOX, DinaArt } from '../components/Dina';
 import { Icon } from '../components/Icon';
 import { CITY_ORDER, CITY_THEMES } from '../data/cityThemes';
 import { FOOTBALL, footballWords } from '../data/football';
-import { EMAIL_SHOT, PITCH } from '../data/pitch';
+import { EMAIL_SHOT, PITCH, gbp, monthlyPrice } from '../data/pitch';
 import type { CityId } from '../data/storyTypes';
 import { navigate } from '../lib/router';
 import { Penalty } from './games/Penalty';
@@ -22,14 +22,47 @@ function clean(v: string | null, max: number): string {
   return (v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
 }
 
-/** The personalisation carried by the link, validated: free text is trimmed and capped, the city must exist, the shot must be one of the email's three forms. */
-export function pitchParams(params: URLSearchParams): { to: string; school: string; city: CityId; shot: string } {
+/** The personalisation carried by the link, validated: free text is trimmed and capped, the city must exist, the shot must be one of the email's three forms, the student count is 1–500. */
+export function pitchParams(params: URLSearchParams): { to: string; school: string; city: CityId; shot: string; students: number } {
   const to = clean(params.get('to'), 40);
   const school = clean(params.get('school'), 60);
   const cityParam = clean(params.get('city'), 20).toLowerCase() as CityId;
   const city: CityId = CITY_ORDER.includes(cityParam) ? cityParam : 'madrid';
   const shot = clean(params.get('shot'), 20).toLowerCase();
-  return { to, school, city, shot: (EMAIL_SHOT.options as readonly string[]).includes(shot) ? shot : '' };
+  const n = Number.parseInt(clean(params.get('students'), 4), 10);
+  const students = Number.isFinite(n) ? Math.min(500, Math.max(1, n)) : 20;
+  return { to, school, city, shot: (EMAIL_SHOT.options as readonly string[]).includes(shot) ? shot : '', students };
+}
+
+/** The two plans side by side and a student count the reader can change. */
+function Pricing({ initialStudents }: { initialStudents: number }) {
+  const [students, setStudents] = useState(initialStudents);
+  const set = (v: number) => setStudents(Math.min(500, Math.max(1, Number.isFinite(v) ? Math.round(v) : 1)));
+  return (
+    <section className="py-8" data-testid="pitch-pricing">
+      <p className="eyebrow">Precios · Pricing</p>
+      <h2 className="mt-1 font-display text-3xl font-semibold">Pricing that grows with your students</h2>
+      <p className="mt-2 max-w-prose text-ink-soft">A price per active student, so a tutor with a dozen pays about one lesson’s fee a month and a school pays in proportion. An active student is one with a lesson or homework that month.</p>
+      <div className="card mt-6 flex flex-wrap items-center gap-4 p-5">
+        <label htmlFor="pitch-students" className="font-semibold">How many active students?</label>
+        <input id="pitch-students" type="range" min={1} max={300} value={Math.min(300, students)} onChange={(e) => set(Number(e.target.value))} className="w-48 accent-terracotta" aria-label="Active students (slider)" />
+        <input type="number" min={1} max={500} value={students} onChange={(e) => set(Number(e.target.value))} className="w-24 rounded-xl border border-ink/15 bg-white px-3 py-2 text-center font-semibold" aria-label="Active students" data-testid="pitch-students" />
+        <p className="text-sm text-ink-soft">Move it to see your monthly price.</p>
+      </div>
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        {PITCH.plans.map((plan) => (
+          <div key={plan.id} className={`card p-5 ${plan.highlight ? 'ring-2 ring-terracotta' : ''}`} data-testid={`plan-${plan.id}`}>
+            <div className="flex items-center justify-between gap-2"><p className="eyebrow">{plan.name}</p>{plan.highlight && <span className="rounded-full bg-saffron px-2.5 py-0.5 text-[11px] font-bold">For academies</span>}</div>
+            <p className="text-sm text-ink-mute">{plan.who}</p>
+            <p className="mt-3 font-display text-4xl font-semibold" data-testid={`plan-${plan.id}-price`}>{gbp(monthlyPrice(plan, students))}<span className="text-base font-normal text-ink-mute"> a month for {students} student{students === 1 ? '' : 's'}</span></p>
+            <p className="text-sm text-ink-soft">{gbp(plan.perStudent)} per active student · from {gbp(plan.minimum)} a month · set-up {gbp(plan.setup)}, one-off</p>
+            <ul className="mt-3 grid gap-1 text-sm text-ink-soft">{plan.lines.map((l) => <li key={l}>{l}</li>)}</ul>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-xs text-ink-mute">Annual plans: two months free. Thirty-day money-back on the subscription, not on the set-up.</p>
+    </section>
+  );
 }
 
 /** The app's brand card with the prospect's name where Dina's is. */
@@ -66,7 +99,7 @@ const TUTOR_SHOTS = [
 ];
 
 export function PitchScreen({ params }: { params: URLSearchParams }) {
-  const { to, school, city, shot } = useMemo(() => pitchParams(params), [params]);
+  const { to, school, city, shot, students } = useMemo(() => pitchParams(params), [params]);
   const theme = CITY_THEMES[city];
   const football = FOOTBALL[city];
   const [club, rival] = football.clubs;
@@ -226,28 +259,7 @@ export function PitchScreen({ params }: { params: URLSearchParams }) {
           </ol>
         </section>
 
-        {/* Pricing */}
-        <section className="py-8">
-          <p className="eyebrow">Precios · Pricing</p>
-          <h2 className="mt-1 font-display text-3xl font-semibold">Simple pricing</h2>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="card p-5">
-              <p className="eyebrow">Set-up</p>
-              <p className="mt-1 font-display text-4xl font-semibold">{PITCH.setupFee}</p>
-              <p className="text-sm text-ink-mute">one-off</p>
-              <ul className="mt-3 grid gap-1 text-sm text-ink-soft">{['Your name, colours and character', 'Tutor, admin and student seats', 'Branded PDF guides', 'Onboarding call, first students loaded'].map((l) => <li key={l}>{l}</li>)}</ul>
-            </div>
-            {PITCH.tiers.map((t) => (
-              <div key={t.name} className={`card p-5 ${t.popular ? 'ring-2 ring-terracotta' : ''}`}>
-                <div className="flex items-center justify-between gap-2"><p className="eyebrow">{t.name}</p>{t.popular && <span className="rounded-full bg-saffron px-2.5 py-0.5 text-[11px] font-bold">Most popular</span>}</div>
-                <p className="mt-1 font-display text-4xl font-semibold">{t.price}</p>
-                <p className="text-sm text-ink-mute">{t.per}</p>
-                <ul className="mt-3 grid gap-1 text-sm text-ink-soft">{t.lines.map((l) => <li key={l}>{l}</li>)}</ul>
-              </div>
-            ))}
-          </div>
-          <p className="mt-3 text-xs text-ink-mute">Annual plans: two months free. Thirty-day money-back on the subscription.</p>
-        </section>
+        <Pricing key={students} initialStudents={students} />
 
         {/* The ask */}
         <section className="py-8">
