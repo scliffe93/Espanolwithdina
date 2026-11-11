@@ -1,6 +1,8 @@
 import { motion, useReducedMotion } from 'motion/react';
 import { useMemo, useRef, useState } from 'react';
 import { FOOTBALL, footballWords } from '../../data/football';
+import type { CityId } from '../../data/storyTypes';
+import type { Region } from '../../types';
 import { VERBS, conjugate, personsForRegion, verbKey, type Tense, type Verb } from '../../data/verbs';
 import { classifyVerbError } from '../../lib/answer';
 import { formOptions, pronounFor, shuffle } from '../../lib/exercises';
@@ -27,17 +29,17 @@ function useVerbPool(): Verb[] {
   }, []);
 }
 
-function Pitch({ api }: { api: GameApi }) {
+function Pitch({ api, city: cityOverride, region: regionOverride }: { api: GameApi; city?: CityId; region?: Region }) {
   const { state } = useStore();
   const say = useSay();
   const reduced = useReducedMotion();
-  const region = state.profile?.region ?? 'spain';
-  const city = FOOTBALL[state.profile?.city ?? 'madrid'];
+  const region = regionOverride ?? state.profile?.region ?? 'spain';
+  const city = FOOTBALL[cityOverride ?? state.profile?.city ?? 'madrid'];
   const [mine, rival] = city.clubs;
   const words = footballWords(region);
   const tense = ((new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('tense') as Tense) || 'present') as Tense;
   const pool = useVerbPool();
-  const persons = personsForRegion();
+  const persons = personsForRegion(region);
   const idRef = useRef(0);
   const make = (): Shot => {
     const verb = pool[Math.floor(Math.random() * pool.length)];
@@ -108,6 +110,7 @@ function Kit({ colors }: { colors: [string, string] }) {
   return <span aria-hidden className="inline-block h-4 w-4 rounded-full ring-1 ring-ink/20" style={{ background: `linear-gradient(90deg, ${colors[0]} 50%, ${colors[1]} 50%)` }} />;
 }
 
-export function Penalty() {
-  return <GameShell id="penalty" duration={60} lives={3}>{(api) => <Pitch api={api} />}</GameShell>;
+/** `city`/`region` override the learner's profile (the pitch page plays for the prospect's city); `onExit` replaces the arcade links. */
+export function Penalty({ city, region, onExit }: { city?: CityId; region?: Region; onExit?: () => void } = {}) {
+  return <GameShell id="penalty" duration={60} lives={3} onExit={onExit}>{(api) => <Pitch api={api} city={city} region={region} />}</GameShell>;
 }

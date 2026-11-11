@@ -11,6 +11,7 @@ import { resumeLabel } from './lib/resume';
 import { usePlatform } from './lib/platform/context';
 import { Demo } from './screens/Demo';
 import { Guide } from './screens/Guide';
+import { PitchScreen } from './screens/Pitch';
 import { Admin } from './screens/Admin';
 import { TeacherApp } from './screens/teach/TeacherApp';
 import { HomeworkRunner, StudentApp } from './screens/student/StudentApp';
@@ -162,7 +163,7 @@ export default function App() {
   // Route guards
   useEffect(() => {
     if (!ready) return;
-    const pre: RouteName[] = ['home', 'guide', 'admin', 'welcome', 'onboarding', 'level', 'assessment', 'dna', 'privacy', 'account', 'demo', 'teach', 'student', 'homework'];
+    const pre: RouteName[] = ['home', 'guide', 'admin', 'welcome', 'onboarding', 'level', 'assessment', 'dna', 'privacy', 'account', 'demo', 'teach', 'student', 'homework', 'pitch'];
     if (!state.onboardingDone && !pre.includes(route.name)) navigate('welcome');
     if (state.onboardingDone && ['welcome', 'onboarding', 'level', 'dna'].includes(route.name)) navigate('world');
   }, [ready, state.onboardingDone, route.name]);
@@ -194,6 +195,7 @@ export default function App() {
       case 'demo': screen = <Demo showDemo />; break;
       case 'home': screen = <Demo />; break;
       case 'guide': screen = <Guide />; break;
+      case 'pitch': screen = <PitchScreen params={route.params} />; break;
       case 'admin': case 'teach': case 'student': case 'homework':
         // The platform can be used before onboarding (Dina and the admin have no learner profile of their own).
         return <><Toasts /><WelcomeBack /><Shell route={route.name} routeId={route.id}>{route.name === 'admin' ? <Admin /> : <PlatformScreen route={route.name} id={route.id} params={route.params} />}</Shell></>;
@@ -201,6 +203,9 @@ export default function App() {
     }
     return <><Toasts /><WelcomeBack />{screen}</>;
   }
+
+  // The pitch page is a stand-alone page for prospective tutors: no sidebar, no learner navigation.
+  if (route.name === 'pitch') return <><Toasts /><PitchScreen params={route.params} /></>;
 
   switch (route.name) {
     case 'scene': screen = <ScenePlayer key={route.id} id={route.id ?? 'llegada'} />; break;

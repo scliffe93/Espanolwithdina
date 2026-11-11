@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useAnimationControls } from 'motion/react';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon } from '../../components/Icon';
 import { confetti, haptic, sfx } from '../../lib/fx';
@@ -38,7 +38,12 @@ function Popup({ text, x, y }: { text: string; x: number; y: number }) {
   );
 }
 
-export function GameShell({ id, duration = 60, lives: startLives = 3, children }: { id: GameInfo['id']; duration?: number; lives?: number; children: (api: GameApi) => ReactNode }) {
+/**
+ * `onExit`: where the back button and the end-of-game “Back” go instead of the arcade —
+ * set when the game is embedded somewhere else (the pitch page), where the arcade and
+ * the review screen don't apply.
+ */
+export function GameShell({ id, duration = 60, lives: startLives = 3, onExit, children }: { id: GameInfo['id']; duration?: number; lives?: number; onExit?: () => void; children: (api: GameApi) => ReactNode }) {
   const info = GAMES.find((g) => g.id === id)!;
   const { state, update } = useStore();
   const [phase, setPhase] = useState<'intro' | 'countdown' | 'play' | 'paused' | 'over'>('intro');
@@ -46,7 +51,8 @@ export function GameShell({ id, duration = 60, lives: startLives = 3, children }
   const [hud, setHud] = useState<Hud>({ score: 0, combo: 0, lives: startLives, timeLeft: duration, level: 1 });
   const [log, setLog] = useState<LogItem[]>([]);
   const [popups, setPopups] = useState<{ id: number; text: string; x: number; y: number }[]>([]);
-  const [shake, setShake] = useState(0);
+  // The miss shake is an animation on the wrapper, never a remount: a key change here would reset the game's own state mid-round.
+  const shake = useAnimationControls();
   const [bestCombo, setBestCombo] = useState(0);
   const popId = useRef(0);
   const hudRef = useRef(hud);
@@ -130,7 +136,7 @@ export function GameShell({ id, duration = 60, lives: startLives = 3, children }
     setH({ ...h, combo: 0, lives: h.lives - 1, level: Math.max(1, h.level - 1) });
     sfx.wrong();
     haptic([40, 30, 40]);
-    setShake((n) => n + 1);
+    void shake.start({ x: [0, -10, 10, -6, 6, 0], transition: { duration: 0.35 } });
     if (attempt) update((s) => recordAttempt(s, { ...attempt, grade: 0 }));
     else update((s) => updateDay(s, (d) => ({ ...d, exercisesAttempted: d.exercisesAttempted + 1 })));
     if (item) setLog((l) => [...l, item]);
@@ -152,7 +158,7 @@ export function GameShell({ id, duration = 60, lives: startLives = 3, children }
     <div className="mx-auto max-w-3xl">
       {/* Header / HUD */}
       <div className="mb-3 flex items-center gap-3">
-        <button className="ctrl !px-2" onClick={() => (phase === 'play' ? setPhase('paused') : navigate('games'))} aria-label={phase === 'play' ? 'Pause' : 'Back to arcade'}>
+        <button className="ctrl !px-2" onClick={() => (phase === 'play' ? setPhase('paused') : onExit ? onExit() : navigate('games'))} aria-label={phase === 'play' ? 'Pause' : onExit ? 'Leave the game' : 'Back to arcade'}>
           <Icon name={phase === 'play' ? 'pause' : 'arrowLeft'} size={18} />
         </button>
         <div className="flex-1">
@@ -173,7 +179,7 @@ export function GameShell({ id, duration = 60, lives: startLives = 3, children }
         </div>
       )}
 
-      <motion.div key={shake} animate={shake ? { x: [0, -10, 10, -6, 6, 0] } : undefined} transition={{ duration: 0.35 }} className="relative">
+      <motion.div animate={shake} className="relative">
         {phase === 'play' || phase === 'paused' ? children({ hud, playing: phase === 'play', hit, miss, bonus }) : null}
 
         <AnimatePresence>
@@ -235,8 +241,8 @@ export function GameShell({ id, duration = 60, lives: startLives = 3, children }
               <div className="flex flex-wrap gap-2 p-5 pt-3">
                 <button className="btn-primary" onClick={restart} autoFocus><Icon name="refresh" size={18} /> Play again</button>
                 {hw.isHomework && <button className="btn-dark" onClick={hw.backToHomework}><Icon name="check" size={18} /> Homework done</button>}
-                <button className="btn-ghost" onClick={() => navigate('games')}>Arcade</button>
-                {mistakes.some((m) => m.category) && <button className="btn-ghost" onClick={() => navigate('review')}>Review</button>}
+                {onExit ? <button className="btn-ghost" onClick={onExit}>Back</button> : <button className="btn-ghost" onClick={() => navigate('games')}>Arcade</button>}
+                {!onExit && mistakes.some((m) => m.category) && <button className="btn-ghost" onClick={() => navigate('review')}>Review</button>}
               </div>
             </motion.div>
           )}
