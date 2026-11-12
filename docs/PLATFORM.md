@@ -68,6 +68,12 @@ DELE follows the Instituto Cervantes curriculum plan (Plan curricular del Instit
 
 **Not included.** Practice in the format of the DELE papers.
 
+## How-to videos for students
+
+Six short videos (about 25 to 40 seconds each) sit at the top of the student guide (`#/guide?for=student`), each with a Download button: getting started, lessons, homework, practising alone, feedback and progress, and invoices. Dina and Toby guide each one: they walk to the thing being explained and say the step in a speech bubble, and a ring marks where to tap. They are silent, phone-sized MP4 files in `public/guides/videos`.
+
+They are recordings of the running app, made by `scripts/videos/student-videos.cjs` (see its header for what to start first), so they can be re-made when a screen changes. Videos 2 to 6 use the demo workspace with its demo labels hidden; video 1 uses a real account on a local server. Each video file has a direct link: `<site>/guides/videos/<name>.mp4`.
+
 ## Invoicing
 
 The teacher bills lessons from **Invoices**: settings once (business name, currency, rate per 60 minutes, days until due, numbering prefix, how students pay), then **New invoice** offers the taught, not-yet-billed lessons of a student plus free lines, with a running total. Invoices are numbered `PREFIX-YYYY-NNNN`, saved as records of kind `invoice` (students read only their own; drafts are hidden from them), can be sent (visible in the student's app), emailed (mailto summary), downloaded as a branded PDF (`src/lib/invoicePdf.ts`), marked paid, voided (sent) or deleted (drafts). Money-owed banners appear on the teacher's Today and the student's home. No online payment is built in; payment instructions print on every invoice. Logic and tests: `src/lib/platform/invoicing.ts`, `tests/invoicing.test.ts`, `scripts/invoices-e2e.cjs`.
