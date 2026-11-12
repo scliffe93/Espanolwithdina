@@ -70,9 +70,17 @@ DELE follows the Instituto Cervantes curriculum plan (Plan curricular del Instit
 
 ## How-to videos for students
 
-Six short videos (about 25 to 40 seconds each) sit at the top of the student guide (`#/guide?for=student`), each with a Download button: getting started, lessons, homework, practising alone, feedback and progress, and invoices. Dina and Toby guide each one: they walk to the thing being explained and say the step in a speech bubble, and a ring marks where to tap. They are silent, phone-sized MP4 files in `public/guides/videos`.
+Six short videos (37 to 58 seconds each, with sound) sit at the top of the student guide (`#/guide?for=student`), each with a Download button: getting started, lessons, homework, practising alone, feedback and progress, and invoices. Each video file also has a direct link: `<site>/guides/videos/<name>.mp4`.
 
-They are recordings of the running app, made by `scripts/videos/student-videos.cjs` (see its header for what to start first), so they can be re-made when a screen changes. Videos 2 to 6 use the demo workspace with its demo labels hidden; video 1 uses a real account on a local server. Each video file has a direct link: `<site>/guides/videos/<name>.mp4`.
+Dina and Toby guide each one. Dina is a whole person: she walks on, waves, and talks through each step while her mouth moves, with the words in a speech bubble. Toby is his own character: he trots to whatever is being explained, picks a spot that does not cover writing, and hops when it is tapped. A ring marks the exact place to tap.
+
+**How they are made.** They are recordings of the running app, made by `scripts/videos/student-videos.cjs` (its header says what to start first), so they can be re-made when a screen changes. `scripts/videos/guide/guide.tsx` draws the characters: Dina's head is the app's own `DinaArt` (so she blinks, talks and waves), and her body and all of Toby are drawn there. Videos 2 to 6 use the demo workspace with its demo labels hidden; video 1 uses a real account on a local server.
+
+**The voice.** `scripts/videos/voice.py` makes it with Piper, a free speech engine that runs on the computer (no account, no fee). The voice is Piper's `en_US-ljspeech-high`, trained on the public-domain LJ Speech recordings. Each line is turned into English sounds and a few are swapped for the ones a Spanish speaker uses (d and t for "th", s for z, "es" before s + consonant); Spanish words such as "¡Hola!" are said as Spanish. This is a made-up voice with a light Spanish-style accent, not a recording of an Argentinian speaker. A true tapped r and Argentinian intonation are beyond what this engine does clearly.
+
+**Using Dina's own voice instead.** Each video has a script at `scripts/videos/voice-recordings/<video>/script.txt`, one numbered line per file. Record each line as `l0.m4a`, `l1.m4a` and so on (mp3 and wav also work), save them in that folder and re-run the recorder: those lines use the recording, and each step lasts as long as its recording.
+
+To set the voice up: `python -m venv scripts/videos/voice-env/venv`, `pip install piper-tts` into it, and put `en_US-ljspeech-high.onnx` and its `.json` (from the `rhasspy/piper-voices` collection on Hugging Face) in `scripts/videos/voice-env/model/`. Or point `PIPER_PYTHON` and `PIPER_MODEL` at them.
 
 ## Invoicing
 

@@ -1,0 +1,12 @@
+Invoices
+Record each line as its own file, named as shown (m4a, mp3 or wav), and save them in this folder.
+
+l0  ¡Hola! Dina and Toby here. Let us show you your invoices.
+l1  Swipe the tabs across, and tap Invoices.
+l2  What you owe is at the top.
+l3  Tap an invoice to open it.
+l4  It lists the lessons, the total, and how to pay.
+l5  When you have paid, tap I've paid this.
+l6  Choose how you paid, add a note if you like, then tap Tell Dina.
+l7  I get a notification. It shows as paid, once I have checked and confirmed it.
+l8  All done. Thank you! ¡Chau!

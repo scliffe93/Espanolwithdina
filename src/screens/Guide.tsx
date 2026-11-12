@@ -26,14 +26,14 @@ const STUDENT: { title: string; steps: string[] }[] = [
   { title: '6. Your journey', steps: ['My journey shows your level per skill, study days, trends and the slips you make most, all from what you actually did.', 'Settings: voice, speech speed, translations, your city and your account (change password, log out).'] },
 ];
 
-/** Short guided videos for students: Dina and Toby walk through each task. Files live in public/guides/videos (made by scripts/videos). */
+/** Short guided videos for students, with a spoken voiceover: Dina and Toby walk through each task. Files live in public/guides/videos (made by scripts/videos). */
 const VIDEOS: { file: string; title: string; about: string; seconds: number }[] = [
-  { file: '1-getting-started', title: 'Getting started', about: 'Log in and put the app on your iPhone.', seconds: 37 },
-  { file: '2-your-lessons', title: 'Your lessons', about: 'Your next lesson and what to prepare.', seconds: 24 },
-  { file: '3-your-homework', title: 'Your homework', about: 'Find it, do it, read the feedback.', seconds: 25 },
-  { file: '4-practise-on-your-own', title: 'Practise on your own', about: 'Verbs, word packs and games.', seconds: 37 },
-  { file: '5-feedback-and-progress', title: 'Feedback and progress', about: 'What Dina said and how far you have come.', seconds: 33 },
-  { file: '6-invoices', title: 'Invoices', about: 'What is due and how to say you have paid.', seconds: 38 },
+  { file: '1-getting-started', title: 'Getting started', about: 'Log in and put the app on your iPhone.', seconds: 53 },
+  { file: '2-your-lessons', title: 'Your lessons', about: 'Your next lesson and what to prepare.', seconds: 37 },
+  { file: '3-your-homework', title: 'Your homework', about: 'Find it, do it, read the feedback.', seconds: 38 },
+  { file: '4-practise-on-your-own', title: 'Practise on your own', about: 'Verbs, word packs and games.', seconds: 58 },
+  { file: '5-feedback-and-progress', title: 'Feedback and progress', about: 'What Dina said and how far you have come.', seconds: 48 },
+  { file: '6-invoices', title: 'Invoices', about: 'What is due and how to say you have paid.', seconds: 52 },
 ];
 
 function VideoGuides() {
@@ -42,7 +42,7 @@ function VideoGuides() {
     <section className="card mb-4 p-5" data-testid="guide-videos">
       <p className="eyebrow">Vídeos · Watch how</p>
       <h2 className="mt-1 font-display text-2xl font-semibold">Dina and Toby show you</h2>
-      <p className="mt-1 text-sm text-ink-soft">Six short videos, about half a minute each. Watch here or download one to keep or send on.</p>
+      <p className="mt-1 text-sm text-ink-soft">Six short videos, under a minute each, with sound. Dina talks you through each step and Toby shows you where to tap. Watch here or download one to keep or send on.</p>
       <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
         {VIDEOS.map((v, i) => (
           <li key={v.file} className="flex min-w-0 flex-col overflow-hidden rounded-2xl bg-cream-100">

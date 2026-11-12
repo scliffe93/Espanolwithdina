@@ -1,5 +1,6 @@
-// Records the short how-to videos for students (phone-sized, about 30 to 40 seconds each). Dina and Toby guide each one:
-// they walk to the thing being explained and say the step in a speech bubble.
+// Records the short how-to videos for students (phone-sized, under a minute each). Dina and Toby guide each one:
+// Dina walks on, talks you through it out loud (English with an Argentinian accent) and Toby trots to each thing to tap.
+// The voice needs Piper: set PIPER_PYTHON and PIPER_MODEL, or put a venv and the model under scripts/videos/voice-env (see docs/PLATFORM.md).
 // Needs: the normal build served on :4173 (npx vite preview --port 4173 --strictPort) for videos 2 to 6, which use the demo
 // workspace with its demo labels hidden. Video 1 (logging in) needs real accounts: an API on :8787
 // (ALLOWED_ORIGINS=http://localhost:4174 npx tsx server/dev-server.ts 8787 memory) and a build made with
@@ -11,92 +12,100 @@ const want = (n) => !only.length || only.some((o) => n.startsWith(o));
 const nav = (h, name) => h.p.getByTestId('student-nav').getByText(name, { exact: true });
 const tab = (h, name) => h.p.locator('nav').last().getByText(name, { exact: true });
 (async () => {
-  if (want('1')) await make('1-getting-started', { title: 'Getting started', sub: 'Dina and Toby show you how to log in and put the app on your iPhone.', base: 'http://localhost:4174/',
-    context: { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1' }, init: () => { window.__vgNoHide = true; delete window.PushManager; } }, async (h) => {
-    const user = 'sam' + Date.now().toString(36).slice(-4);
-    const r = await fetch('http://localhost:8787/account/register', { method: 'POST', headers: { 'content-type': 'application/json', origin: 'http://localhost:4174' }, body: JSON.stringify({ username: user, password: 'tortilla de patatas 2026', firstName: 'Sam', remember: true }) });
-    if (!r.ok) throw new Error('could not create the account: ' + r.status);
+  if (want('1')) await make('1-getting-started', { title: 'Getting started', sub: 'Log in and put the app on your iPhone.', base: 'http://localhost:4174/',
+    hello: "[es]¡Hola![/es] I'm Dina, and this is Toby. Welcome! Let us get you started.", bye: { title: 'You’re all set. ¡Bienvenido!', say: "You are all set. Welcome! [es]¡Chau![/es]" },
+    context: { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1' }, init: () => { window.__vgNoHide = true; delete window.PushManager; },
+    setup: async () => {
+      const user = 'sam' + Date.now().toString(36).slice(-4);
+      const r = await fetch('http://localhost:8787/account/register', { method: 'POST', headers: { 'content-type': 'application/json', origin: 'http://localhost:4174' }, body: JSON.stringify({ username: user, password: 'tortilla de patatas 2026', firstName: 'Sam', remember: true }) });
+      if (!r.ok) throw new Error('could not create the account: ' + r.status);
+      return { user };
+    } }, async (h, { user }) => {
     await h.go('#/account'); h.startHere();
     await h.title();
-    await h.note('¡Hola! I’m Dina and this is Toby. Open the link I sent you in <u>Safari</u>.', 3200);
+    await h.note('Open the link I sent you, in *Safari*.');
     const login = h.p.getByRole('radio', { name: 'Log in' });
-    await h.step('Tap <u>Log in</u>.', login, 1500);
-    await h.tap(login, 800);
-    await h.step('Type the <u>username</u> and <u>password</u> I gave you.', h.p.getByLabel('Username'), 1200);
+    await h.step('Tap *Log in*.', login);
+    await h.tap(login, 700);
+    await h.step('Type the *username* and *password* I gave you.', h.p.getByLabel('Username'), 200);
     await h.p.getByLabel('Username').pressSequentially(user, { delay: 80 });
-    await h.p.getByLabel('Password', { exact: true }).pressSequentially('tortilla de patatas 2026', { delay: 28 }); await h.wait(600);
+    await h.p.getByLabel('Password', { exact: true }).pressSequentially('tortilla de patatas 2026', { delay: 28 }); await h.wait(500);
     const go = h.p.getByRole('button', { name: /^Log in/ }).last();
-    await h.step('Now tap <u>Log in</u>.', go, 1400);
-    await h.tap(go, 2400);
-    await h.clear(); await h.wait(900);
+    await h.step('Now tap *Log in*.', go);
+    await h.tap(go, 2300);
+    await h.clear(); await h.wait(700);
     await h.p.getByTestId('welcome-continue').click({ timeout: 6000, noWaitAfter: true }).catch(() => {});
     await h.go('#/student', 1600);
-    await h.note('You’re in! This is your home page.', 2400);
-    await h.step('To keep me on your phone, tap <u>Share</u> in Safari, then <u>Add to Home Screen</u>.', 'push-install', 5200);
-    await h.step('Open <u>Dina</u> from your Home Screen and tap <u>Turn on notifications</u>. Then I can tell you when there is something new.', 4600);
-    await h.end('You’re all set. ¡Bienvenido!');
+    await h.note("You're in! This is your home page.");
+    await h.step('To keep us on your phone, tap *Share* in Safari, then *Add to Home Screen*.', 'push-install', 1600);
+    await h.step('Then open *Dina* from your Home Screen, and tap *Turn on notifications*. I will tell you when there is something new.', 600);
+    await h.end();
   });
 
-  if (want('2')) await make('2-your-lessons', { title: 'Your lessons', sub: 'Dina and Toby show you when your next lesson is and what to prepare.' }, async (h) => {
+  if (want('2')) await make('2-your-lessons', { title: 'Your lessons', sub: 'When your next lesson is and what to prepare.',
+    hello: "[es]¡Hola![/es] I'm Dina, and this is Toby. Let us show you where your lessons are.", bye: { title: 'See you in class. ¡Hasta pronto!', say: "That's it! See you in class. [es]¡Chau![/es]" } }, async (h) => {
     await h.asSam(); await h.go('#/student'); h.startHere();
     await h.title();
-    await h.step('Tap <u>Clases</u> down here to open your lessons page.', tab(h, 'Clases'), 2600);
-    await h.step('Your <u>next lesson</u> is here: the day, the time and the link to join.', h.p.getByText(/^My next lesson/i).first(), 3400);
-    await h.step('Tap <u>Lessons</u> to see all of them.', nav(h, 'Lessons'), 1500);
-    await h.tap(nav(h, 'Lessons'), 1300);
-    await h.step('I write the topic and what to <u>prepare</u> for each one.', h.p.getByText('Prepare', { exact: true }).first(), 3400);
-    const cal = h.p.getByText(/Add to calendar/).first();
-    await h.step('Tap <u>Add to calendar</u> to save it on your phone.', cal, 3000);
-    await h.end('See you in class. ¡Hasta pronto!');
+    await h.step('Tap *Clases*, down here, to open your lessons page.', tab(h, 'Clases'));
+    await h.step('Your *next lesson* is here: the day, the time and the link to join.', h.p.getByText(/^My next lesson/i).first());
+    await h.step('Tap *Lessons* to see all of them.', nav(h, 'Lessons'));
+    await h.tap(nav(h, 'Lessons'), 1200);
+    await h.step('I write the topic, and what to *prepare*, for each one.', h.p.getByText('Prepare', { exact: true }).first());
+    await h.step('Tap *Add to calendar* to save it on your phone.', h.p.getByText(/Add to calendar/).first());
+    await h.end();
   });
 
-  if (want('3')) await make('3-your-homework', { title: 'Your homework', sub: 'Dina and Toby show you how to find it, do it and read the feedback.' }, async (h) => {
+  if (want('3')) await make('3-your-homework', { title: 'Your homework', sub: 'Find it, do it and read my feedback.',
+    hello: "[es]¡Hola![/es] It's Dina and Toby. Let us show you how your homework works.", bye: { title: 'Little and often works best. ¡Ánimo!', say: "Little and often works best. You can do it! [es]¡Chau![/es]" } }, async (h) => {
     await h.asSam(); await h.go('#/student'); h.startHere();
     await h.title();
-    await h.step('Tap <u>Homework</u>.', nav(h, 'Homework'), 1500);
-    await h.tap(nav(h, 'Homework'), 1400);
-    await h.step('<u>To do</u> comes first, with the deadline and my note to you.', h.p.getByTestId('hw-card-demo-h2').getByText(/Dina says/).first(), 3400);
-    await h.step('Tap <u>Start</u> to open it. It is ticked off when you finish.', 'hw-start-demo-h2', 3200);
-    await h.step('<u>Submitted</u> means I have it and I will reply soon.', h.p.getByTestId('hw-card-demo-h1').getByText('Awaiting feedback').first(), 3200);
-    await h.step('<u>Reviewed</u> shows your work with my feedback underneath.', h.p.getByTestId('hw-card-demo-h3').getByText(/Dina’s feedback/i).first(), 3800);
-    await h.end('Little and often works best. ¡Ánimo!');
+    await h.step('Tap *Homework*.', nav(h, 'Homework'));
+    await h.tap(nav(h, 'Homework'), 1300);
+    await h.step('*To do* comes first, with the deadline and my note to you.', h.p.getByTestId('hw-card-demo-h2').getByText(/Dina says/).first());
+    await h.step('Tap *Start* to open it. It is ticked off when you finish.', 'hw-start-demo-h2');
+    await h.step('*Submitted* means I have it, and I will reply soon.', h.p.getByTestId('hw-card-demo-h1').getByText('Awaiting feedback').first());
+    await h.step('*Reviewed* shows your work, with my feedback underneath.', h.p.getByTestId('hw-card-demo-h3').getByText(/Dina’s feedback/i).first(), 900);
+    await h.end();
   });
 
-  if (want('4')) await make('4-practise-on-your-own', { title: 'Practise on your own', sub: 'Dina and Toby show you verbs, words and games for a few minutes a day.' }, async (h) => {
+  if (want('4')) await make('4-practise-on-your-own', { title: 'Practise on your own', sub: 'Verbs, words and games, a few minutes a day.',
+    hello: "[es]¡Hola![/es] Dina and Toby here. Let us show you how to practise on your own.", bye: { title: 'Five minutes a day beats an hour on Sunday.', say: "Five minutes a day is better than one hour on Sunday. [es]¡Chau![/es]" } }, async (h) => {
     await h.asSam(); await h.go('#/student'); h.startHere();
     await h.title();
-    await h.step('Tap <u>Verbos</u> for the verb gym.', tab(h, 'Verbos'), 1700);
-    await h.tap(tab(h, 'Verbos'), 1400);
-    await h.step('Choose a <u>tense</u>. Let’s try the preterite.', 'tense-preterite', 1800);
-    await h.tap('tense-preterite', 1000);
+    await h.step('Tap *Verbos* for the verb gym.', tab(h, 'Verbos'));
+    await h.tap(tab(h, 'Verbos'), 1300);
+    await h.step("Choose a *tense*. Let's try the preterite.", 'tense-preterite');
+    await h.tap('tense-preterite', 900);
     const start = h.p.getByRole('button', { name: /Start \d+-exercise session/ });
-    await h.step('Tap <u>Start</u>. Each session is about ten short exercises.', start, 2000);
-    await h.tap(start, 300); await h.clear(); await h.wait(1500);
-    await h.note('Answer each one. If you slip, it comes back later until it sticks.', 3400);
+    await h.step('Tap *Start*. Each session is about ten short exercises.', start);
+    await h.tap(start, 300); await h.clear(); await h.wait(1300);
+    await h.note('Answer each one. If you slip, it comes back later, until it sticks.', 700);
     await h.go('#/review', 1200);
-    await h.step('<u>Memoria</u> brings words back just before you would forget them.', h.p.getByRole('button', { name: /Start review/ }).first(), 3200);
-    await h.step('In <u>Word packs</u>, tap <u>Learn now</u> to add ten new words.', h.p.locator('[data-testid^="pack-learn-"]').first(), 3400);
+    await h.step('*Memoria* brings words back, just before you would forget them.', h.p.getByRole('button', { name: /Start review/ }).first());
+    await h.step('In *Word packs*, tap *Learn now* to add ten new words.', h.p.locator('[data-testid^="pack-learn-"]').first());
     await h.go('#/arcade', 1200);
-    await h.step('<u>Juegos</u> has quick games that use your own verbs and words. Toby’s favourite!', h.p.getByText('Play & learn').first(), 3600);
-    await h.end('Five minutes a day beats an hour on Sunday.');
+    await h.step("*Juegos* has quick games with your own verbs and words. Toby's favourite!", h.p.getByText('Play & learn').first(), 800);
+    await h.end();
   });
 
-  if (want('5')) await make('5-feedback-and-progress', { title: 'Feedback and progress', sub: 'Dina and Toby show you what Dina said and how far you have come.' }, async (h) => {
+  if (want('5')) await make('5-feedback-and-progress', { title: 'Feedback and progress', sub: 'What I said, and how far you have come.',
+    hello: "[es]¡Hola![/es] It's Dina and Toby. Let us show you my feedback, and your progress.", bye: { title: 'Every bit of practice counts. ¡Vas muy bien!', say: "Every bit of practice counts. You are doing great! [es]¡Chau![/es]" } }, async (h) => {
     await h.asSam(); await h.go('#/student'); h.startHere();
     await h.title();
-    await h.step('Tap <u>Feedback</u>.', nav(h, 'Feedback'), 1500);
-    await h.tap(nav(h, 'Feedback'), 1400);
-    await h.step('My <u>comments</u> from your lessons are here.', h.p.getByText(/^Comments/).first(), 3000);
-    await h.step('<u>Corrections</u> are the slips to watch out for.', h.p.getByText(/^Corrections/).first(), 3200);
-    await h.step('<u>Recommendations</u> tell you what to practise next.', h.p.getByText(/^Recommendations/).first(), 3200);
-    await h.step('Now tap <u>Mi camino</u> to see your progress.', tab(h, 'Mi camino'), 1700);
-    await h.tap(tab(h, 'Mi camino'), 1700);
-    await h.note('Your level, your study time and everything you have learned so far.', 3000);
-    await h.step('<u>Trends</u> show your minutes, accuracy and words over eight weeks.', h.p.getByTestId('journey-trends').getByText(/Trends/).first(), 3600);
-    await h.end('Every bit of practice counts. ¡Vas muy bien!');
+    await h.step('Tap *Feedback*.', nav(h, 'Feedback'));
+    await h.tap(nav(h, 'Feedback'), 1300);
+    await h.step('My *comments* from your lessons are here.', h.p.getByText(/^Comments/).first());
+    await h.step('*Corrections* are the slips to watch out for.', h.p.getByText(/^Corrections/).first());
+    await h.step('*Recommendations* tell you what to practise next.', h.p.getByText(/^Recommendations/).first());
+    await h.step('Now tap *Mi camino* to see your progress.', tab(h, 'Mi camino'));
+    await h.tap(tab(h, 'Mi camino'), 1600);
+    await h.note('Your level, your study time, and everything you have learned so far.', 700);
+    await h.step('*Trends* show your minutes, accuracy and words, over eight weeks.', h.p.getByTestId('journey-trends').getByText(/Trends/).first(), 900);
+    await h.end();
   });
 
-  if (want('6')) await make('6-invoices', { title: 'Invoices', sub: 'Dina and Toby show you what is due and how to say you have paid.' }, async (h) => {
+  if (want('6')) await make('6-invoices', { title: 'Invoices', sub: 'What is due, and how to say you have paid.',
+    hello: "[es]¡Hola![/es] Dina and Toby here. Let us show you your invoices.", bye: { title: 'All done. ¡Gracias!', say: "All done. Thank you! [es]¡Chau![/es]" } }, async (h) => {
     // Setup (not recorded): Dina bills Sam for a lesson.
     await h.asDina(); await h.go('#/teach/invoices');
     await h.p.getByTestId('invoice-settings').click(); await h.wait(500);
@@ -108,21 +117,22 @@ const tab = (h, name) => h.p.locator('nav').last().getByText(name, { exact: true
     await h.p.getByTestId('save-send').click(); await h.wait(1500);
     await h.asSam(); await h.go('#/student'); h.startHere();
     await h.title();
-    await h.step('Swipe the tabs across and tap <u>Invoices</u>.', nav(h, 'Invoices'), 1800);
-    await h.tap(nav(h, 'Invoices'), 1500);
-    await h.note('What you owe is at the top.', 'invoice-due', 2600);
+    await h.step('Swipe the tabs across, and tap *Invoices*.', nav(h, 'Invoices'));
+    await h.tap(nav(h, 'Invoices'), 1400);
+    await h.note('What you owe is at the top.', 'invoice-due');
     const row = h.p.getByText(/^LWD-\d{4}-\d{4}/).first();
-    await h.step('Tap an invoice to open it.', row, 1600);
-    await h.tap(row, 1500);
-    await h.note('It lists the lessons, the total and <u>how to pay</u>.', 3400);
+    await h.step('Tap an invoice to open it.', row);
+    await h.tap(row, 1400);
+    await h.note('It lists the lessons, the total, and *how to pay*.', 900);
+    await h.clear();
     await h.p.getByRole('button', { name: 'Close' }).first().click().catch(() => h.p.keyboard.press('Escape')); await h.wait(900);
     const paid = h.p.locator('[data-testid^="report-paid-"]');
-    await h.step('When you have paid, tap <u>I’ve paid this</u>.', paid, 2000);
-    await h.tap(paid, 1100);
-    await h.step('Choose how you paid, add a note if you like, then tap <u>Tell Dina</u>.', 1400);
-    await h.p.getByTestId('report-method').selectOption('Bank transfer'); await h.p.getByTestId('report-note').pressSequentially('Sent this morning', { delay: 55 }); await h.wait(800);
-    await h.tap('report-send', 1500);
-    await h.note('I get a notification. It shows as paid once I have checked and confirmed it.', h.p.locator('[data-testid^="reported-"]'), 4000);
-    await h.end('All done. ¡Gracias!');
+    await h.step("When you have paid, tap *I've paid this*.", paid);
+    await h.tap(paid, 1000);
+    await h.step('Choose how you paid, add a note if you like, then tap *Tell Dina*.', 300);
+    await h.p.getByTestId('report-method').selectOption('Bank transfer'); await h.p.getByTestId('report-note').pressSequentially('Sent this morning', { delay: 55 }); await h.wait(700);
+    await h.tap('report-send', 1400);
+    await h.note('I get a notification. It shows as paid, once I have checked and confirmed it.', h.p.locator('[data-testid^="reported-"]'), 900);
+    await h.end();
   });
 })();

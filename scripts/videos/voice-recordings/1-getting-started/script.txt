@@ -1,0 +1,12 @@
+Getting started
+Record each line as its own file, named as shown (m4a, mp3 or wav), and save them in this folder.
+
+l0  ¡Hola! I'm Dina, and this is Toby. Welcome! Let us get you started.
+l1  Open the link I sent you, in Safari.
+l2  Tap Log in.
+l3  Type the username and password I gave you.
+l4  Now tap Log in.
+l5  You're in! This is your home page.
+l6  To keep us on your phone, tap Share in Safari, then Add to Home Screen.
+l7  Then open Dina from your Home Screen, and tap Turn on notifications. I will tell you when there is something new.
+l8  You are all set. Welcome! ¡Chau!

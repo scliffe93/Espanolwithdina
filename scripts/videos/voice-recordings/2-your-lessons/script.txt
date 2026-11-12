@@ -1,0 +1,10 @@
+Your lessons
+Record each line as its own file, named as shown (m4a, mp3 or wav), and save them in this folder.
+
+l0  ¡Hola! I'm Dina, and this is Toby. Let us show you where your lessons are.
+l1  Tap Clases, down here, to open your lessons page.
+l2  Your next lesson is here: the day, the time and the link to join.
+l3  Tap Lessons to see all of them.
+l4  I write the topic, and what to prepare, for each one.
+l5  Tap Add to calendar to save it on your phone.
+l6  That's it! See you in class. ¡Chau!

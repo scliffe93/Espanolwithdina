@@ -1,0 +1,10 @@
+Your homework
+Record each line as its own file, named as shown (m4a, mp3 or wav), and save them in this folder.
+
+l0  ¡Hola! It's Dina and Toby. Let us show you how your homework works.
+l1  Tap Homework.
+l2  To do comes first, with the deadline and my note to you.
+l3  Tap Start to open it. It is ticked off when you finish.
+l4  Submitted means I have it, and I will reply soon.
+l5  Reviewed shows your work, with my feedback underneath.
+l6  Little and often works best. You can do it! ¡Chau!

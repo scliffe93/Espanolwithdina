@@ -1,0 +1,12 @@
+Feedback and progress
+Record each line as its own file, named as shown (m4a, mp3 or wav), and save them in this folder.
+
+l0  ¡Hola! It's Dina and Toby. Let us show you my feedback, and your progress.
+l1  Tap Feedback.
+l2  My comments from your lessons are here.
+l3  Corrections are the slips to watch out for.
+l4  Recommendations tell you what to practise next.
+l5  Now tap Mi camino to see your progress.
+l6  Your level, your study time, and everything you have learned so far.
+l7  Trends show your minutes, accuracy and words, over eight weeks.
+l8  Every bit of practice counts. You are doing great! ¡Chau!
