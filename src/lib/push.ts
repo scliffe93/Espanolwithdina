@@ -83,3 +83,25 @@ export async function refreshPush(token: string): Promise<void> {
   const json = sub.toJSON();
   await pushApi.subscribe(token, { endpoint: sub.endpoint, keys: { p256dh: json.keys?.p256dh ?? '', auth: json.keys?.auth ?? '' } }).catch(() => undefined);
 }
+
+// ── Installing the app (Android, Windows, Mac, Chromebook) ──
+// Chrome and Edge fire `beforeinstallprompt` when the app can be installed; keeping the event lets the
+// app offer its own "Install" button. Safari on iPhone has no such event: people use Share, Add to Home Screen.
+interface InstallEvent extends Event { prompt: () => Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }> }
+let installEvent: InstallEvent | null = null;
+const installListeners = new Set<() => void>();
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvent = e as InstallEvent; installListeners.forEach((f) => f()); });
+  window.addEventListener('appinstalled', () => { installEvent = null; installListeners.forEach((f) => f()); });
+}
+export const canInstall = () => !!installEvent && !isStandalone();
+export function onInstallChange(f: () => void): () => void { installListeners.add(f); return () => { installListeners.delete(f); }; }
+/** Shows the browser's install dialog. Resolves true when the person accepted. */
+export async function installApp(): Promise<boolean> {
+  const e = installEvent;
+  if (!e) return false;
+  await e.prompt();
+  const { outcome } = await e.userChoice;
+  if (outcome === 'accepted') { installEvent = null; installListeners.forEach((f) => f()); }
+  return outcome === 'accepted';
+}
