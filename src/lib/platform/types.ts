@@ -223,9 +223,14 @@ export interface Invoice {
   paymentMethod?: string;
   notes?: string;
   paymentInstructions?: string;
+  /** The student has told the teacher they paid (awaiting the teacher's confirmation). Cleared by nothing: it stays as a record once the invoice is marked paid. */
+  paymentReported?: PaymentReport;
   createdAt: string;
   updatedAt: string;
 }
+
+/** A student's "I've paid this" notice on an invoice. */
+export interface PaymentReport { at: string; method?: string; note?: string }
 
 /** A lesson package the teacher sells: N lessons of M minutes for a price. */
 export interface LessonPackage {

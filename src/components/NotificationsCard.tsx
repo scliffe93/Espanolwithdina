@@ -42,7 +42,7 @@ export function NotificationsCard({ compact = false }: { compact?: boolean }) {
     setBusy(false);
   };
   const turnOff = async () => { setBusy(true); setError(null); await disablePush(token).catch(() => undefined); setStatus('off'); setBusy(false); };
-  const what = who === 'teacher' ? 'when a student hands in homework' : 'when Dina sets or marks homework, sends feedback, changes a lesson or releases new verbs and words';
+  const what = who === 'teacher' ? 'when a student hands in homework or says an invoice is paid' : 'when Dina sets or marks homework, sends feedback, changes a lesson or releases new verbs and words';
 
   const Bell = ({ off = false }: { off?: boolean }) => (
     <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${off ? 'bg-cream-100 text-ink-mute' : 'bg-saffron text-ink'} shadow-sm`} aria-hidden>

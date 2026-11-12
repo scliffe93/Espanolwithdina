@@ -18,7 +18,15 @@ export function InvoiceNudge() {
   const s = summarise(invoices.data);
   const low = teacher ? (students.data?.people ?? []).map((p) => ({ p, bal: balanceFor(p.id, bookings.data ?? [], invoices.data!, credits.data ?? []) })).filter((x) => isLow(x.bal)) : [];
   const cur = config.data.currency;
+  const reported = teacher ? invoices.data.filter((i) => i.status === 'sent' && i.paymentReported) : [];
   return (<>
+    {reported.length > 0 && (
+      <button type="button" onClick={() => navigate('teach/invoices')} className="mb-4 flex w-full items-center gap-3 rounded-2xl bg-olive-50 p-3 text-left text-sm" data-testid="reported-nudge">
+        <Icon name="check" size={16} className="text-olive" />
+        <span className="min-w-0 flex-1"><b>{reported.length === 1 ? `${(students.data?.people ?? []).find((p) => p.id === reported[0].studentId)?.firstName ?? 'A student'} says ${reported[0].number} is paid` : `${reported.length} invoices are reported as paid`}</b> · check and confirm</span>
+        <Icon name="arrowRight" size={14} />
+      </button>
+    )}
     {low.length > 0 && (
       <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl bg-saffron-50 p-3 text-sm" data-testid="low-balance-nudge">
         <Icon name="star" size={16} className="text-ink-soft" />

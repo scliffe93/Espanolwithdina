@@ -47,8 +47,8 @@ Students and the teacher can turn on notifications per device (the prompt on the
 
 What is sent, all triggered on the server when the record is saved:
 
-- To the student: new homework (a weekly plan of several items is one notification), homework marked, new feedback, a lesson booked, moved or cancelled, and new verb or word blocks released.
-- To the teacher: a student handed in homework.
+- To the student: new homework (a weekly plan of several items is one notification), homework marked, new feedback, a lesson booked, moved or cancelled, new verb or word blocks released, a new invoice, and a payment confirmed.
+- To the teacher: a student handed in homework, or reported an invoice as paid.
 
 How it works: `src/lib/push.ts` subscribes the device and posts the subscription to `push/subscribe`; the server stores it in `lwd_push` (one row per device, removed on opt-out, log-out, account deletion, or when the push service reports it gone). `supabase/functions/_shared/webpush.ts` encrypts each message for the device (RFC 8291) and signs it with the server's VAPID key (RFC 8292) using WebCrypto only. `public/sw.js` shows the notification and opens the right screen when it is tapped. Only Apple, Google, Mozilla and Microsoft push hosts are accepted as endpoints.
 
@@ -73,6 +73,10 @@ DELE follows the Instituto Cervantes curriculum plan (Plan curricular del Instit
 The teacher bills lessons from **Invoices**: settings once (business name, currency, rate per 60 minutes, days until due, numbering prefix, how students pay), then **New invoice** offers the taught, not-yet-billed lessons of a student plus free lines, with a running total. Invoices are numbered `PREFIX-YYYY-NNNN`, saved as records of kind `invoice` (students read only their own; drafts are hidden from them), can be sent (visible in the student's app), emailed (mailto summary), downloaded as a branded PDF (`src/lib/invoicePdf.ts`), marked paid, voided (sent) or deleted (drafts). Money-owed banners appear on the teacher's Today and the student's home. No online payment is built in; payment instructions print on every invoice. Logic and tests: `src/lib/platform/invoicing.ts`, `tests/invoicing.test.ts`, `scripts/invoices-e2e.cjs`.
 
 **Lesson packages**: the teacher defines packages (lessons, minutes, price, validity) in the same settings and sells one to a student, which writes a `credit` record and its invoice (sent or paid). Taught lessons from the purchase date that are not billed individually consume credits in date order (`src/lib/platform/packages.ts`); the balance can go negative. Balances show on the Students page, the profile (Lessons tab, with Sell a package), the student's home and invoices pages; Today flags students down to one lesson. Tests: `tests/packages.test.ts`.
+
+### Students reporting a payment
+
+On an unpaid invoice the student can tap **I've paid this**, choose how they paid and add a note. That flags the invoice for the teacher (on her home screen and on the invoice itself, with the method and note) and sends her a notification. It never changes the invoice's status or amount: the invoice stays "to pay" until the teacher checks her account and uses **Mark paid**, which starts from the method the student gave. The student is notified when a new invoice is sent and when the teacher confirms payment. Server route `platform/invoices/report-paid`; the notice is stored on the invoice as `paymentReported`. Covered by `tests/payment-report.test.ts`, `tests/push-api.test.ts` and `scripts/payment-report-e2e.cjs`.
 
 ## Administrator
 

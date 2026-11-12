@@ -138,6 +138,30 @@ describe('phone notifications API', () => {
     expect(await dinaPhone.inbox()).toEqual([{ title: 'Sam handed in homework', body: 'Write about your weekend', url: '#/teach/homework', tag: 'sub-hw-00000001' }]);
     expect(await samPhone.inbox()).toHaveLength(1); // only the "new homework" one
   });
+  it('lets a student report an invoice as paid: the teacher is told once and still confirms it herself', async () => {
+    const dina = await register('dina', 'Dina'); const sam = await register('sam', 'Sam'); const ana = await register('ana', 'Ana');
+    const dinaPhone = await phoneFor(dina.token, 1); const samPhone = await phoneFor(sam.token, 2);
+    const inv = { number: 'LWD-2026-0007', issuedAt: '2026-11-10', dueAt: '2026-11-24', currency: 'GBP', lines: [{ description: 'Lesson', qty: 1, unitPrice: 30 }], discount: 0, total: 30, status: 'draft' };
+    const rec = { kind: 'invoice', id: 'inv-00000001', studentId: sam.id };
+    await put(dina.token, { ...rec, data: inv });
+    expect(await samPhone.inbox()).toEqual([]); // drafts are private
+    expect((await call('platform/invoices/report-paid', { token: sam.token, body: { id: rec.id } })).status).toBe(400); // not sent yet
+    await put(dina.token, { ...rec, data: { ...inv, status: 'sent' } });
+    expect((await samPhone.inbox()).map((m) => m.title)).toEqual(['New invoice from Dina']);
+    // Only its owner can report it; the teacher uses Mark paid.
+    expect((await call('platform/invoices/report-paid', { token: ana.token, body: { id: rec.id } })).status).toBe(404);
+    expect((await call('platform/invoices/report-paid', { token: dina.token, body: { id: rec.id } })).status).toBe(403);
+    const r = await call('platform/invoices/report-paid', { token: sam.token, body: { id: rec.id, method: 'Bank transfer', note: '  sent this morning  ' } });
+    expect(r.status).toBe(200);
+    expect(r.json.record).toMatchObject({ status: 'sent', total: 30, paymentReported: { method: 'Bank transfer', note: 'sent this morning' } }); // status and amount untouched
+    await call('platform/invoices/report-paid', { token: sam.token, body: { id: rec.id, method: 'Cash' } });
+    expect(await dinaPhone.inbox()).toEqual([{ title: 'Sam says an invoice is paid', body: 'LWD-2026-0007 · Bank transfer. Open the app to confirm it.', url: '#/teach/invoices', tag: 'inv-inv-00000001' }]);
+    const seen = (await call(`platform/records?kind=invoice&studentId=${sam.id}`, { token: dina.token })).json.records[0];
+    expect(seen.paymentReported.method).toBe('Cash');
+    await put(dina.token, { ...rec, data: { ...seen, status: 'paid', paidAt: '2026-11-12', paymentMethod: 'cash' } });
+    expect((await samPhone.inbox()).map((m) => m.title)).toEqual(['New invoice from Dina', 'Payment received']);
+    expect((await call('platform/invoices/report-paid', { token: sam.token, body: { id: rec.id } })).status).toBe(400); // already paid
+  });
   it('forgets a phone the push service says is gone, and keeps working without notifications set up', async () => {
     const { pg } = await setup();
     const dina = await register('dina', 'Dina'); const sam = await register('sam', 'Sam');

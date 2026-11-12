@@ -221,6 +221,11 @@ class CloudBackend implements PlatformBackend {
     const next: Invoice = { ...inv, teacherId: this.actor.id, updatedAt: this.iso() };
     return this.put('invoice', next.id, next.studentId, next);
   }
+  async reportInvoicePaid(id: string, info: { method?: string; note?: string } = {}) {
+    const r = await this.wrap(() => platformApi.reportInvoicePaid<Invoice>(this.token, id, info));
+    this.cache.clear();
+    return r.record;
+  }
   async deleteInvoice(id: string) {
     this.assertTeacher();
     await this.wrap(() => platformApi.remove(this.token, id));

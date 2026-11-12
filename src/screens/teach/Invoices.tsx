@@ -69,6 +69,12 @@ export function Invoices({ params }: { params: URLSearchParams }) {
                       </button>
                       <span className="font-display text-xl font-semibold tabular-nums">{money(inv.total, inv.currency)}</span>
                       <InvoiceActions inv={inv} cfg={cfg!} studentName={nameOf(inv.studentId)} teacherName={me?.firstName ?? 'Dina'} onEdit={() => setEditing(inv)} />
+                      {inv.status === 'sent' && inv.paymentReported && (
+                        <p className="flex w-full flex-wrap items-center gap-2 rounded-xl bg-saffron-50 px-3 py-2 text-xs" data-testid={`reported-${inv.number}`}>
+                          <Icon name="info" size={14} className="text-ink-soft" />
+                          <span><b>{nameOf(inv.studentId)} says this is paid</b> · {new Date(inv.paymentReported.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}{inv.paymentReported.method ? ` · ${inv.paymentReported.method}` : ''}{inv.paymentReported.note ? ` · “${inv.paymentReported.note}”` : ''}. Check your account, then use Mark paid.</span>
+                        </p>
+                      )}
                     </li>
                   );
                 })}
@@ -93,8 +99,8 @@ function InvoiceActions({ inv, cfg, studentName, teacherName, onEdit, onDone }: 
   const { backend } = usePlatform();
   const { run, busy, error } = useAction();
   const [paying, setPaying] = useState(false);
-  const [paidAt, setPaidAt] = useState(today());
-  const [method, setMethod] = useState('bank transfer');
+  const [paidAt, setPaidAt] = useState(inv.paymentReported?.at.slice(0, 10) ?? today());
+  const [method, setMethod] = useState(inv.paymentReported?.method?.toLowerCase() ?? 'bank transfer'); // start from what the student said
   const save = (patch: Partial<Invoice>) => run(async () => { await backend!.saveInvoice({ ...inv, ...patch }); onDone?.(); });
   const pdf = async () => { const { downloadInvoicePdf } = await import('../../lib/invoicePdf'); downloadInvoicePdf(inv, cfg, studentName, teacherName); };
   const mail = mailtoHref('', `Invoice ${inv.number} from ${cfg.businessName}`, invoiceText(inv, cfg, studentName));

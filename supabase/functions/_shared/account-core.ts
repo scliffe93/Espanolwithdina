@@ -539,6 +539,10 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
           if (rec.status === 'scheduled' && !prev) msg = { title: `Lesson booked with ${from}`, body: 'Open the app to see the day and time.', url: '#/student', tag: `bk-${id}` };
           else if (prev && prev.status === 'scheduled' && rec.status === 'cancelled') msg = { title: 'Lesson cancelled', body: `${from} has cancelled a lesson. Open the app for details.`, url: '#/student', tag: `bk-${id}` };
           else if (prev && rec.status === 'scheduled' && prev.startsAt !== rec.startsAt) msg = { title: 'Lesson moved', body: `${from} has changed the time of a lesson. Open the app to see the new time.`, url: '#/student', tag: `bk-${id}` };
+        } else if (kind === 'invoice') {
+          const number = clip(rec.number, 30) || 'Invoice';
+          if (rec.status === 'sent' && (!prev || prev.status === 'draft')) msg = { title: `New invoice from ${from}`, body: `${number}. Open the app to see the amount and how to pay.`, url: '#/student/invoices', tag: `inv-${id}` };
+          else if (rec.status === 'paid' && prev && prev.status !== 'paid') msg = { title: 'Payment received', body: `${from} has marked ${number} as paid. Thank you.`, url: '#/student/invoices', tag: `inv-${id}` };
         } else if (kind === 'student') {
           const had = new Set(Array.isArray(prev?.unlocked) ? (prev!.unlocked as unknown[]) : []);
           const added = rec.stepped === true && Array.isArray(rec.unlocked) ? (rec.unlocked as unknown[]).filter((x) => !had.has(x)) : [];
@@ -574,6 +578,22 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
       }
       if (!isTeacher && cur.status !== 'submitted' && cur.status !== 'reviewed') await notify([str(cur.teacherId)], { title: `${user.first_name} handed in homework`, body: clip((cur.activity as Record<string, unknown> | undefined)?.title) || 'Open the app to review it.', url: '#/teach/homework', tag: `sub-${str(b.id)}` });
       return { status: 200, json: { record: next, followUp } };
+    }
+
+    if (path === 'platform/invoices/report-paid' && method === 'POST') {
+      // The student says "I've paid this". It never changes the invoice's status: the teacher confirms payment herself.
+      const b = await body(req);
+      const rows = await db.query<{ data: unknown; student_id: string }>("select data, student_id from public.lwd_platform where id = $1 and kind = 'invoice'", [str(b.id)]);
+      const row = rows[0];
+      if (!row || (!isTeacher && row.student_id !== user.id)) throw new HttpError(404, 'not_found', 'Invoice not found.');
+      if (isTeacher) throw new HttpError(403, 'forbidden', 'Only the student can report a payment.');
+      const cur = parseRow(row);
+      if (cur.status !== 'sent') throw new HttpError(400, 'invalid', cur.status === 'paid' ? 'This invoice is already marked as paid.' : 'This invoice cannot be paid.');
+      const pm = str(b.method).trim().slice(0, 40), note = str(b.note).trim().slice(0, 200);
+      const next = { ...cur, paymentReported: { at: iso(now()), ...(pm ? { method: pm } : {}), ...(note ? { note } : {}) }, updatedAt: iso(now()) };
+      await db.query('update public.lwd_platform set data = $2::jsonb, updated_at = $3 where id = $1', [str(b.id), JSON.stringify(next), iso(now())]);
+      if (!cur.paymentReported) await notify([str(cur.teacherId)], { title: `${user.first_name} says an invoice is paid`, body: `${clip(cur.number, 30) || 'Invoice'}${pm ? ` · ${pm}` : ''}. Open the app to confirm it.`, url: '#/teach/invoices', tag: `inv-${str(b.id)}` });
+      return { status: 200, json: { record: next } };
     }
 
     if (path === 'platform/records/delete' && method === 'POST') {

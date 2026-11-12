@@ -50,6 +50,8 @@ export interface PlatformBackend {
   invoices(opts?: { studentId?: string }): Promise<Invoice[]>;
   /** Teacher: create or update an invoice (the whole record). */
   saveInvoice(inv: Invoice): Promise<Invoice>;
+  /** Student: tell the teacher an invoice has been paid. The teacher still confirms it; this only flags it and notifies her. */
+  reportInvoicePaid(id: string, info?: { method?: string; note?: string }): Promise<Invoice>;
   /** Teacher: delete a draft. Sent invoices are voided instead. */
   deleteInvoice(id: string): Promise<void>;
   /** Teacher: her invoicing settings (defaults until saved). Students get the defaults (for currency display). */
@@ -68,6 +70,13 @@ export interface PlatformBackend {
 
 /** What the teacher saves for a student. The whole row is replaced, so pass every field you want to keep. */
 export interface StudentSettingsInput { studentId: string; maxLevel: StudentSettings['maxLevel']; note?: string; stepped?: boolean; unlocked?: string[] }
+
+/** A tidy payment notice: short method and note, nothing else. */
+export function paymentReport(at: string, info: { method?: string; note?: string } = {}): NonNullable<Invoice['paymentReported']> {
+  const method = info.method?.trim().slice(0, 40);
+  const note = info.note?.trim().slice(0, 200);
+  return { at, ...(method ? { method } : {}), ...(note ? { note } : {}) };
+}
 
 export const uid = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`);
 
@@ -277,6 +286,15 @@ export class DemoBackend implements PlatformBackend {
     if (!inv.lines.length) throw new PlatformError('invalid', 'Add at least one line.');
     const next: Invoice = { ...inv, teacherId: this.actor.id, updatedAt: this.iso() };
     await this.commit((d) => { d.invoices = d.invoices!.some((i) => i.id === inv.id) ? d.invoices!.map((i) => (i.id === inv.id ? next : i)) : [next, ...d.invoices!]; });
+    return next;
+  }
+  async reportInvoicePaid(id: string, info: { method?: string; note?: string } = {}) {
+    const cur = (this.data.invoices ?? []).find((i) => i.id === id);
+    if (!cur || (!this.isTeacher() && cur.studentId !== this.actor.id)) throw new PlatformError('not_found', 'Invoice not found.');
+    if (this.isTeacher()) throw new PlatformError('forbidden', 'Only the student can report a payment. Use Mark paid.');
+    if (cur.status !== 'sent') throw new PlatformError('invalid', cur.status === 'paid' ? 'This invoice is already marked as paid.' : 'This invoice cannot be paid.');
+    const next: Invoice = { ...cur, paymentReported: paymentReport(this.iso(), info), updatedAt: this.iso() };
+    await this.commit((d) => { d.invoices = d.invoices!.map((i) => (i.id === id ? next : i)); });
     return next;
   }
   async deleteInvoice(id: string) {

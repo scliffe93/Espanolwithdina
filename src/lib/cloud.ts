@@ -116,6 +116,7 @@ export const platformApi = {
   records: <T>(token: string, kind: PlatformKind, studentId?: string) => request<{ records: T[] }>(`platform/records?kind=${kind}${studentId ? `&studentId=${encodeURIComponent(studentId)}` : ''}`, { token }),
   put: <T>(token: string, kind: PlatformKind, id: string, studentId: string, data: T) => request<{ record: T }>('platform/records', { method: 'PUT', token, body: { kind, id, studentId, data } }),
   submitHomework: <T>(token: string, id: string, result: unknown) => request<{ record: T }>('platform/homework/submit', { token, body: { id, result } }),
+  reportInvoicePaid: <T>(token: string, id: string, info: { method?: string; note?: string }) => request<{ record: T }>('platform/invoices/report-paid', { token, body: { id, ...info } }),
   remove: (token: string, id: string) => request<void>('platform/records/delete', { method: 'POST', token, body: { id } }),
   addStudent: (token: string, input: { username: string; firstName: string; password?: string }) => request<{ user: PlatformPerson; recoveryCode: string; password?: string }>('platform/students', { token, body: input }),
 };
