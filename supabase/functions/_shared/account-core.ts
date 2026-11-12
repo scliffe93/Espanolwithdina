@@ -18,6 +18,7 @@
 // ───────────────────────────────────────────────────────────────
 
 import { followUpFor, type AdaptHomework } from './adapt.ts';
+import { PUSH_HOSTS, sendPush, validEndpoint, type VapidKeys } from './webpush.ts';
 
 export interface Db {
   query<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]>;
@@ -37,6 +38,8 @@ export interface Config {
   teacherUsernames?: string[];
   /** Usernames that administer the whole platform (above the teacher). */
   adminUsernames?: string[];
+  /** Phone notifications: the VAPID keys (absent = notifications are off). `hosts` and `fetch` are overridden in tests only. */
+  push?: VapidKeys & { hosts?: string[]; fetch?: typeof fetch };
 }
 
 const MIN = 60_000;
@@ -188,6 +191,24 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
     return { user: await promote(rows[0]), tokenHash };
   }
 
+  // ── phone notifications ──
+  // Best effort: a failed or slow push never fails the request that caused it. Dead subscriptions are removed.
+  const MAX_DEVICES = 8;
+  async function notify(userIds: string[], message: { title: string; body: string; url: string; tag: string }): Promise<void> {
+    const push = config.push;
+    const ids = [...new Set(userIds.filter(Boolean))];
+    if (!push || !ids.length) return;
+    try {
+      const subs = await db.query<{ endpoint_hash: string; endpoint: string; p256dh: string; auth: string }>(`select endpoint_hash, endpoint, p256dh, auth from public.lwd_push where user_id in (${ids.map((_, i) => `$${i + 1}`).join(', ')})`, ids);
+      await Promise.all(subs.map(async (sub) => {
+        const status = await sendPush(sub, message, push, { fetch: push.fetch, now: now() });
+        if (status === 404 || status === 410) await db.query('delete from public.lwd_push where endpoint_hash = $1', [sub.endpoint_hash]);
+        else if (status >= 200 && status < 300) await db.query('update public.lwd_push set last_ok_at = $2 where endpoint_hash = $1', [sub.endpoint_hash, iso(now())]);
+      }));
+    } catch { /* never let a notification break the request */ }
+  }
+  const clip = (v: unknown, n = 90) => { const t = (typeof v === 'string' ? v : '').replace(/\s+/g, ' ').trim(); return t.length > n ? `${t.slice(0, n - 1)}…` : t; };
+
   const publicUser = (u: UserRow) => ({ id: u.id, username: u.username, firstName: u.first_name, role: u.role });
 
   /** The configured teacher username(s) get the teacher role the first time they are seen. */
@@ -298,6 +319,32 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
     const { user, tokenHash } = await auth(req);
 
     if (path === 'me' && method === 'GET') return { status: 200, json: { user: publicUser(user) } };
+
+    // ── phone notifications: each device opts in and can opt out ──
+    if (path === 'push/key' && method === 'GET') return { status: 200, json: { key: config.push?.publicKey ?? null } };
+    if (path === 'push/subscribe' && method === 'POST') {
+      if (!config.push) throw new HttpError(503, 'push_off', 'Notifications are not set up on this server yet.');
+      const b = await body(req);
+      const endpoint = str(b.endpoint);
+      const keys = (b.keys && typeof b.keys === 'object' ? b.keys : {}) as Record<string, unknown>;
+      const p256dh = str(keys.p256dh), authKey = str(keys.auth);
+      if (!validEndpoint(endpoint, config.push.hosts ?? PUSH_HOSTS) || !/^[A-Za-z0-9_-]{80,100}$/.test(p256dh) || !/^[A-Za-z0-9_-]{16,44}$/.test(authKey)) throw new HttpError(400, 'invalid', 'That is not a notification subscription.');
+      const hash = await sha256Hex(endpoint);
+      // One row per device: if someone else was signed in on this phone before, it now belongs to this account.
+      await db.query('insert into public.lwd_push (endpoint_hash, user_id, endpoint, p256dh, auth, created_at) values ($1, $2, $3, $4, $5, $6) on conflict (endpoint_hash) do update set user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth', [hash, user.id, endpoint, p256dh, authKey, iso(now())]);
+      await db.query('delete from public.lwd_push where user_id = $1 and endpoint_hash not in (select endpoint_hash from public.lwd_push where user_id = $1 order by created_at desc limit $2)', [user.id, MAX_DEVICES]);
+      if (b.test === true) await notify([user.id], { title: 'Notifications are on', body: 'This is how Learning with Dina will reach you on this device.', url: '', tag: 'test' });
+      return { status: 200, json: { ok: true } };
+    }
+    if (path === 'push/unsubscribe' && method === 'POST') {
+      const b = await body(req);
+      await db.query('delete from public.lwd_push where user_id = $1 and endpoint_hash = $2', [user.id, await sha256Hex(str(b.endpoint))]);
+      return { status: 204 };
+    }
+    if (path === 'push/status' && method === 'GET') {
+      const rows = await db.query<{ n: number }>('select count(*)::int as n from public.lwd_push where user_id = $1', [user.id]);
+      return { status: 200, json: { enabled: !!config.push, devices: Number(rows[0]?.n ?? 0) } };
+    }
 
     if (path === 'logout' && method === 'POST') {
       await db.query('delete from public.lwd_sessions where token_hash = $1', [tokenHash]);
@@ -450,6 +497,8 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
         if (studentId !== user.id) throw new HttpError(400, 'invalid', 'Settings belong to the teacher.'); // the teacher's own row
       } else if (!(await studentExists(studentId))) throw new HttpError(404, 'not_found', 'Unknown student.');
       if (kind === 'student' && id !== `student-${studentId}`) throw new HttpError(400, 'invalid', 'A student has one settings row.'); // one row per student, so a stale ceiling can never shadow a newer one
+      const before = await db.query<{ data: unknown }>('select data from public.lwd_platform where id = $1 and kind = $2', [id, kind]);
+      const prev = before[0] ? parseRow(before[0]) : null;
       const rec: Record<string, unknown> = { ...(b.data as Record<string, unknown>), id, studentId };
       if (kind !== 'activity') rec.teacherId = user.id; // never trust the client's teacherId
       if (kind === 'booking' && rec.status === 'scheduled') {
@@ -469,6 +518,37 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
         [id, kind, isTeacher ? user.id : null, studentId, JSON.stringify(rec), iso(now())],
       );
       if (!rows[0]) throw new HttpError(409, 'conflict', 'That record id is already used for something else.');
+      // Tell the student's phone about what the teacher just did (only real changes, never the student's own actions).
+      if (isTeacher && studentId !== user.id) {
+        const from = user.first_name;
+        let msg: { title: string; body: string; url: string; tag: string } | null = null;
+        if (kind === 'homework') {
+          const title = clip((rec.activity as Record<string, unknown> | undefined)?.title) || 'Open the app to see it.';
+          if (!prev) {
+            // A weekly plan arrives as several items at once: one notification, not one per item.
+            const bucket = `push:hw:${studentId}`;
+            if ((await failures(bucket, MIN)) === 0) {
+              await db.query('insert into public.lwd_attempts (bucket, at) values ($1, $2)', [bucket, iso(now())]);
+              msg = { title: `New homework from ${from}`, body: rec.plan ? 'Your plan for the week is ready.' : title, url: '#/student/homework', tag: 'hw-new' };
+            }
+          }
+          else if (rec.status === 'reviewed' && prev.status !== 'reviewed') msg = { title: `${from} has marked your homework`, body: title, url: '#/student/homework', tag: `hw-${id}` };
+        } else if (kind === 'feedback' && !prev) {
+          msg = { title: `New feedback from ${from}`, body: clip(rec.body) || 'Open the app to read it.', url: '#/student/feedback', tag: `fb-${id}` };
+        } else if (kind === 'booking') {
+          if (rec.status === 'scheduled' && !prev) msg = { title: `Lesson booked with ${from}`, body: 'Open the app to see the day and time.', url: '#/student', tag: `bk-${id}` };
+          else if (prev && prev.status === 'scheduled' && rec.status === 'cancelled') msg = { title: 'Lesson cancelled', body: `${from} has cancelled a lesson. Open the app for details.`, url: '#/student', tag: `bk-${id}` };
+          else if (prev && rec.status === 'scheduled' && prev.startsAt !== rec.startsAt) msg = { title: 'Lesson moved', body: `${from} has changed the time of a lesson. Open the app to see the new time.`, url: '#/student', tag: `bk-${id}` };
+        } else if (kind === 'student') {
+          const had = new Set(Array.isArray(prev?.unlocked) ? (prev!.unlocked as unknown[]) : []);
+          const added = rec.stepped === true && Array.isArray(rec.unlocked) ? (rec.unlocked as unknown[]).filter((x) => !had.has(x)) : [];
+          if (added.length && prev?.stepped === true) {
+            const verbs = added.some((x) => String(x).startsWith('verbs-')), words = added.some((x) => !String(x).startsWith('verbs-'));
+            msg = { title: verbs && words ? 'New verbs and words unlocked' : verbs ? 'New verbs unlocked' : 'New words unlocked', body: `${from} has released more for you to practise.`, url: verbs ? '#/verbs' : '#/review', tag: 'release' };
+          }
+        }
+        if (msg) await notify([studentId], msg);
+      }
       return { status: 200, json: { record: rec } };
     }
 
@@ -492,6 +572,7 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
         followUp = followUpFor(next as unknown as AdaptHomework, iso(now()), fid, { maxLevel });
         if (followUp) await db.query("insert into public.lwd_platform (id, kind, teacher_id, student_id, data, updated_at) values ($1, 'homework', $2, $3, $4::jsonb, $5) on conflict (id) do nothing", [fid, followUp.teacherId, row.student_id, JSON.stringify(followUp), iso(now())]);
       }
+      if (!isTeacher && cur.status !== 'submitted' && cur.status !== 'reviewed') await notify([str(cur.teacherId)], { title: `${user.first_name} handed in homework`, body: clip((cur.activity as Record<string, unknown> | undefined)?.title) || 'Open the app to review it.', url: '#/teach/homework', tag: `sub-${str(b.id)}` });
       return { status: 200, json: { record: next, followUp } };
     }
 

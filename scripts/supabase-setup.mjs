@@ -2,7 +2,7 @@
 // One-command Supabase setup for Learning with Dina (free tier), using the Management API.
 //   SUPABASE_ACCESS_TOKEN=sbp_... node scripts/supabase-setup.mjs [--project learning-with-dina] [--region eu-west-2] [--origins https://scliffe93.github.io] [--teachers dina]
 // Steps (all idempotent): find/create the project → wait until healthy → apply supabase/migrations/*.sql →
-// set ALLOWED_ORIGINS + TEACHER_USERNAMES → bundle and deploy the `account` Edge Function (JWT check off) →
+// set ALLOWED_ORIGINS + TEACHER_USERNAMES → create the notification (VAPID) keys once → bundle and deploy the `account` Edge Function (JWT check off) →
 // health-check it → print the API URL to put in .env.production / the LWD_API_URL repository variable.
 // Re-running is safe: existing project, tables (IF NOT EXISTS), secrets and function are updated in place.
 import { readFileSync, readdirSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -17,6 +17,7 @@ const REGION = args.region ?? 'eu-west-2';
 const ORIGINS = args.origins ?? 'https://scliffe93.github.io';
 const TEACHERS = args.teachers ?? 'dina';
 const ADMINS = args.admins ?? 'admin';
+const SUBJECT = args.subject ?? 'https://scliffe93.github.io/Espanolwithdina/'; // who runs the notifications (a public URL the push services can see)
 const TOKEN = process.env.SUPABASE_ACCESS_TOKEN ?? 'proxy-injected';
 const API = 'https://api.supabase.com/v1';
 const log = (...m) => console.log('•', ...m);
@@ -78,6 +79,19 @@ async function main() {
   // 4. Secrets
   await api(`/projects/${ref}/secrets`, { method: 'POST', body: JSON.stringify([{ name: 'ALLOWED_ORIGINS', value: ORIGINS }, { name: 'TEACHER_USERNAMES', value: TEACHERS }, { name: 'ADMIN_USERNAMES', value: ADMINS }]) });
   log(`secrets set: ALLOWED_ORIGINS=${ORIGINS} TEACHER_USERNAMES=${TEACHERS} ADMIN_USERNAMES=${ADMINS}`);
+
+  // 4b. Phone notifications: a VAPID key pair, generated once. The private key only ever exists as a server secret
+  // (never printed, never in the repository). Regenerating it would silently disconnect every phone, so keep it.
+  const names = (await api(`/projects/${ref}/secrets`)).map((x) => x.name);
+  if (names.includes('VAPID_PUBLIC_KEY') && names.includes('VAPID_PRIVATE_KEY')) log('notification keys already set (kept)');
+  else {
+    const b64u = (buf) => Buffer.from(buf).toString('base64url');
+    const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign']);
+    const jwk = await crypto.subtle.exportKey('jwk', pair.privateKey);
+    const publicKey = b64u(await crypto.subtle.exportKey('raw', pair.publicKey));
+    await api(`/projects/${ref}/secrets`, { method: 'POST', body: JSON.stringify([{ name: 'VAPID_PUBLIC_KEY', value: publicKey }, { name: 'VAPID_PRIVATE_KEY', value: jwk.d }, { name: 'VAPID_SUBJECT', value: SUBJECT }]) });
+    log(`notification keys created (public key ${publicKey.slice(0, 12)}…)`);
+  }
 
   // 5. Deploy the function
   const { code } = await bundleFunction();

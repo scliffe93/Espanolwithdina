@@ -1,3 +1,4 @@
+import { NotificationsCard } from '../../components/NotificationsCard';
 import { motion } from 'motion/react';
 import { DinaArt } from '../../components/Dina';
 import { Icon } from '../../components/Icon';
@@ -25,7 +26,7 @@ import { DemoChip, ErrorCard, FeedbackItem, HomeworkStatus, LessonDetails, Loadi
 // the headline numbers of the learner's journey.
 // ───────────────────────────────────────────────────────────────
 
-const NOTE = 'Reminders show here while the app is open. They can’t notify you when it’s closed — a separate notification service would be needed for that.';
+const NOTE = 'Reminders for lessons and deadlines show here while the app is open. Turn on notifications to hear about new homework, marking and lesson changes when it’s closed.';
 
 function Reminders({ reminders }: { reminders: Reminder[] }) {
   if (!reminders.length) {
@@ -243,6 +244,7 @@ export function Home() {
     <div data-testid="student-home">
       <PageHeader eyebrow="Mis clases · My lessons & homework" title={`Hola, ${name}`} subtitle="Your lessons with Dina, your homework and her feedback — all in one place." right={<DemoChip />} />
       <StudentNav page="home" />
+      <NotificationsCard compact />
       {error && <ErrorCard error={error} retry={reload} />}
       {!error && loading && !data && <Loading />}
       {data && (

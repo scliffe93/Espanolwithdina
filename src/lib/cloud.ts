@@ -99,6 +99,13 @@ export const api = {
     request<{ version: number; updatedAt: string }>('progress', { method: 'PUT', token, body: { data, baseVersion, deviceId: deviceId() }, keepalive }),
 };
 
+/** Phone notifications: each device opts in with its browser push subscription. */
+export const pushApi = {
+  key: (token: string) => request<{ key: string | null }>('push/key', { token }),
+  subscribe: (token: string, sub: { endpoint: string; keys: { p256dh: string; auth: string } }, test = false) => request<{ ok: true }>('push/subscribe', { token, body: { ...sub, test } }),
+  unsubscribe: (token: string, endpoint: string) => request<void>('push/unsubscribe', { token, body: { endpoint } }),
+};
+
 export interface PlatformPerson { id: string; username: string; firstName: string; role: 'student' | 'teacher' | 'admin' }
 export type PlatformKind = 'booking' | 'homework' | 'feedback' | 'activity' | 'invoice' | 'config' | 'credit' | 'student';
 

@@ -15,3 +15,23 @@ self.addEventListener('fetch', (e) => {
   }
   e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((res) => { if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); } return res; })));
 });
+
+// Phone notifications. The server sends an encrypted { title, body, url, tag }; the browser decrypts it before this runs.
+self.addEventListener('push', (e) => {
+  let m = {};
+  try { m = e.data ? e.data.json() : {}; } catch (_) { m = {}; }
+  e.waitUntil(self.registration.showNotification(m.title || 'Learning with Dina', {
+    body: m.body || '', icon: './icon-192.png', badge: './icon-192.png', tag: m.tag || undefined, data: { url: m.url || '' },
+  }));
+});
+// Tapping a notification opens the app on the right screen (reusing an open window when there is one).
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const hash = (e.notification.data && e.notification.data.url) || '';
+  const target = self.registration.scope + (hash.charAt(0) === '#' ? hash : '');
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
+    const win = wins.find((w) => w.url.indexOf(self.registration.scope) === 0);
+    if (win) return win.focus().then((w) => (w && w.navigate ? w.navigate(target).catch(() => undefined) : undefined));
+    return self.clients.openWindow(target);
+  }));
+});

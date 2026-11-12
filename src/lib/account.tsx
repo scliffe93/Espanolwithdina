@@ -1,3 +1,4 @@
+import { disablePush } from './push';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AppState } from '../types';
 import { ApiError, api, cloudConfigured, loadSession, rememberAccount, saveSession, type Session } from './cloud';
@@ -291,6 +292,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     window.clearTimeout(timer.current);
     if (meta.current.dirty) await push();
     if (meta.current.dirty && !force) return 'unsynced';
+    await disablePush(s.token).catch(() => undefined); // this device stops receiving the account's notifications
     try { await api.logout(s.token); } catch { /* offline: the token simply expires */ }
     const forget = forgetDevice ?? !s.remember;
     if (forget && !meta.current.dirty) {

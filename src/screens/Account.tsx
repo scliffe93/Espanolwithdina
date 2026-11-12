@@ -1,3 +1,4 @@
+import { NotificationsCard } from '../components/NotificationsCard';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { DinaArt } from '../components/Dina';
@@ -186,6 +187,11 @@ function SignedIn() {
         </div>
         {acc.message && <p className="w-full rounded-xl bg-terracotta-50 px-3 py-2 text-sm text-terracotta-dark">{acc.message}</p>}
         <p className="w-full text-xs text-ink-mute">Everything you learn syncs automatically: level and assessment, story progress in every city, vocabulary, verbs and spaced-repetition schedules, mistakes, study time, achievements, preferences and teacher details. Voice recordings stay on the device that made them.</p>
+      </section>
+
+      <section className="card p-5" data-testid="account-notifications">
+        <h3 className="mb-2 text-lg font-semibold">Notifications</h3>
+        <NotificationsCard />
       </section>
 
       <div className="grid gap-4 md:grid-cols-2">

@@ -41,6 +41,21 @@ So a student is not faced with every verb and word on day one, the teacher can r
 
 A verb block is twelve verbs of one level, most frequent first (34 blocks); a word block is one ten-word pack (15 packs). Blocks are defined in `src/data/blocks.ts`. While it is on, the student's verb gym, verb games and word-pack list only use released blocks. Homework the teacher assigns always opens, and words already in a student's deck stay there if a pack is locked again. The choice is stored on the student's settings row (`stepped`, `unlocked`), so it needs no backend change. Covered by `tests/blocks.test.ts` and `scripts/release-e2e.cjs`.
 
+## Phone notifications
+
+Students and the teacher can turn on notifications per device (the prompt on their home screen, or the account page). It uses standard Web Push, so it needs no app store: on Android and desktop it works in the browser; on iPhone and iPad the person first adds the app to the Home Screen (Share, then Add to Home Screen) and turns notifications on from there. The app shows those steps when it detects an iPhone that has not done so.
+
+What is sent, all triggered on the server when the record is saved:
+
+- To the student: new homework (a weekly plan of several items is one notification), homework marked, new feedback, a lesson booked, moved or cancelled, and new verb or word blocks released.
+- To the teacher: a student handed in homework.
+
+How it works: `src/lib/push.ts` subscribes the device and posts the subscription to `push/subscribe`; the server stores it in `lwd_push` (one row per device, removed on opt-out, log-out, account deletion, or when the push service reports it gone). `supabase/functions/_shared/webpush.ts` encrypts each message for the device (RFC 8291) and signs it with the server's VAPID key (RFC 8292) using WebCrypto only. `public/sw.js` shows the notification and opens the right screen when it is tapped. Only Apple, Google, Mozilla and Microsoft push hosts are accepted as endpoints.
+
+The VAPID key pair is created once by `scripts/supabase-setup.mjs` and stored as the `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` function secrets. Keep it: replacing it disconnects every device until each one turns notifications on again. Without the secrets the feature is simply off and the prompt stays hidden.
+
+Not included yet: timed reminders (for example "lesson tomorrow"), which need a scheduled job. Covered by `tests/webpush.test.ts` (including the RFC 8291 test vector), `tests/push-api.test.ts` and `scripts/push-e2e.cjs`.
+
 ## Invoicing
 
 The teacher bills lessons from **Invoices**: settings once (business name, currency, rate per 60 minutes, days until due, numbering prefix, how students pay), then **New invoice** offers the taught, not-yet-billed lessons of a student plus free lines, with a running total. Invoices are numbered `PREFIX-YYYY-NNNN`, saved as records of kind `invoice` (students read only their own; drafts are hidden from them), can be sent (visible in the student's app), emailed (mailto summary), downloaded as a branded PDF (`src/lib/invoicePdf.ts`), marked paid, voided (sent) or deleted (drafts). Money-owed banners appear on the teacher's Today and the student's home. No online payment is built in; payment instructions print on every invoice. Logic and tests: `src/lib/platform/invoicing.ts`, `tests/invoicing.test.ts`, `scripts/invoices-e2e.cjs`.

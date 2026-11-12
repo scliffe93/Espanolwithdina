@@ -8,7 +8,7 @@ import { createPgliteDb } from './pglite-db.ts';
 const port = Number(process.argv[2] ?? 8787);
 const dataDir = process.argv[3] ?? '.data/pglite';
 const { db } = await createPgliteDb(dataDir === 'memory' ? undefined : dataDir);
-const handle = createHandler(db, argon2Hasher(hashwasm), { allowedOrigins: (process.env.ALLOWED_ORIGINS ?? 'http://localhost:4173,http://localhost:5173').split(','), teacherUsernames: (process.env.TEACHER_USERNAMES ?? 'dina').split(','), adminUsernames: (process.env.ADMIN_USERNAMES ?? 'admin').split(',') });
+const handle = createHandler(db, argon2Hasher(hashwasm), { allowedOrigins: (process.env.ALLOWED_ORIGINS ?? 'http://localhost:4173,http://localhost:5173').split(','), teacherUsernames: (process.env.TEACHER_USERNAMES ?? 'dina').split(','), adminUsernames: (process.env.ADMIN_USERNAMES ?? 'admin').split(','), push: process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY ? { publicKey: process.env.VAPID_PUBLIC_KEY, privateKey: process.env.VAPID_PRIVATE_KEY, subject: 'https://localhost/', fetch: (async () => new Response(null, { status: 201 })) as typeof fetch } : undefined });
 
 createServer(async (req, res) => {
   const chunks: Buffer[] = [];
