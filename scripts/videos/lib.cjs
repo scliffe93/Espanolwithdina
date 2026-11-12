@@ -6,8 +6,8 @@ const { chromium } = require(path.join(execSync('npm root -g').toString().trim()
 const buildGuide = require('./guide/build.cjs');
 const BASE = 'http://localhost:4173/';
 const PY = process.env.PIPER_PYTHON || path.join(__dirname, 'voice-env/venv/bin/python');
-const MODEL = process.env.PIPER_MODEL || path.join(__dirname, 'voice-env/model/en_US-ljspeech-high.onnx');
-const ACCENT = process.env.DINA_ACCENT || 'clear';
+const MODEL = process.env.PIPER_MODEL || path.join(__dirname, 'voice-env/model/es_MX-claude-high.onnx');
+const ACCENT = process.env.DINA_ACCENT || 'spanish';
 
 /** "Tap *Homework*. [es]¡Dale![/es]" -> what the bubble shows and what the voice says. */
 const bubbleOf = (t) => t.replace(/\[\/?es\]/g, '').replace(/\*([^*]+)\*/g, '<u>$1</u>');
@@ -28,7 +28,7 @@ async function make(name, opts, steps) {
     title: async () => { lines.push(opts.hello); }, step: async (t) => { lines.push(t); }, note: async (t) => { lines.push(t); }, end: async () => { lines.push(opts.bye.say); } };
   await steps(collect, { user: 'sam' });
   fs.writeFileSync(path.join(rawDir, 'lines.json'), JSON.stringify(Object.fromEntries(lines.map((t, i) => [`l${i}`, voiceOf(t)])), null, 1));
-  execFileSync(PY, [path.join(__dirname, 'voice.py'), MODEL, path.join(rawDir, 'lines.json'), path.join(rawDir, 'voice'), '--level', ACCENT, '--speed', process.env.DINA_SPEED || '1.08'], { stdio: ['ignore', 'ignore', 'inherit'] });
+  execFileSync(PY, [path.join(__dirname, 'voice.py'), MODEL, path.join(rawDir, 'lines.json'), path.join(rawDir, 'voice'), '--level', ACCENT, '--speed', process.env.DINA_SPEED || '1.0'], { stdio: ['ignore', 'ignore', 'inherit'] });
   const durations = JSON.parse(fs.readFileSync(path.join(rawDir, 'voice', 'durations.json'), 'utf8'));
   // A real recording beats the made-up voice: drop l0.m4a, l1.m4a … (or .mp3/.wav) into voice-recordings/<video>/ and
   // those lines use it instead. The script to read from is written to voice-recordings/<video>/script.txt.

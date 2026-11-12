@@ -1,5 +1,5 @@
 // Records the short how-to videos for students (phone-sized, under a minute each). Dina and Toby guide each one:
-// Dina walks on, talks you through it out loud (English with an Argentinian accent) and Toby trots to each thing to tap.
+// Dina walks on, talks you through it out loud (English with a Spanish accent) and Toby trots to each thing to tap.
 // The voice needs Piper: set PIPER_PYTHON and PIPER_MODEL, or put a venv and the model under scripts/videos/voice-env (see docs/PLATFORM.md).
 // Needs: the normal build served on :4173 (npx vite preview --port 4173 --strictPort) for videos 2 to 6, which use the demo
 // workspace with its demo labels hidden. Video 1 (logging in) needs real accounts: an API on :8787

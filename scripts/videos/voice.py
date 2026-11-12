@@ -1,13 +1,14 @@
-"""Dina's voice for the how-to videos: English spoken with an Argentinian accent.
+"""Dina's voice for the how-to videos: English spoken with a Spanish accent.
 
-The voice is Piper's free Argentinian voice (es_AR "daniela", trained on real Argentinian speakers). Left alone it
-would read English with Spanish spelling rules, which is hard to follow. Instead each line is turned into English
-sounds first, then those sounds are swapped for the nearest ones an Argentinian speaker uses (a tapped r, "d" for
-"th", pure vowels, an "e" before s + consonant), and the Argentinian voice says the result. Spanish words in a line,
-written as [es]hola[/es], are said as real Spanish.
+The voice is a real Spanish one (Piper's free "claude" voice, trained on a native Spanish speaker). Left alone it
+would read English with Spanish spelling rules, which is hard to follow. Instead each line is first turned into
+English sounds, then every sound is swapped for the one a Spanish speaker would use (a tapped r, five pure vowels,
+b for v, d for "th", "es" before s + consonant), and the Spanish voice says the result. Because the voice only says
+sounds it knows, the accent is genuine and the words stay clear. Spanish words in a line, written as
+[es]hola[/es], are said as real Spanish.
 
-Usage: voice.py <model.onnx> <lines.json> <outDir> [--level light|medium|strong]
-  lines.json: {"id": "text", ...}  ->  <outDir>/<id>.wav and <outDir>/durations.json (seconds)
+Usage: voice.py <model.onnx> <lines.json> <outDir> [--level spanish|native|clear] [--speed 1.0] [--speaker N]
+  lines.json: {"id": "text", ...}  ->  <outDir>/<id>.wav, <outDir>/bark.wav and <outDir>/durations.json (seconds)
 """
 import json, re, sys, wave
 from pathlib import Path
@@ -25,11 +26,20 @@ STRONG = {**MEDIUM, 'v': 'b', 'h': 'x'}
 CLEAR = {'ɾ': 't', 'ɫ': 'l', 'ð': 'd', 'θ': 't', 'z': 's', 'ʊ': 'u'}
 # Spanish sounds an English-trained voice has never met, swapped for its nearest ones.
 ES_FOR_ENGLISH_VOICE = {'β': 'b', 'ɣ': 'ɡ', 'x': 'h', 'ɲ': 'nj', 'ʝ': 'j', 'r': 'ɹ', 'ɾ': 'ɹ', 'ʎ': 'j', 'o': 'oʊ', 'a': 'ɑ', 'e': 'ɛ'}
-LEVELS = {'clear': CLEAR, 'light': LIGHT, 'medium': MEDIUM, 'strong': STRONG}
+# For a real Spanish voice: every English sound becomes the one a Spanish speaker would use, so the voice only ever says
+# sounds it knows. This is what gives a true (generic) Spanish accent: tapped r, five pure vowels, b for v, a soft j for h.
+NATIVE = {'ɾ': 't', 'ɹ': 'ɾ', 'ɫ': 'l', 'ː': '', 'ʔ': '', '̩': '', 'ɚ': 'eɾ', 'ɝ': 'eɾ', 'ɜ': 'e', 'ᵻ': 'i', 'ɐ': 'a', 'ɪ': 'i', 'ʊ': 'u', 'æ': 'a', 'ʌ': 'a', 'ɑ': 'a', 'ɒ': 'o', 'ɔ': 'o', 'ə': 'e', 'ɛ': 'e',
+          'ð': 'd', 'θ': 's', 'z': 's', 'v': 'b', 'h': 'x', 'ʃ': 'tʃ', 'ʒ': 'ʝ', 'ŋ': 'n'}
+# The one the videos use, with a real Spanish voice: a generic Spanish accent that stays easy to follow. It keeps
+# "sh" and the English "j", which a listener needs, and takes the rest from NATIVE.
+SPANISH = {**NATIVE, 'ʃ': 'ʃ', 'ʒ': 'ʒ'}
+LEVELS = {'clear': CLEAR, 'light': LIGHT, 'medium': MEDIUM, 'strong': STRONG, 'native': NATIVE, 'spanish': SPANISH}
 VOWELS = set('aeiouɪʊæʌɑɒɔəɛɜɚɝᵻɐ')
 PUNCT = set(' ,.;:!?')
 
 def accent(ph, table, level):
+    if level == 'native': ph = list(''.join(ph).replace('dʒ', 'ʝ'))
+    if level in ('native', 'spanish'): ph = list(''.join(ph).replace('ŋɡ', 'nɡ'))
     out = []
     for i, p in enumerate(ph):
         # "estart", "espanish": Spanish has no word-initial s + consonant.
@@ -43,7 +53,8 @@ def accent(ph, table, level):
     return out
 
 class Dina:
-    def __init__(self, model, level='clear'):
+    def __init__(self, model, level='spanish', speaker=None):
+        self.speaker = speaker
         self.voice = PiperVoice.load(model)
         self.es = 'es-419'  # Spanish words are always phonemized as Latin American Spanish
         self.native_spanish = str(self.voice.config.espeak_voice).startswith('es')
@@ -71,7 +82,7 @@ class Dina:
         return [list(s.strip()) for s in re.findall(r'[^.!?]+[.!?]?', text_ph) if s.strip()]
 
     def say(self, text, path, speed=1.0):
-        cfg = SynthesisConfig(length_scale=1.0 / speed, noise_scale=0.6, noise_w_scale=0.8)
+        cfg = SynthesisConfig(length_scale=1.0 / speed, noise_scale=0.6, noise_w_scale=0.8, **({'speaker_id': self.speaker} if self.speaker is not None else {}))
         chunks = []
         for sent in self.phonemes(text):
             sent = [p for p in sent if p in self.ids]
@@ -109,11 +120,12 @@ def bark(path, rate=22050):
 
 if __name__ == '__main__':
     model, lines_file, out = sys.argv[1], sys.argv[2], Path(sys.argv[3])
-    level = sys.argv[sys.argv.index('--level') + 1] if '--level' in sys.argv else 'clear'
+    level = sys.argv[sys.argv.index('--level') + 1] if '--level' in sys.argv else 'spanish'
     speed = float(sys.argv[sys.argv.index('--speed') + 1]) if '--speed' in sys.argv else 1.0
     out.mkdir(parents=True, exist_ok=True)
     bark(out / 'bark.wav')
-    dina = Dina(model, level)
+    speaker = int(sys.argv[sys.argv.index('--speaker') + 1]) if '--speaker' in sys.argv else None
+    dina = Dina(model, level, speaker)
     lines = json.loads(Path(lines_file).read_text())
     durations = {k: round(dina.say(v, out / f'{k}.wav', speed), 3) for k, v in lines.items()}
     (out / 'durations.json').write_text(json.dumps(durations, indent=1))
