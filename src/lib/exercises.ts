@@ -137,14 +137,16 @@ export interface PlanInput {
   mode?: GrammarMode;
   /** The teacher's level ceiling for this student (null/undefined = none): verbs above it are never picked by the app. */
   maxLevel?: Cefr | null;
+  /** Gradual release: only these verbs may be picked (null = any). */
+  allowed?: Set<string> | null;
 }
 
 /** Picks which verbs to practise: due → weak → in-progress → new (by frequency, within level). */
-export function pickVerbs(state: AppState, tense: Tense, count: number, now = Date.now(), maxLevel: Cefr | null = null): string[] {
+export function pickVerbs(state: AppState, tense: Tense, count: number, now = Date.now(), maxLevel: Cefr | null = null, allowed: Set<string> | null = null): string[] {
   const region = state.profile?.region ?? 'spain';
   const persons = personsForTense(tense, region);
   // Frequency order; A2 verbs come later for A1 learners naturally (they rank lower). A teacher's ceiling removes verbs above it.
-  const eligible = VERBS.filter((v) => withinLevel(v.level, maxLevel)).sort((a, b) => a.frequencyRank - b.frequencyRank);
+  const eligible = VERBS.filter((v) => (allowed ? allowed.has(v.inf) : withinLevel(v.level, maxLevel))).sort((a, b) => a.frequencyRank - b.frequencyRank);
   const info = eligible.map((v) => {
     const cards = persons.map((p) => state.srs[verbKey(v.inf, tense, p)]).filter(Boolean);
     const attempts = cards.reduce((a, c) => a + c!.attempts, 0);
@@ -172,7 +174,7 @@ const KIND_PREF: Record<Activity, ExKind[]> = {
 };
 
 /** Builds a varied session. Preferences tilt the mix but every learner sees every kind. */
-export function buildSession({ state, focus, tense, length = 12, now = Date.now(), rng = Math.random, mode, maxLevel = null }: PlanInput): Exercise[] {
+export function buildSession({ state, focus, tense, length = 12, now = Date.now(), rng = Math.random, mode, maxLevel = null, allowed = null }: PlanInput): Exercise[] {
   const region = state.profile?.region ?? 'spain';
   if (mode === 'ser-estar') {
     const items = shuffle(SER_ESTAR, rng).slice(0, Math.min(length, SER_ESTAR.length));
@@ -188,7 +190,7 @@ export function buildSession({ state, focus, tense, length = 12, now = Date.now(
     return shuffle(pool, rng).slice(0, Math.min(length, pool.length)).map((x) => ({ kind: 'grammar' as const, mode, index: x.index, item: x.item }));
   }
 
-  const verbs = focus?.length ? focus.filter((v) => VERB_BY_INF[v]) : pickVerbs(state, tense, 5, now, maxLevel);
+  const verbs = focus?.length ? focus.filter((v) => VERB_BY_INF[v]) : pickVerbs(state, tense, 5, now, maxLevel, allowed);
   const persons = personsForTense(tense, region);
   const prefs = state.profile?.activities ?? [];
   const base: ExKind[] = ['choice', 'type', 'match', 'listen', 'fix', 'type', 'choice', 'build'];

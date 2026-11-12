@@ -546,6 +546,9 @@ export function Verbs({ params }: { params: URLSearchParams }) {
   // The teacher's level ceiling: tenses above it are locked, unless this is homework the teacher set (?hw=).
   const access = useLevelAccess();
   const ceiling = params.get('hw') ? null : access.maxLevel;
+  // Gradual release: only the verb blocks the teacher has released (homework is never restricted).
+  const released = params.get('hw') ? null : access.verbs;
+  const myVerbs = useMemo(() => (released ? VERBS.filter((v) => released.has(v.inf)) : VERBS), [released]);
   const tenseLocked = (t: (typeof TENSES)[number]) => !!ceiling && levelIndex(t.minLevel) > levelIndex(ceiling);
   useEffect(() => {
     if (tenseLocked(TENSES.find((t) => t.id === tense)!)) setTense('present');
@@ -555,7 +558,7 @@ export function Verbs({ params }: { params: URLSearchParams }) {
   const start = (opts: { focus?: string[]; mode?: GrammarMode; tense?: Tense } = {}) => {
     const t = opts.tense ?? tense;
     if (!opts.mode && tenseLocked(TENSES.find((x) => x.id === t)!)) return;
-    setSession({ ex: buildSession({ state, focus: opts.focus ?? (focus.length ? focus : undefined), tense: t, mode: opts.mode, maxLevel: ceiling }), tense: t });
+    setSession({ ex: buildSession({ state, focus: opts.focus ?? (focus.length ? focus : undefined), tense: t, mode: opts.mode, maxLevel: ceiling, allowed: released }), tense: t });
   };
 
   // Deep links (coach, scene completion) start a session immediately.
@@ -569,8 +572,9 @@ export function Verbs({ params }: { params: URLSearchParams }) {
   if (session) return <Session key={JSON.stringify(session.ex.slice(0, 2))} exercises={session.ex} tense={session.tense} onExit={() => { setSession(null); navigate('verbs'); }} />;
 
   const tenseAllowed = (t: (typeof TENSES)[number]) => levelIndex(level) >= levelIndex(t.minLevel);
-  const counts = { mastered: mastery.filter((m) => m.level === 'mastered').length, familiar: mastery.filter((m) => m.level === 'familiar').length, learning: mastery.filter((m) => m.level === 'learning').length };
-  const shown = VERBS.filter((v) => {
+  const mine = released ? mastery.filter((m) => released.has(m.inf)) : mastery;
+  const counts = { mastered: mine.filter((m) => m.level === 'mastered').length, familiar: mine.filter((m) => m.level === 'familiar').length, learning: mine.filter((m) => m.level === 'learning').length };
+  const shown = myVerbs.filter((v) => {
     const m = masteryBy[v.inf];
     if (filter === 'all') return true;
     if (filter === 'new') return m.level === 'new';
@@ -592,6 +596,7 @@ export function Verbs({ params }: { params: URLSearchParams }) {
               </button>
             ))}
           </div>
+          {released && <p className="mt-2 text-sm text-ink-mute" data-testid="release-note">Your teacher releases verbs in blocks: you have {myVerbs.length} so far, and more arrive as you progress.</p>}
           {ceiling && <p className="mt-2 text-sm text-ink-mute" data-testid="level-note">Your teacher has set your level to {ceiling}: tenses above it are locked until they raise it.</p>}
           {!tenseAllowed(TENSES.find((t) => t.id === tense)!) && <p className="mt-2 text-sm text-ink-mute">Recommended from {TENSES.find((t) => t.id === tense)!.minLevel}. You can still try it — your verbs level is {level}.</p>}
           <p className="eyebrow mb-2 mt-5">Focus</p>
@@ -615,20 +620,20 @@ export function Verbs({ params }: { params: URLSearchParams }) {
           </div>
         </div>
         <div className="card flex items-center gap-4 p-5">
-          <ProgressRing value={(counts.mastered + counts.familiar * 0.5) / VERBS.length} size={92} stroke={9} color="rgb(var(--c-tertiary))">
+          <ProgressRing value={(counts.mastered + counts.familiar * 0.5) / myVerbs.length} size={92} stroke={9} color="rgb(var(--c-tertiary))">
             <span className="text-center text-xs leading-tight"><b className="block font-display text-2xl">{counts.mastered}</b>mastered</span>
           </ProgressRing>
           <div className="text-sm">
             <p><b>{counts.familiar}</b> familiar</p>
             <p><b>{counts.learning}</b> learning</p>
-            <p><b>{VERBS.length - counts.mastered - counts.familiar - counts.learning}</b> not started</p>
+            <p><b>{myVerbs.length - counts.mastered - counts.familiar - counts.learning}</b> not started</p>
             <p className="mt-1 text-xs text-ink-mute">{TENSES.find((t) => t.id === tense)?.label} tense</p>
           </div>
         </div>
       </div>
 
       <div className="mb-3 mt-8 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-2xl font-semibold">{VERBS.length} essential verbs</h2>
+        <h2 className="text-2xl font-semibold" data-testid="verb-count">{released ? `${myVerbs.length} verbs released by your teacher` : `${VERBS.length} essential verbs`}</h2>
         <div className="flex gap-1.5">
           {(['all', 'learning', 'mastered', 'new'] as const).map((f) => <button key={f} className="chip !py-1.5 text-xs capitalize" aria-pressed={filter === f} onClick={() => setFilter(f)}>{f === 'mastered' ? 'strong' : f}</button>)}
         </div>

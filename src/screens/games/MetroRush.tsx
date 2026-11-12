@@ -6,21 +6,25 @@ import { classifyVerbError } from '../../lib/answer';
 import { formOptions, pronounFor } from '../../lib/exercises';
 import { useSay } from '../../hooks/useSpeech';
 import { useStore } from '../../lib/store';
+import { useLevelAccess } from '../../lib/platform/useLevelAccess';
 import { GameShell, type GameApi } from './GameShell';
 
 interface Round { id: number; verb: Verb; person: number; pronoun: string; options: string[]; answer: string }
 
 function useVerbPool(): Verb[] {
   const { state } = useStore();
+  const { verbs: released } = useLevelAccess();
   const focus = (new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('focus') ?? '').split(',').filter(Boolean);
   return useMemo(() => {
     if (focus.length) { const f = VERBS.filter((v) => focus.includes(v.inf)); if (f.length) return f; }
-    const started = VERBS.filter((v) => Object.keys(state.srs).some((k) => k.startsWith(`verb:${v.inf}|`)));
-    const base = [...VERBS].sort((a, b) => a.frequencyRank - b.frequencyRank).slice(0, 16);
+    // Gradual release: outside homework, only verbs the teacher has released.
+    const open = released ? VERBS.filter((v) => released.has(v.inf)) : VERBS;
+    const started = open.filter((v) => Object.keys(state.srs).some((k) => k.startsWith(`verb:${v.inf}|`)));
+    const base = [...open].sort((a, b) => a.frequencyRank - b.frequencyRank).slice(0, 16);
     const pool = [...new Set([...started, ...base])];
     return pool;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [released]);
 }
 
 function Track({ api }: { api: GameApi }) {

@@ -284,6 +284,10 @@ export interface StudentSettings {
   /** Highest CEFR level of work the student can open by themselves (null = no ceiling). Homework the teacher assigns is always available. */
   maxLevel: Cefr | null;
   note?: string;
+  /** Gradual release: when true the student's own practice only uses the verb and word blocks in `unlocked` (see data/blocks.ts). */
+  stepped?: boolean;
+  /** Released block ids. */
+  unlocked?: string[];
   updatedAt: string;
 }
 

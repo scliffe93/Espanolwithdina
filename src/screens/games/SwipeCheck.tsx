@@ -1,3 +1,4 @@
+import { useLevelAccess } from '../../lib/platform/useLevelAccess';
 import { AnimatePresence, motion, useMotionValue, useTransform, type PanInfo } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../../components/Icon';
@@ -27,10 +28,11 @@ function capitalise(like: string, w: string) {
 }
 
 /** Builds a deck of judgement cards. Wrong cards are only ones that are wrong in ANY context. */
-export function buildDeck(): Omit<Card, 'id'>[] {
+export function buildDeck(allowed: Set<string> | null = null): Omit<Card, 'id'>[] {
   const variety = getActiveVariety();
   const deck: Omit<Card, 'id'>[] = [];
   for (const v of VERBS as Verb[]) {
+    if (allowed && !allowed.has(v.inf)) continue; // gradual release
     for (const ex of v.examples) {
       if (ex.person < 0 || (variety !== 'spain' && ex.person === 4) || (variety === 'argentina' && ex.person === 1)) continue;
       const pe = parseExample(ex);
@@ -69,7 +71,9 @@ export function buildDeck(): Omit<Card, 'id'>[] {
 
 function Deck({ api }: { api: GameApi }) {
   const say = useSay();
-  const all = useMemo(() => shuffle(buildDeck()), []);
+  const { verbs: released } = useLevelAccess();
+  // With gradual release on, use released verbs; if none of them has example sentences yet, fall back to the full deck.
+  const all = useMemo(() => { const d = buildDeck(released); return shuffle(d.length >= 8 ? d : buildDeck()); }, [released]);
   const idx = useRef(0);
   const idRef = useRef(0);
   const draw = (): Card => ({ ...all[idx.current++ % all.length], id: ++idRef.current });

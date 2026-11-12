@@ -63,8 +63,11 @@ export interface PlatformBackend {
   /** Teacher: any of her students; student: their own. Null until the teacher has set something. */
   studentSettings(studentId: string): Promise<StudentSettings | null>;
   /** Teacher only. */
-  saveStudentSettings(input: { studentId: string; maxLevel: StudentSettings['maxLevel']; note?: string }): Promise<StudentSettings>;
+  saveStudentSettings(input: StudentSettingsInput): Promise<StudentSettings>;
 }
+
+/** What the teacher saves for a student. The whole row is replaced, so pass every field you want to keep. */
+export interface StudentSettingsInput { studentId: string; maxLevel: StudentSettings['maxLevel']; note?: string; stepped?: boolean; unlocked?: string[] }
 
 export const uid = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`);
 
@@ -310,10 +313,10 @@ export class DemoBackend implements PlatformBackend {
     this.assertStudentAccess(studentId);
     return (this.data.students ?? []).find((s) => s.studentId === studentId) ?? null;
   }
-  async saveStudentSettings(input: { studentId: string; maxLevel: StudentSettings['maxLevel']; note?: string }) {
+  async saveStudentSettings(input: StudentSettingsInput) {
     this.assertTeacher();
     this.assertStudentAccess(input.studentId);
-    const s: StudentSettings = { id: settingsId(input.studentId), studentId: input.studentId, teacherId: this.actor.id, maxLevel: input.maxLevel, ...(input.note?.trim() ? { note: input.note.trim() } : {}), updatedAt: this.iso() };
+    const s: StudentSettings = { id: settingsId(input.studentId), studentId: input.studentId, teacherId: this.actor.id, maxLevel: input.maxLevel, ...(input.note?.trim() ? { note: input.note.trim() } : {}), ...(input.stepped ? { stepped: true } : {}), ...(input.unlocked?.length ? { unlocked: [...new Set(input.unlocked)] } : {}), updatedAt: this.iso() };
     await this.commit((d) => { d.students = [...(d.students ?? []).filter((x) => x.studentId !== s.studentId), s]; });
     return s;
   }

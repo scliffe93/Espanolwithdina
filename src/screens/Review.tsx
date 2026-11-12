@@ -275,9 +275,10 @@ export function Review() {
 
       <section className="card mt-6 p-5" data-testid="word-packs">
         <h2 className="text-xl font-semibold">Word packs by level</h2>
-        <p className="mt-1 text-sm text-ink-soft">Ten words on one theme. Add a pack and the words join your deck; learn them in a session now or let the reviews bring them up.{access.maxLevel ? ` Packs above your level (${access.maxLevel}, set by your teacher) are hidden.` : ''}</p>
+        <p className="mt-1 text-sm text-ink-soft">Ten words on one theme. Add a pack and the words join your deck; learn them in a session now or let the reviews bring them up.{access.packs ? ' Your teacher releases new packs as you progress.' : access.maxLevel ? ` Packs above your level (${access.maxLevel}, set by your teacher) are hidden.` : ''}</p>
+        {access.packs && !VOCAB_PACKS.some((p) => access.packs!.has(p.id) || inDeck(p.id) > 0) && <p className="mt-3 text-sm text-ink-mute" data-testid="packs-none">No packs released yet. Your teacher will add the first one soon.</p>}
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {VOCAB_PACKS.filter((p) => withinLevel(p.level, access.maxLevel)).map((p) => {
+          {VOCAB_PACKS.filter((p) => (access.packs ? access.packs.has(p.id) || inDeck(p.id) > 0 : withinLevel(p.level, access.maxLevel))).map((p) => {
             const have = inDeck(p.id);
             return (
               <div key={p.id} className="flex flex-col gap-2 rounded-2xl bg-cream-100 p-3" data-testid={`pack-${p.id}`}>
