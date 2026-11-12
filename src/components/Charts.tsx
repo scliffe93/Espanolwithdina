@@ -19,12 +19,13 @@ export function Heatmap({ days, goalMinutes = 10, title }: { days: DayPoint[]; g
       <div className="grid gap-1" style={{ gridTemplateColumns: 'auto repeat(7, minmax(0, 1fr))' }}>
         <span />
         {dow.map((d, i) => <span key={i} className="text-center text-[10px] text-ink-mute">{d}</span>)}
+        {offset > 0 && <span className="self-center text-[10px] text-ink-mute">{new Date(days[0].date + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>}
         {Array.from({ length: offset }).map((_, i) => <span key={`pad-${i}`} />)}
         {cells.map((c, i) => {
           const first = (i + offset) % 7 === 0;
           return (
             <Fragment key={c.date}>
-              {(first || i === 0) && <span className="text-[10px] text-ink-mute">{new Date(c.date + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>}
+              {(first || (i === 0 && offset === 0)) && <span className="self-center whitespace-nowrap pr-1 text-[10px] text-ink-mute">{new Date(c.date + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>}
               <span title={`${c.date}: ${c.minutes} min${c.accuracy !== null ? `, ${Math.round(c.accuracy * 100)}% accuracy` : ''}`} className={`aspect-square rounded-md ${c.minutes >= goalMinutes ? 'ring-2 ring-saffron ring-inset' : ''}`} style={{ background: c.minutes ? `rgba(196, 85, 54, ${c.opacity})` : 'rgba(0,0,0,0.05)' }} />
             </Fragment>
           );
@@ -37,7 +38,7 @@ export function Heatmap({ days, goalMinutes = 10, title }: { days: DayPoint[]; g
 }
 
 /** A line over weeks (minutes, accuracy, vocabulary…). `nulls` are skipped. */
-export function Sparkline({ points, unit, title, color = '#C45536', percent = false }: { points: { label: string; value: number | null }[]; unit: string; title: string; color?: string; percent?: boolean }) {
+export function Sparkline({ points, unit, title, color = '#C45536', percent = false, label }: { points: { label: string; value: number | null }[]; unit: string; title: string; color?: string; percent?: boolean; label?: string }) {
   const vals = points.map((p) => p.value).filter((v): v is number => v !== null);
   const max = percent ? 1 : Math.max(1, ...vals);
   const w = 100, h = 36;
@@ -47,13 +48,12 @@ export function Sparkline({ points, unit, title, color = '#C45536', percent = fa
   return (
     <figure>
       <figcaption className="sr-only">{title}</figcaption>
-      <div className="flex items-end gap-3">
-        <svg viewBox={`0 0 ${w} ${h}`} className="h-12 w-full" preserveAspectRatio="none" aria-hidden>
+      {label && <p className="text-[11px] uppercase tracking-wider text-ink-mute">{label}</p>}
+      <span className="block font-display text-3xl leading-none font-semibold tabular-nums">{last?.value === null || last?.value === undefined ? '—' : percent ? `${Math.round(last.value * 100)}%` : `${last.value}${unit}`}</span>
+      <svg viewBox={`0 0 ${w} ${h}`} className="mt-2 h-10 w-full" preserveAspectRatio="none" aria-hidden>
           <path d={path} fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
           {points.map((p, i) => p.value === null ? null : <circle key={i} cx={xs[i]} cy={h - 4 - (p.value / max) * (h - 8)} r="1.6" fill={color} />)}
         </svg>
-        <span className="shrink-0 font-display text-2xl font-semibold tabular-nums">{last?.value === null || last?.value === undefined ? '—' : percent ? `${Math.round(last.value * 100)}%` : `${last.value}${unit}`}</span>
-      </div>
       <div className="flex justify-between text-[10px] text-ink-mute"><span>{points[0]?.label}</span><span>{points[points.length - 1]?.label}</span></div>
       <table className="sr-only"><tbody>{points.map((p) => <tr key={p.label}><td>{p.label}</td><td>{p.value === null ? '—' : percent ? `${Math.round(p.value * 100)}%` : `${p.value}${unit}`}</td></tr>)}</tbody></table>
     </figure>

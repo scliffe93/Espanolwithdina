@@ -100,33 +100,61 @@ export function Journey() {
         <Tile label="Achievements" value={`${state.achievements.length}/${ACHIEVEMENTS.length}`} sub={`${weekAch.length} this week`} delay={0.21} />
       </section>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-[1.3fr_1fr]">
-        {/* Story progression */}
-              {/* Analytics */}
-      <section className="mt-5 grid gap-3 lg:grid-cols-[1fr_1.3fr]">
-        <div className="card p-5">
-          <p className="eyebrow">Últimos 28 días · Consistency</p>
-          <h2 className="mt-1 text-xl font-semibold">{analytics.c.studyDays} study days, {analytics.c.minutes} minutes</h2>
-          <p className="mb-3 text-sm text-ink-mute">Longest run {analytics.c.longestStreak} day{analytics.c.longestStreak === 1 ? '' : 's'}{analytics.c.bestWeekday ? ` · you study most on ${analytics.c.bestWeekday}s` : ''}</p>
-          <Heatmap days={analytics.days} goalMinutes={p.dailyMinutes} title="Your study minutes per day over the last 28 days" />
-        </div>
-        <div className="card p-5">
-          <p className="eyebrow">Últimas 8 semanas · Trends</p>
-          <div className="mt-2 grid gap-4 sm:grid-cols-3">
-            <div><p className="text-[11px] uppercase tracking-wider text-ink-mute">Minutes per week</p><Sparkline points={analytics.weekly.map((w) => ({ label: w.label, value: w.minutes }))} unit=" min" title="Minutes per week" /></div>
-            <div><p className="text-[11px] uppercase tracking-wider text-ink-mute">Accuracy</p><Sparkline points={analytics.weekly.map((w) => ({ label: w.label, value: w.accuracy }))} unit="" percent title="Accuracy per week" color="#5B7F3A" /></div>
-            <div><p className="text-[11px] uppercase tracking-wider text-ink-mute">Words learned</p><Sparkline points={analytics.weekly.map((w) => ({ label: w.label, value: w.cumulativeVocab }))} unit="" title="Cumulative vocabulary" color="#2E5C8A" /></div>
-          </div>
-          {(analytics.errors.length > 0 || analytics.tenses.length > 0) && (
-            <div className="mt-4 grid gap-3 border-t border-ink/5 pt-3 text-sm sm:grid-cols-2">
-              {analytics.errors.length > 0 && <div><p className="text-[11px] uppercase tracking-wider text-ink-mute">Your most common slips</p><ul className="mt-1 grid gap-1">{analytics.errors.slice(0, 4).map((e) => <li key={e.category} className="flex justify-between gap-2"><span>{e.label}</span><span className="tabular-nums text-ink-soft">{e.count}× {e.previous ? (e.count < e.previous ? '↓' : e.count > e.previous ? '↑' : '=') : ''}</span></li>)}</ul></div>}
-              {analytics.tenses.length > 0 && <div><p className="text-[11px] uppercase tracking-wider text-ink-mute">Tenses</p><ul className="mt-1 grid gap-1">{analytics.tenses.map((t) => <li key={t.id} className="flex justify-between gap-2"><span>{t.label}</span><span className="tabular-nums text-ink-soft">{t.verbs} verbs · {t.accuracy !== null ? `${Math.round(t.accuracy * 100)}%` : '—'} · {t.mastered} mastered</span></li>)}</ul></div>}
-            </div>
-          )}
+      {/* Analytics: trends across the top, then consistency beside slips and tenses */}
+      <section className="card mt-5 p-5" data-testid="journey-trends">
+        <p className="eyebrow">Últimas 8 semanas · Trends</p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl bg-cream-100 p-4"><Sparkline label="Minutes per week" points={analytics.weekly.map((w) => ({ label: w.label, value: w.minutes }))} unit=" min" title="Minutes per week" /></div>
+          <div className="rounded-2xl bg-cream-100 p-4"><Sparkline label="Accuracy" points={analytics.weekly.map((w) => ({ label: w.label, value: w.accuracy }))} unit="" percent title="Accuracy per week" color="#5B7F3A" /></div>
+          <div className="rounded-2xl bg-cream-100 p-4"><Sparkline label="Words learned" points={analytics.weekly.map((w) => ({ label: w.label, value: w.cumulativeVocab }))} unit="" title="Cumulative vocabulary" color="#2E5C8A" /></div>
         </div>
       </section>
 
-<section className="card p-5">
+      <section className="mt-4 grid gap-4 md:grid-cols-2">
+        <div className="card p-5" data-testid="journey-consistency">
+          <p className="eyebrow">Últimos 28 días · Consistency</p>
+          <h2 className="mt-1 text-xl font-semibold">{analytics.c.studyDays} study days, {analytics.c.minutes} minutes</h2>
+          <p className="mb-4 text-sm text-ink-mute">Longest run {analytics.c.longestStreak} day{analytics.c.longestStreak === 1 ? '' : 's'}{analytics.c.bestWeekday ? ` · you study most on ${analytics.c.bestWeekday}s` : ''}</p>
+          <div className="max-w-[20rem]"><Heatmap days={analytics.days} goalMinutes={p.dailyMinutes} title="Your study minutes per day over the last 28 days" /></div>
+        </div>
+        <div className="card grid content-start gap-5 p-5" data-testid="journey-focus">
+          {analytics.errors.length > 0 && (
+            <div>
+              <p className="eyebrow">Your most common slips</p>
+              <ul className="mt-3 grid gap-2.5">
+                {analytics.errors.slice(0, 4).map((e) => (
+                  <li key={e.category}>
+                    <div className="flex items-baseline justify-between gap-3 text-sm"><span className="font-medium">{e.label}</span><span className="shrink-0 tabular-nums text-ink-soft">{e.count}×{e.previous ? (e.count < e.previous ? ' ↓' : e.count > e.previous ? ' ↑' : '') : ''}</span></div>
+                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-ink/5"><div className="h-full rounded-full bg-terracotta/70" style={{ width: `${Math.max(6, (e.count / Math.max(1, analytics.errors[0].count)) * 100)}%` }} /></div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {analytics.tenses.length > 0 && (
+            <div>
+              <p className="eyebrow">Tenses</p>
+              <ul className="mt-3 grid gap-2">
+                {analytics.tenses.map((t) => (
+                  <li key={t.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-2xl bg-cream-100 px-3 py-2 text-sm">
+                    <span className="font-medium">{t.label}</span>
+                    <span className="flex flex-wrap gap-1.5 text-xs text-ink-soft">
+                      <span className="rounded-full bg-white px-2 py-0.5 tabular-nums">{t.verbs} verbs</span>
+                      <span className="rounded-full bg-white px-2 py-0.5 tabular-nums">{t.accuracy !== null ? `${Math.round(t.accuracy * 100)}%` : '—'} correct</span>
+                      <span className="rounded-full bg-white px-2 py-0.5 tabular-nums">{t.mastered} mastered</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {analytics.errors.length === 0 && analytics.tenses.length === 0 && <p className="text-sm text-ink-mute">Your most common slips and your tenses appear here once you have practised a little.</p>}
+        </div>
+      </section>
+
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        {/* Story progression */}
+        <section className="card p-5">
           <h2 className="text-xl font-semibold">Your storylines</h2>
           <div className="mt-3 grid gap-3">
             {startedCities.map((c) => {
@@ -138,10 +166,10 @@ export function Journey() {
                     <p className="font-semibold">{CITY_THEMES[c].name}{c === p.city && <span className="ml-2 text-xs font-medium text-terracotta">current city</span>}</p>
                     <span className="text-sm text-ink-mute">{done}/3 chapters</span>
                   </div>
-                  <div className="mt-2 flex gap-1.5">
+                  <div className="mt-2 flex flex-wrap gap-1.5">
                     {sc.map((s) => {
                       const ok = state.story.completedScenes.includes(s.id);
-                      return <span key={s.id} title={s.title} className={`flex-1 rounded-full px-2 py-1 text-center text-[11px] font-semibold ${ok ? 'bg-olive text-white' : 'bg-white text-ink-mute ring-1 ring-ink/10'}`}>{ok ? '✓ ' : ''}{s.titleEs}</span>;
+                      return <span key={s.id} title={s.title} className={`flex-1 whitespace-nowrap rounded-full px-3 py-1.5 text-center text-xs font-semibold ${ok ? 'bg-olive text-white' : 'bg-white text-ink-mute ring-1 ring-ink/10'}`}>{ok ? '✓ ' : ''}{s.titleEs}</span>;
                     })}
                   </div>
                 </div>
