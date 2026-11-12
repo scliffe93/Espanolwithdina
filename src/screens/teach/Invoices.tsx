@@ -56,14 +56,14 @@ export function Invoices({ params }: { params: URLSearchParams }) {
           {!cfg!.paymentInstructions && <div className="mb-4 rounded-2xl bg-saffron-50 p-4 text-sm"><b>Add how students should pay</b> (bank details or a payment link) under <button type="button" className="font-semibold underline" onClick={() => setSettings(true)}>Rates &amp; payment details</button>. It prints on every invoice.</div>}
           <Section title="All invoices" eyebrow={`${list.length} total`} right={<div className="overflow-x-auto"><Segmented label="Filter" value={filter} onChange={setFilter} options={FILTERS} /></div>}>
             {shown.length === 0 ? <p className="text-sm text-ink-mute">{list.length ? 'Nothing in this view.' : 'No invoices yet. Tap New invoice: it offers the lessons you have taught that are not billed yet.'}</p> : (
-              <ul className="grid gap-2" data-testid="invoice-list">
+              <ul className="grid grid-cols-1 gap-2" data-testid="invoice-list">
                 {shown.map((inv) => {
                   const b = bucket(inv);
                   const od = daysOverdue(inv);
                   return (
-                    <li key={inv.id} className="flex flex-wrap items-center gap-3 rounded-2xl bg-cream-100 p-3 text-sm">
+                    <li key={inv.id} className="flex min-w-0 flex-wrap items-center gap-3 rounded-2xl bg-cream-100 p-3 text-sm">
                       <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider ${BUCKET_STYLE[b]}`}>{b}{od ? ` · ${od} d` : ''}</span>
-                      <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setViewing(inv)}>
+                      <button type="button" className="min-w-0 flex-1 basis-40 text-left" onClick={() => setViewing(inv)}>
                         <span className="font-semibold">{inv.number}</span> <span className="text-ink-mute">· {nameOf(inv.studentId)} · issued {inv.issuedAt} · due {inv.dueAt}</span>
                         <span className="block truncate text-xs text-ink-mute">{inv.lines.map((l) => l.description).join(' · ')}</span>
                       </button>

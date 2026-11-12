@@ -29,11 +29,11 @@ export function InvoicesPage() {
           {balance?.hasPackages && <div className="mb-4"><BalanceCard balance={balance} currency={config.data.currency} /></div>}
           <Section title="Invoices" eyebrow={list.length ? `${list.length} total` : undefined}>
             {list.length === 0 ? <p className="text-sm text-ink-mute">No invoices yet.</p> : (
-              <ul className="grid gap-2">
+              <ul className="grid grid-cols-1 gap-2">
                 {list.map((inv) => { const b = bucket(inv); const od = daysOverdue(inv); return (
-                  <li key={inv.id} className="flex flex-wrap items-center gap-3 rounded-2xl bg-cream-100 p-3 text-sm">
+                  <li key={inv.id} className="flex min-w-0 flex-wrap items-center gap-3 rounded-2xl bg-cream-100 p-3 text-sm">
                     <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider ${b === 'paid' ? 'bg-olive-50 text-olive' : b === 'overdue' ? 'bg-terracotta-50 text-terracotta-dark' : b === 'void' ? 'bg-cream-200 text-ink-mute' : 'bg-azul-50 text-azul'}`}>{b === 'outstanding' ? 'to pay' : b}{od ? ` · ${od} d` : ''}</span>
-                    <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setOpen(inv)}><span className="font-semibold">{inv.number}</span> <span className="text-ink-mute">· issued {inv.issuedAt} · due {inv.dueAt}</span><span className="block truncate text-xs text-ink-mute">{inv.lines.map((l) => l.description).join(' · ')}</span></button>
+                    <button type="button" className="min-w-0 flex-1 basis-40 text-left" onClick={() => setOpen(inv)}><span className="font-semibold">{inv.number}</span> <span className="text-ink-mute">· issued {inv.issuedAt} · due {inv.dueAt}</span><span className="block truncate text-xs text-ink-mute">{inv.lines.map((l) => l.description).join(' · ')}</span></button>
                     <span className="font-display text-xl font-semibold tabular-nums">{money(inv.total, inv.currency)}</span>
                     <button type="button" className="ctrl !py-1.5 !text-xs" onClick={() => pdf(inv)}><Icon name="download" size={12} /> PDF</button>
                     {inv.status === 'sent' && <div className="w-full"><ReportPaid inv={inv} onDone={invoices.reload} /></div>}
