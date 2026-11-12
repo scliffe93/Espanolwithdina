@@ -50,7 +50,7 @@ export interface MaterialSet {
 // ── Form index: every surface form the app can conjugate → analyses ──
 
 let FORM_INDEX: Map<string, FormHit[]> | null = null;
-/** Built once, lazily: ~20k forms across the bank and the ten tenses, lower-case, accents kept. */
+/** Built once, lazily: ~20k forms across the bank and every tense, lower-case, accents kept. */
 export function formIndex(): Map<string, FormHit[]> {
   if (FORM_INDEX) return FORM_INDEX;
   const idx = new Map<string, FormHit[]>();

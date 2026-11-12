@@ -659,6 +659,7 @@ export function Verbs({ params }: { params: URLSearchParams }) {
         })}
       </div>
 
+      {ROADMAP_TENSES.length > 0 && (
       <div className="card mt-8 p-5">
         <h3 className="text-lg font-semibold">Coming next in the verb curriculum</h3>
         <p className="mt-1 text-sm text-ink-soft">The engine supports any tense; these will be added as validated content:</p>
@@ -666,6 +667,7 @@ export function Verbs({ params }: { params: URLSearchParams }) {
           {ROADMAP_TENSES.map((t) => <span key={t} className="rounded-full bg-cream-100 px-3 py-1 text-sm text-ink-soft">{t}</span>)}
         </div>
       </div>
+      )}
 
       <VerbSheet verb={detail} onClose={() => setDetail(null)} onPractise={(inf) => { setDetail(null); start({ focus: [inf] }); }} />
     </div>

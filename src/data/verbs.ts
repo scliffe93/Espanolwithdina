@@ -11,7 +11,9 @@
 import { conjugateSimple, type SimpleTense } from './conjugation';
 import { LEXICON, type VerbLevel } from './lexicon';
 
-export type Tense = 'present' | 'progressive' | 'perfect' | SimpleTense;
+/** Tenses formed with haber + past participle (besides the present perfect). */
+export type CompoundTense = 'pluperfect' | 'future-perfect' | 'conditional-perfect' | 'perfect-subjunctive' | 'pluperfect-subjunctive';
+export type Tense = 'present' | 'progressive' | 'perfect' | SimpleTense | CompoundTense | 'negative-imperative';
 export const TENSES: { id: Tense; label: string; es: string; minLevel: VerbLevel }[] = [
   { id: 'present', label: 'Present', es: 'Presente', minLevel: 'A1' },
   { id: 'progressive', label: 'Present progressive', es: 'Presente continuo', minLevel: 'A2' },
@@ -22,16 +24,18 @@ export const TENSES: { id: Tense; label: string; es: string; minLevel: VerbLevel
   { id: 'future', label: 'Future', es: 'Futuro simple', minLevel: 'B1' },
   { id: 'conditional', label: 'Conditional', es: 'Condicional', minLevel: 'B1' },
   { id: 'subjunctive', label: 'Present subjunctive', es: 'Presente de subjuntivo', minLevel: 'B1' },
+  { id: 'pluperfect', label: 'Pluperfect', es: 'Pretérito pluscuamperfecto', minLevel: 'B1' },
+  { id: 'negative-imperative', label: 'Negative commands', es: 'Imperativo negativo', minLevel: 'B1' },
   { id: 'imperfect-subjunctive', label: 'Imperfect subjunctive', es: 'Imperfecto de subjuntivo', minLevel: 'B2' },
+  { id: 'perfect-subjunctive', label: 'Perfect subjunctive', es: 'Pretérito perfecto de subjuntivo', minLevel: 'B2' },
+  { id: 'pluperfect-subjunctive', label: 'Pluperfect subjunctive', es: 'Pluscuamperfecto de subjuntivo', minLevel: 'B2' },
+  { id: 'conditional-perfect', label: 'Conditional perfect', es: 'Condicional compuesto', minLevel: 'B2' },
+  { id: 'future-perfect', label: 'Future perfect', es: 'Futuro perfecto', minLevel: 'B2' },
 ];
 export const TENSE_BY_ID: Record<Tense, (typeof TENSES)[number]> = Object.fromEntries(TENSES.map((t) => [t.id, t])) as Record<Tense, (typeof TENSES)[number]>;
 
 /** Tenses in the curriculum roadmap that are not yet implemented as drills. */
-export const ROADMAP_TENSES = [
-  'Negative commands',
-  'Pluperfect & other compound tenses',
-  'Future perfect & conditional perfect',
-];
+export const ROADMAP_TENSES: string[] = [];
 
 export const PERSONS = ['yo', 'tú', 'él / ella / usted', 'nosotros', 'vosotros', 'ellos / ellas / ustedes'] as const;
 export const PERSONS_EN = ['I', 'you (informal)', 'he / she / you (formal)', 'we', 'you all (Spain)', 'they / you all'] as const;
@@ -556,6 +560,16 @@ export const VERB_BY_INF: Record<string, Verb> = Object.fromEntries(VERBS.map((v
 
 const ESTAR = VERB_BY_INF.estar.present;
 const HABER = ['he', 'has', 'ha', 'hemos', 'habéis', 'han'];
+/** haber in each compound tense; the past participle never changes. */
+export const HABER_FORMS: Record<CompoundTense | 'perfect', string[]> = {
+  perfect: HABER,
+  pluperfect: ['había', 'habías', 'había', 'habíamos', 'habíais', 'habían'],
+  'future-perfect': ['habré', 'habrás', 'habrá', 'habremos', 'habréis', 'habrán'],
+  'conditional-perfect': ['habría', 'habrías', 'habría', 'habríamos', 'habríais', 'habrían'],
+  'perfect-subjunctive': ['haya', 'hayas', 'haya', 'hayamos', 'hayáis', 'hayan'],
+  'pluperfect-subjunctive': ['hubiera', 'hubieras', 'hubiera', 'hubiéramos', 'hubierais', 'hubieran'],
+};
+export const isCompound = (t: Tense): t is CompoundTense | 'perfect' => t in HABER_FORMS;
 const IO_PRONOUNS = ['me', 'te', 'le', 'nos', 'os', 'les'];
 
 type Variety = 'spain' | 'mexico' | 'argentina' | 'colombia';
@@ -587,14 +601,19 @@ export function voseo(verb: Verb): string {
 export function conjugate(verb: Verb, tense: Tense, person: number, variety: Variety = activeVariety): string {
   const vos = variety === 'argentina' && person === 1;
   if (tense === 'present') return vos ? voseo(verb) : verb.present[person];
-  if (tense !== 'progressive' && tense !== 'perfect') return conjugateSimple(verb, tense, person, vos);
+  if (tense === 'negative-imperative') {
+    // No hables, no hable, no hablemos, no habléis, no hablen: "no" + present subjunctive. No yo form; gustar-type verbs have none.
+    if (person === 0 || verb.pronominal) return '';
+    return `no ${conjugateSimple(verb, 'subjunctive', person)}`;
+  }
+  if (tense !== 'progressive' && !isCompound(tense)) return conjugateSimple(verb, tense, person, vos);
   if (verb.pronominal) {
-    // gustar-type: me está gustando / me ha gustado (3rd-person singular agreement).
-    const aux = tense === 'progressive' ? `está ${verb.gerund}` : `ha ${verb.participle}`;
+    // gustar-type: me está gustando / me ha gustado / me había gustado (3rd-person singular agreement).
+    const aux = tense === 'progressive' ? `está ${verb.gerund}` : `${HABER_FORMS[tense][2]} ${verb.participle}`;
     return `${IO_PRONOUNS[person]} ${aux}`;
   }
   if (tense === 'progressive') return `${ESTAR[person]} ${verb.gerund}`; // vos estás = tú estás
-  return `${HABER[person]} ${verb.participle}`; // vos has = tú has
+  return `${HABER_FORMS[tense][person]} ${verb.participle}`; // vos has = tú has
 }
 
 /** Subject label for a person in the active variety. */
@@ -631,7 +650,7 @@ export function personsForRegion(region: Variety = activeVariety): number[] {
 /** Persons that exist for a tense in the learner's region: commands have no yo form. */
 export function personsForTense(tense: Tense, region: Variety = activeVariety): number[] {
   const all = personsForRegion(region);
-  return tense === 'imperative' ? all.filter((p) => p !== 0) : all;
+  return tense === 'imperative' || tense === 'negative-imperative' ? all.filter((p) => p !== 0) : all;
 }
 
 export function verbKey(inf: string, tense: Tense, person: number): string {

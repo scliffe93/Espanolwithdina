@@ -179,3 +179,47 @@ describe('present forms, gerunds and participles generated for the wider bank', 
     expect(patternYo('hablar')).toBeNull();
   });
 });
+
+// ── Forms added to match the Instituto Cervantes curriculum plan (B1 and B2) ──
+import { TENSES as ALL_TENSES, VERBS as ALL_VERBS, VERB_BY_INF as BY_INF, conjugate as conj, personsForTense as personsFor, type Tense as T } from '../src/data/verbs';
+import { buildSession as session } from '../src/lib/exercises';
+import { defaultState as blank } from '../src/lib/state';
+import { classifyVerbError as diagnose } from '../src/lib/answer';
+
+describe('compound tenses and negative commands', () => {
+  const forms = (inf: string, t: T) => [0, 1, 2, 3, 4, 5].map((p) => conj(BY_INF[inf], t, p, 'spain'));
+  it('conjugates haber in each tense and keeps the participle, irregular ones included', () => {
+    expect(forms('hablar', 'pluperfect')).toEqual(['había hablado', 'habías hablado', 'había hablado', 'habíamos hablado', 'habíais hablado', 'habían hablado']);
+    expect(forms('hacer', 'future-perfect')).toEqual(['habré hecho', 'habrás hecho', 'habrá hecho', 'habremos hecho', 'habréis hecho', 'habrán hecho']);
+    expect(forms('decir', 'conditional-perfect')).toEqual(['habría dicho', 'habrías dicho', 'habría dicho', 'habríamos dicho', 'habríais dicho', 'habrían dicho']);
+    expect(forms('ver', 'perfect-subjunctive')).toEqual(['haya visto', 'hayas visto', 'haya visto', 'hayamos visto', 'hayáis visto', 'hayan visto']);
+    expect(forms('poner', 'pluperfect-subjunctive')).toEqual(['hubiera puesto', 'hubieras puesto', 'hubiera puesto', 'hubiéramos puesto', 'hubierais puesto', 'hubieran puesto']);
+    expect(conj(BY_INF['gustar'], 'pluperfect', 0, 'spain')).toBe('me había gustado');
+  });
+  it('builds negative commands from the present subjunctive, with no yo form', () => {
+    expect(forms('hablar', 'negative-imperative')).toEqual(['', 'no hables', 'no hable', 'no hablemos', 'no habléis', 'no hablen']);
+    expect(forms('tener', 'negative-imperative').slice(1)).toEqual(['no tengas', 'no tenga', 'no tengamos', 'no tengáis', 'no tengan']);
+    expect(forms('ir', 'negative-imperative').slice(1)).toEqual(['no vayas', 'no vaya', 'no vayamos', 'no vayáis', 'no vayan']);
+    expect(forms('pedir', 'negative-imperative')[1]).toBe('no pidas');
+    expect(personsFor('negative-imperative', 'spain')).not.toContain(0);
+    expect(conj(BY_INF['gustar'], 'negative-imperative', 1, 'spain')).toBe('');
+  });
+  it('places every tense at the level the curriculum plan gives it', () => {
+    const level = Object.fromEntries(ALL_TENSES.map((t) => [t.id, t.minLevel]));
+    expect(level).toEqual({
+      present: 'A1',
+      progressive: 'A2', perfect: 'A2', preterite: 'A2', imperfect: 'A2', imperative: 'A2',
+      future: 'B1', conditional: 'B1', subjunctive: 'B1', pluperfect: 'B1', 'negative-imperative': 'B1',
+      'imperfect-subjunctive': 'B2', 'perfect-subjunctive': 'B2', 'pluperfect-subjunctive': 'B2', 'conditional-perfect': 'B2', 'future-perfect': 'B2',
+    });
+  });
+  it('every verb has a form in every new tense, and sessions build with sensible wrong answers', () => {
+    for (const t of ['pluperfect', 'future-perfect', 'conditional-perfect', 'perfect-subjunctive', 'pluperfect-subjunctive', 'negative-imperative'] as T[]) {
+      for (const v of ALL_VERBS) for (const p of personsFor(t, 'spain')) { if (v.pronominal && t === 'negative-imperative') continue; expect(conj(v, t, p, 'spain'), `${v.inf} ${t} ${p}`).toMatch(/\S \S/); }
+      const ex = session({ state: blank(), tense: t, rng: () => 0.37 });
+      expect(ex.length).toBeGreaterThan(5);
+    }
+    expect(diagnose(BY_INF['hablar'], 'pluperfect', 0, 'habría hablado')).toBe('auxiliary');
+    expect(diagnose(BY_INF['hablar'], 'pluperfect', 0, 'habías hablado')).toBe('person-agreement');
+  });
+});

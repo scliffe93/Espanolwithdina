@@ -1,6 +1,6 @@
 import type { Activity, AppState, Cefr, Region } from '../types';
 import { withinLevel } from './platform/level';
-import { VERBS, VERB_BY_INF, conjugate, getActiveVariety, parseExample, personsForRegion, personsForTense, verbKey, type Tense, type Verb, type VerbExample } from '../data/verbs';
+import { HABER_FORMS, VERBS, VERB_BY_INF, conjugate, getActiveVariety, isCompound, parseExample, personsForRegion, personsForTense, verbKey, type Tense, type Verb, type VerbExample } from '../data/verbs';
 import { conjugateSimple } from '../data/conjugation';
 import { GRAMMAR_DRILLS, type GrammarItem, type GrammarMode } from '../data/grammar';
 import { regularPresent } from './answer';
@@ -109,7 +109,7 @@ export function formOptions(verb: Verb, tense: Tense, person: number, region: Re
     const reg = regularPresent(verb.inf, person);
     if (reg !== answer) pool.add(reg);
   }
-  if (tense !== 'present' && tense !== 'progressive' && tense !== 'perfect' && verb.group !== 'regular' && !verb.pronominal) {
+  if (tense !== 'present' && tense !== 'progressive' && tense !== 'negative-imperative' && !isCompound(tense) && verb.group !== 'regular' && !verb.pronominal) {
     // The "regularised" mistake for irregular verbs in the simple tenses (tener → tení, ser → sé…).
     const reg = conjugateSimple({ inf: verb.inf, group: 'regular', present: verb.present }, tense, person);
     if (reg && reg !== answer) pool.add(reg);
@@ -119,6 +119,15 @@ export function formOptions(verb: Verb, tense: Tense, person: number, region: Re
     if (f !== answer) pool.add(f);
   }
   if (tense === 'progressive' && !verb.pronominal) pool.add(`${['he', 'has', 'ha', 'hemos', 'habéis', 'han'][person]} ${verb.gerund}`);
+  if (isCompound(tense) && tense !== 'perfect' && !verb.pronominal) {
+    // The same person with haber in a neighbouring tense (había / habría / habrá hablado) is the natural slip.
+    for (const other of ['pluperfect', 'conditional-perfect', 'future-perfect', 'perfect-subjunctive', 'pluperfect-subjunctive', 'perfect'] as const) if (other !== tense) pool.add(`${HABER_FORMS[other][person]} ${verb.participle}`);
+  }
+  if (tense === 'negative-imperative' && !verb.pronominal) {
+    const affirmative = conjugate(verb, 'imperative', person); // "no habla" for "no hables" is the classic mistake
+    if (affirmative) pool.add(`no ${affirmative}`);
+    pool.add(`no ${verb.present[person]}`);
+  }
   if (tense === 'perfect' && !verb.pronominal) pool.add(`${['estoy', 'estás', 'está', 'estamos', 'estáis', 'están'][person]} ${verb.participle}`);
   return shuffle([answer, ...[...pool].slice(0, n - 1)], rng);
 }

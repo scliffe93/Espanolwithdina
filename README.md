@@ -4,7 +4,7 @@
 
 *(Built on the VIVA learning engine — internal storage keeps the `viva` name so existing progress and backups keep working.)*
 
-A Spanish-learning **progressive web app** with a tutor platform built in: an immersive storyline for learners (you land in Madrid, meet your guide Lucía, find your flat in Lavapiés, order your first *café con leche*), a verb engine with ten tenses and 376 verbs from A1 to C2, grammar drills and word packs by level, and, for the tutor, lessons, homework, marking, analytics and invoices.
+A Spanish-learning **progressive web app** with a tutor platform built in: an immersive storyline for learners (you land in Madrid, meet your guide Lucía, find your flat in Lavapiés, order your first *café con leche*), a verb engine with sixteen verb forms placed at the levels the DELE syllabus gives them, 376 verbs from A1 to C2, grammar drills and word packs by level, and, for the tutor, lessons, homework, marking, analytics and invoices.
 
 **Free to run.** The learning app needs no account and no paid API; everything is stored on the device. The tutor platform uses a free Supabase project (see below).
 
@@ -77,7 +77,7 @@ Speech playback is hardened app-wide: waits for voices to load, keeps utterances
 - **No pronunciation scoring.** There's no validated free in-browser method, so VIVA shows only which words the recogniser picked up, labelled as *not a score*, and lets you compare by ear.
 - **Speaking level** in the placement is an estimate. Speaking can't be tested reliably in the browser.
 - **The PDF isn't attached to the email.** `mailto:` can't carry attachments; download it and attach it yourself.
-- **Content scope.** The storyline has 3 Madrid chapters (plus Valencia). The 335 generated verbs have no example sentences yet, so they appear in the conjugation, choice, listen and match exercises but not in the sentence-based ones. Negative commands and the compound past tenses beyond the present perfect are not drilled yet.
+- **Content scope.** The storyline has 3 Madrid chapters (plus Valencia). The 335 generated verbs have no example sentences yet, so they appear in the conjugation, choice, listen and match exercises but not in the sentence-based ones. Verb forms follow the Instituto Cervantes curriculum plan by level; the vocabulary levels have not yet been checked against it (see docs/PLATFORM.md).
 
 See [`docs/PLAN.md`](docs/PLAN.md) for the product plan, design system, architecture and roadmap.
 

@@ -3,7 +3,7 @@ import { useMemo, useRef, useState } from 'react';
 import { FOOTBALL, footballWords } from '../../data/football';
 import type { CityId } from '../../data/storyTypes';
 import type { Region } from '../../types';
-import { VERBS, conjugate, personsForRegion, verbKey, type Tense, type Verb } from '../../data/verbs';
+import { VERBS, conjugate, personsForTense, verbKey, type Tense, type Verb } from '../../data/verbs';
 import { classifyVerbError } from '../../lib/answer';
 import { formOptions, pronounFor, shuffle } from '../../lib/exercises';
 import { useSay } from '../../hooks/useSpeech';
@@ -43,7 +43,7 @@ function Pitch({ api, city: cityOverride, region: regionOverride }: { api: GameA
   const words = footballWords(region);
   const tense = ((new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('tense') as Tense) || 'present') as Tense;
   const pool = useVerbPool();
-  const persons = personsForRegion(region);
+  const persons = personsForTense(tense, region);
   const idRef = useRef(0);
   const make = (): Shot => {
     const verb = pool[Math.floor(Math.random() * pool.length)];

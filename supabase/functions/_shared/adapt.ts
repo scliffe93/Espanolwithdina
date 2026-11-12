@@ -24,10 +24,11 @@ export interface AdaptHomework {
   plan?: { week: string; goal?: string; day?: number; adaptive?: 'retry' | 'stretch'; sourceId?: string };
 }
 
-const NEXT_TENSE: Record<string, string | undefined> = { present: 'progressive', progressive: 'perfect', perfect: 'preterite', preterite: 'imperfect', imperfect: 'future', future: 'conditional', conditional: 'subjunctive', subjunctive: 'imperfect-subjunctive', 'imperfect-subjunctive': undefined, imperative: undefined };
+// The order follows the Instituto Cervantes curriculum plan: A2 past tenses, then the B1 set, then the B2 set.
+const NEXT_TENSE: Record<string, string | undefined> = { present: 'progressive', progressive: 'perfect', perfect: 'preterite', preterite: 'imperfect', imperfect: 'future', imperative: 'negative-imperative', future: 'conditional', conditional: 'subjunctive', subjunctive: 'pluperfect', pluperfect: 'imperfect-subjunctive', 'negative-imperative': undefined, 'imperfect-subjunctive': 'perfect-subjunctive', 'perfect-subjunctive': 'pluperfect-subjunctive', 'pluperfect-subjunctive': 'conditional-perfect', 'conditional-perfect': 'future-perfect', 'future-perfect': undefined };
 const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 /** Lowest level each tense is recommended from (mirrors TENSES in src/data/verbs.ts). */
-const TENSE_MIN_LEVEL: Record<string, string> = { present: 'A1', progressive: 'A2', perfect: 'A2', preterite: 'A2', imperfect: 'A2', imperative: 'A2', future: 'B1', conditional: 'B1', subjunctive: 'B1', 'imperfect-subjunctive': 'B2' };
+const TENSE_MIN_LEVEL: Record<string, string> = { present: 'A1', progressive: 'A2', perfect: 'A2', preterite: 'A2', imperfect: 'A2', imperative: 'A2', future: 'B1', conditional: 'B1', subjunctive: 'B1', pluperfect: 'B1', 'negative-imperative': 'B1', 'imperfect-subjunctive': 'B2', 'perfect-subjunctive': 'B2', 'pluperfect-subjunctive': 'B2', 'conditional-perfect': 'B2', 'future-perfect': 'B2' };
 
 /**
  * Returns the follow-up homework to create for a submitted item, or null. `id` must be supplied by the caller.

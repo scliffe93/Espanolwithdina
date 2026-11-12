@@ -56,6 +56,18 @@ The VAPID key pair is created once by `scripts/supabase-setup.mjs` and stored as
 
 Not included yet: timed reminders (for example "lesson tomorrow"), which need a scheduled job. Covered by `tests/webpush.test.ts` (including the RFC 8291 test vector), `tests/push-api.test.ts` and `scripts/push-e2e.cjs`.
 
+## Alignment with the DELE syllabus
+
+DELE follows the Instituto Cervantes curriculum plan (Plan curricular del Instituto Cervantes, PCIC), which sets out grammar and vocabulary by level, A1 to C2.
+
+**Verb forms: checked and aligned (12 November 2026).** Every tense in `TENSES` (`src/data/verbs.ts`) sits at the level the plan gives it, and the six forms the plan lists that the app lacked were added: the pluperfect and negative commands at B1, and the perfect subjunctive, pluperfect subjunctive, conditional perfect and future perfect at B2. Compound tenses are haber in the right tense plus the participle (`HABER_FORMS`); negative commands are "no" plus the present subjunctive. A test in `tests/tenses.test.ts` pins every tense to its level.
+
+**Source.** The check used the level-by-level grammar programmes (A1 to C1) published by the Centro Complutense para la Enseñanza del Español (Universidad Complutense de Madrid), which set out the PCIC grammar inventory by level. The Cervantes site (cvc.cervantes.es) was redirecting every page to a maintenance notice that day, so the official text was not read directly. Re-check against it when it is back.
+
+**Not yet checked.** Which verbs and which word packs sit at which level. That needs the PCIC vocabulary inventory ("Nociones específicas"), which is only on the Cervantes site. Until it is checked, describe the verb forms as DELE-aligned, not the vocabulary.
+
+**Not included.** Practice in the format of the DELE papers.
+
 ## Invoicing
 
 The teacher bills lessons from **Invoices**: settings once (business name, currency, rate per 60 minutes, days until due, numbering prefix, how students pay), then **New invoice** offers the taught, not-yet-billed lessons of a student plus free lines, with a running total. Invoices are numbered `PREFIX-YYYY-NNNN`, saved as records of kind `invoice` (students read only their own; drafts are hidden from them), can be sent (visible in the student's app), emailed (mailto summary), downloaded as a branded PDF (`src/lib/invoicePdf.ts`), marked paid, voided (sent) or deleted (drafts). Money-owed banners appear on the teacher's Today and the student's home. No online payment is built in; payment instructions print on every invoice. Logic and tests: `src/lib/platform/invoicing.ts`, `tests/invoicing.test.ts`, `scripts/invoices-e2e.cjs`.

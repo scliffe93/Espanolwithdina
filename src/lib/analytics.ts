@@ -1,5 +1,5 @@
 import type { AppState, ErrorCategory, MemoryTechnique, Region } from '../types';
-import { TENSES, VERBS, personsForRegion, verbKey, type Tense } from '../data/verbs';
+import { TENSES, VERBS, personsForTense, verbKey, type Tense } from '../data/verbs';
 import { CATEGORY_LABEL } from './answer';
 import { addDays, dayKey, weekDayKeys, weekStart } from './dates';
 import { mastery, strength } from './srs';
@@ -83,7 +83,7 @@ export interface VerbMastery {
 }
 
 export function verbMastery(state: AppState, inf: string, tense: Tense = 'present', region: Region = 'spain'): VerbMastery {
-  const persons = personsForRegion(region);
+  const persons = personsForTense(tense, region); // commands have no yo form
   const cards = persons.map((p) => state.srs[verbKey(inf, tense, p)]);
   const attempts = cards.reduce((a, c) => a + (c?.attempts ?? 0), 0);
   const correct = cards.reduce((a, c) => a + (c?.correct ?? 0), 0);

@@ -1,5 +1,5 @@
 import type { ErrorCategory } from '../types';
-import { conjugate, getActiveVariety, type Tense, type Verb } from '../data/verbs';
+import { conjugate, getActiveVariety, isCompound, type Tense, type Verb } from '../data/verbs';
 import { conjugateSimple } from '../data/conjugation';
 
 /** Lower-case, trim, remove punctuation (keeps accents and ñ). */
@@ -65,13 +65,13 @@ export function classifyVerbError(verb: Verb, tense: Tense, person: number, give
   const sameTenseForms = [0, 1, 2, 3, 4, 5].map((p) => normalize(conjugate(verb, tense, p)));
   if (sameTenseForms.includes(g) || sameTenseForms.map(stripAccents).includes(stripAccents(g))) return 'person-agreement';
 
-  if ((tense === 'progressive' || tense === 'perfect') && !verb.pronominal) {
+  if ((tense === 'progressive' || isCompound(tense)) && !verb.pronominal) {
     const [aux, ...rest] = g.split(' ');
     const [expAux, ...expRest] = expected.split(' ');
     if (rest.join(' ') === expRest.join(' ') && aux !== expAux) return 'auxiliary';
     if (aux === expAux) return verb.group === 'regular' ? 'spelling' : 'irregular-verb';
   }
-  if (tense !== 'present' && tense !== 'progressive' && tense !== 'perfect' && !verb.pronominal && verb.group !== 'regular') {
+  if (tense !== 'present' && tense !== 'progressive' && tense !== 'negative-imperative' && !isCompound(tense) && !verb.pronominal && verb.group !== 'regular') {
     // Treated the verb as regular in a simple tense (tení for tuve, haceré for haré).
     const reg = normalize(conjugateSimple({ inf: verb.inf, group: 'regular', present: verb.present }, tense, person));
     if (g === reg || stripAccents(g) === stripAccents(reg)) return verb.group.startsWith('stem') ? 'stem-change' : 'irregular-verb';
@@ -116,7 +116,7 @@ export const CATEGORY_TIP: Record<ErrorCategory, string> = {
   register: 'Use usted with older people, officials and strangers until they invite you to use tú.',
   vocabulary: 'Use Help me remember on missed words — the clue you build yourself is what sticks.',
   spelling: 'Slow down on the final letters: most slips are in the ending.',
-  auxiliary: 'Progressive uses estar (estoy hablando); perfect uses haber (he hablado).',
+  auxiliary: 'Progressive uses estar (estoy hablando); perfect tenses use haber in the right tense (he hablado, había hablado, habré hablado).',
   voseo: 'In Buenos Aires vos takes the stress on the ending and no stem change: vos querés, podés, tenés, sos.',
   other: 'Review the model sentence and say it aloud twice.',
 };
