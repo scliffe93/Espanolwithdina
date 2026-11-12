@@ -84,11 +84,35 @@ class Dina:
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(self.rate); w.writeframes(pcm.tobytes())
         return len(pcm) / self.rate
 
+def bark(path, rate=22050):
+    """Toby's bark: two quick yips from a small dog, made from scratch (no recording is used)."""
+    rng = np.random.default_rng(7)
+    def yip(dur, f_start, f_end, gain):
+        n = int(rate * dur); t = np.arange(n) / rate
+        f0 = f_start * (f_end / f_start) ** (t / dur) * (1 + 0.02 * np.sin(2 * np.pi * 38 * t))
+        phase = 2 * np.pi * np.cumsum(f0) / rate
+        tone = np.zeros(n)
+        for k in range(1, 12):
+            fk = f0 * k
+            # a bright, slightly nasal mouth shape: energy around 1.3 kHz and 2.9 kHz
+            shape = 0.25 + np.exp(-((fk - 1300) / 420) ** 2) + 0.7 * np.exp(-((fk - 2900) / 600) ** 2)
+            tone += shape / k ** 0.6 * np.sin(k * phase + rng.uniform(0, 6.28))
+        noise = rng.normal(0, 1, n); noise = np.convolve(noise, np.ones(4) / 4, mode='same') - np.convolve(noise, np.ones(40) / 40, mode='same')
+        env = np.minimum(1, t / 0.006) * np.exp(-np.maximum(0, t - dur * 0.45) / (dur * 0.2))
+        y = (tone / np.max(np.abs(tone)) + 0.22 * noise / np.max(np.abs(noise))) * env
+        return np.tanh(1.6 * y) * gain
+    gap = np.zeros(int(rate * 0.085))
+    y = np.concatenate([np.zeros(int(rate * 0.02)), yip(0.12, 820, 560, 0.8), gap, yip(0.14, 900, 540, 1.0), np.zeros(int(rate * 0.05))])
+    pcm = (y / np.max(np.abs(y)) * 0.62 * 32767).astype(np.int16)
+    with wave.open(str(path), 'wb') as w:
+        w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate); w.writeframes(pcm.tobytes())
+
 if __name__ == '__main__':
     model, lines_file, out = sys.argv[1], sys.argv[2], Path(sys.argv[3])
     level = sys.argv[sys.argv.index('--level') + 1] if '--level' in sys.argv else 'clear'
     speed = float(sys.argv[sys.argv.index('--speed') + 1]) if '--speed' in sys.argv else 1.0
     out.mkdir(parents=True, exist_ok=True)
+    bark(out / 'bark.wav')
     dina = Dina(model, level)
     lines = json.loads(Path(lines_file).read_text())
     durations = {k: round(dina.say(v, out / f'{k}.wav', speed), 3) for k, v in lines.items()}

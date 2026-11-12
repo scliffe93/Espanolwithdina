@@ -70,11 +70,15 @@ DELE follows the Instituto Cervantes curriculum plan (Plan curricular del Instit
 
 ## How-to videos for students
 
-Six short videos (37 to 58 seconds each, with sound) sit at the top of the student guide (`#/guide?for=student`), each with a Download button: getting started, lessons, homework, practising alone, feedback and progress, and invoices. Each video file also has a direct link: `<site>/guides/videos/<name>.mp4`.
+Six short videos (about 50 to 80 seconds each, with sound) sit at the top of the student guide (`#/guide?for=student`), each with a Download button: getting started, lessons, homework, practising alone, feedback and progress, and invoices. Each video file also has a direct link: `<site>/guides/videos/<name>.mp4`.
 
-Dina and Toby guide each one. Dina is a whole person: she walks on, waves, and talks through each step while her mouth moves, with the words in a speech bubble. Toby is his own character: he trots to whatever is being explained, picks a spot that does not cover writing, and hops when it is tapped. A ring marks the exact place to tap.
+Dina and Toby guide each one, and they stay together:
 
-**How they are made.** They are recordings of the running app, made by `scripts/videos/student-videos.cjs` (its header says what to start first), so they can be re-made when a screen changes. `scripts/videos/guide/guide.tsx` draws the characters: Dina's head is the app's own `DinaArt` (so she blinks, talks and waves), and her body and all of Toby are drawn there. Videos 2 to 6 use the demo workspace with its demo labels hidden; video 1 uses a real account on a local server.
+- **Their own stage.** A panel slides in at the bottom of the screen and they stand on it, so they are not parked on top of the app's words. When the thing to look at is at the bottom (a tab, a button in a sheet) the stage moves to the top.
+- **Dina** is a whole person. She walks on carrying Toby and waves, sways and looks about when idle, leans into her walk, nods and gestures as she talks, and points at the thing she is talking about. Her speech bubble pops out of her mouth as each line starts.
+- **Toby** runs a step ahead of her, sits at her feet, and sometimes rides in her arms. For each step he dashes to the thing to look at and barks "¡Guau!" (with a bark sound) while it lights up, then runs back to her. He hops when it is tapped.
+
+**How they are made.** They are recordings of the running app, made by `scripts/videos/student-videos.cjs` (its header says what to start first), so they can be re-made when a screen changes. `scripts/videos/guide/guide.tsx` draws the characters and holds their choreography: Dina's head is the app's own `DinaArt` (so she blinks, talks and waves, and holds Toby), and her body and the running Toby are drawn there. Toby's bark is made from scratch in `voice.py`; no recording is used. Videos 2 to 6 use the demo workspace with its demo labels hidden; video 1 uses a real account on a local server.
 
 **The voice.** `scripts/videos/voice.py` makes it with Piper, a free speech engine that runs on the computer (no account, no fee). The voice is Piper's `en_US-ljspeech-high`, trained on the public-domain LJ Speech recordings. Each line is turned into English sounds and a few are swapped for the ones a Spanish speaker uses (d and t for "th", s for z, "es" before s + consonant); Spanish words such as "¡Hola!" are said as Spanish. This is a made-up voice with a light Spanish-style accent, not a recording of an Argentinian speaker. A true tapped r and Argentinian intonation are beyond what this engine does clearly.
 

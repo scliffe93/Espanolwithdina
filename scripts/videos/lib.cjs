@@ -50,51 +50,64 @@ async function make(name, opts, steps) {
   const wait = (ms) => p.waitForTimeout(ms);
   const g = (fn, ...args) => p.evaluate(([fn, args]) => window.__g[fn](...args), [fn, args]);
   const locOf = (loc) => (typeof loc === 'string' ? p.getByTestId(loc) : loc).first();
-  /** Brings the target to the upper part of the screen, clear of Dina and Toby, and returns where it is. */
+  /** Brings the target to the upper part of the screen, clear of the stage panel, and returns where it is. */
   const settle = async (loc) => {
     const el = locOf(loc);
     await el.evaluate((e) => {
       // Things pinned to the screen (the tab bar, a sheet) do not move with the page, so leave the scroll alone.
       for (let a = e; a && a !== document.body; a = a.parentElement) { const pos = getComputedStyle(a).position; if (pos === 'fixed') return; }
-      e.scrollIntoView({ behavior: 'instant', block: 'center' }); const r = e.getBoundingClientRect(); window.scrollBy({ top: r.top + r.height / 2 - 250, behavior: 'instant' });
+      e.scrollIntoView({ behavior: 'instant', block: 'center' }); const r = e.getBoundingClientRect(); window.scrollBy({ top: r.top + r.height / 2 - 230, behavior: 'instant' });
     });
     await wait(250); const box = await el.boundingBox(); if (!box) throw new Error('nothing there: ' + loc); return box;
   };
+  const cue = (file) => cues.push({ file, at: frames.length ? Date.now() - frames[0].t : 0 });
   /** Plays the next line: Dina's mouth moves for as long as the audio lasts. */
-  const speak = async () => {
-    const id = `l${line++}`; const dur = durations[id] || 1.5;
-    cues.push({ file: path.join(rawDir, 'voice', `${id}.wav`), at: frames.length ? Date.now() - frames[0].t : 0 });
-    await g('talk', true); await wait(dur * 1000); await g('talk', false);
-  };
+  const speak = async () => { const id = `l${line++}`; cue(path.join(rawDir, 'voice', `${id}.wav`)); await wait((durations[id] || 1.5) * 1000); };
+  let notes = 0;
+  /**
+   * One thing Dina says. With something to look at: the two of them go to that side of the stage, Toby dashes to it and
+   * barks, and Dina points and talks while he runs back. With nothing to look at she sometimes picks him up to talk.
+   */
   const say = async (text, loc, pause) => {
     const box = loc ? await settle(loc) : null;
-    const moving = g('say', bubbleOf(text), box); await wait(380);
-    await Promise.all([speak(), moving]); await wait(pause);
+    let home = Promise.resolve();
+    if (box) {
+      await g('putDown'); await g('prepare', box);
+      await g('tobyTo', box); cue(path.join(rawDir, 'voice', 'bark.wav')); await g('bark', box); await wait(640);
+      home = g('tobyHome');
+    } else {
+      await g('prepare', null);
+      if (notes++ % 2 === 0) await g('pickUp');
+    }
+    await g('speakStart', bubbleOf(text), box); await wait(220);
+    await speak(); await g('speakEnd'); await home; await wait(pause);
   };
   const h = {
     p, wait,
     clear: async () => { await g('hush'); },
     go: async (hash, ms = 1400) => { await p.evaluate(() => window.__g && window.__g.hush()).catch(() => {}); await p.goto((opts.base || BASE) + hash); await wait(ms); },
-    /** A numbered step. Give the thing it is about and Toby trots over to it. */
-    step: async (text, loc, pause = 450) => { if (typeof loc === 'number') { pause = loc; loc = null; } n += 1; await say(`<b>${n}</b>${text}`, loc, pause); },
+    /** A numbered step. Give the thing it is about and Toby shows where it is. */
+    step: async (text, loc, pause = 400) => { if (typeof loc === 'number') { pause = loc; loc = null; } n += 1; await say(`<b>${n}</b>${text}`, loc, pause); },
     /** Something Dina says that is not a step. */
-    note: async (text, loc, pause = 450) => { if (typeof loc === 'number') { pause = loc; loc = null; } await say(text, loc, pause); },
+    note: async (text, loc, pause = 400) => { if (typeof loc === 'number') { pause = loc; loc = null; } await say(text, loc, pause); },
     tap: async (loc, after = 1100) => {
       const el = locOf(loc); let box = await el.boundingBox();
       if (!box || box.y < 60 || box.y + box.height > 840) box = await settle(loc);
-      await g('ring', box.x + box.width / 2, box.y + box.height / 2); await wait(650);
+      await g('ring', box.x + box.width / 2, box.y + box.height / 2); await wait(600);
       await g('press'); await wait(170);
-      await el.click({ noWaitAfter: true }); await wait(240);
+      await el.click({ noWaitAfter: true, force: true }); await wait(240);
       await p.evaluate(() => window.__g && window.__g.ringOff()).catch(() => {});
       await wait(after);
     },
     scroll: async (y, ms = 900) => { await p.evaluate((y) => window.scrollTo({ top: y, behavior: 'instant' }), y); await wait(ms); },
-    /** The opening: Dina walks on and waves, Toby runs in, and she says hello. */
-    title: async () => { await g('intro', kicker, title, sub); await wait(250); await speak(); await wait(350); await g('curtainUp'); await wait(200); },
-    end: async () => { await g('outro', opts.bye.title); await wait(200); await speak(); await wait(1500); },
+    /** The opening: Dina walks on with Toby in her arms, waves and says hello; then the stage slides in and she puts him down. */
+    title: async () => { await g('intro', kicker, title, sub); await wait(200); await talkWhile(speak); await wait(300); await g('curtainUp'); await wait(150); },
+    end: async () => { await g('outro', opts.bye.title); await wait(200); await talkWhile(speak); await wait(1500); },
     asSam: async () => { await p.goto(BASE + '#/demo'); await wait(900); await p.getByTestId('demo-sam').click(); await wait(1500); },
     asDina: async () => { await p.goto(BASE + '#/demo'); await wait(900); await p.getByTestId('demo-dina').click(); await wait(1500); },
   };
+  /** Her mouth moves for a line said without a bubble (the hello and the goodbye). */
+  async function talkWhile(fn) { await p.evaluate(() => window.__g.pose({ dina: { ...JSON.parse(sessionStorage.getItem('vg-state')).dina, talking: true } })); await fn(); await g('speakEnd'); }
   h.startHere = () => { recording = true; }; // everything before this is setup and is not recorded
   let failed = null;
   try { const extra = opts.setup ? await opts.setup() : {}; await steps(h, extra); } catch (e) { failed = e; }
