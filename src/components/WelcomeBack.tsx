@@ -18,7 +18,7 @@ export function WelcomeBack() {
   useEffect(() => {
     if (welcome) speak(text, { region: 'argentina', rate: 0.95, auto: true }).catch(() => undefined);
   }, [welcome, text]);
-  const target = state.onboardingDone ? resumeTarget(state) : { href: 'onboarding', label: 'Set up your Spanish life with Lucía' };
+  const target = state.onboardingDone ? resumeTarget(state) : { href: 'onboarding', label: 'Set up your Spanish life with Dina' };
   return (
     <AnimatePresence>
       {welcome && (

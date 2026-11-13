@@ -16,7 +16,7 @@
 | No false AI claims | The coach is rules-based and shows its evidence. A `CoachProvider` interface marks where an opt-in AI provider could plug in later. |
 
 ### User journey (first session)
-Welcome → VIVA Discover (14 questions with Lucía) → level (zero / CEFR / placement) → My Spanish DNA → **Land in Madrid**: *La llegada* chapter → completion (relationships, words added to the deck) → practise the chapter's verbs → map shows *El piso nuevo* unlocked → progress saved automatically.
+Welcome → VIVA Discover (14 questions with Dina) → level (zero / CEFR / placement) → My Spanish DNA → **Land in Madrid**: *La llegada* chapter → completion (relationships, words added to the deck) → practise the chapter's verbs → map shows *El piso nuevo* unlocked → progress saved automatically.
 
 ### Curriculum
 - **A1:** ser/estar, greetings, register (tú/usted), the present tense of 41 core verbs (regular, stem-changing, irregular *yo*, irregular), gustar, ir a + infinitive, ordering, directions.

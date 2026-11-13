@@ -54,7 +54,7 @@ Speech playback is hardened app-wide: waits for voices to load, keeps utterances
 
 | Area | What works |
 |---|---|
-| **VIVA Discover** | Lucía (an animated, speaking guide) asks 14 conversational questions. You can answer by tapping options, typing, or recording a voice note, with playback and delete. Where the browser supports it, speech recognition transcribes typed-answer questions. |
+| **VIVA Discover** | Dina (animated and speaking, with Toby) asks 14 conversational questions. You can answer by tapping options, typing, or recording a voice note, with playback and delete. Where the browser supports it, speech recognition transcribes typed-answer questions. |
 | **Level & assessment** | Start from zero, pick a CEFR level from A1 to C2, or take the placement (vocabulary, grammar, reading, listening spoken by the browser, and verbs, up to C2). Each skill gets its own level, and you can override any of them. A teacher can set a ceiling on what a student opens. |
 | **My Spanish DNA** | An editable profile: interests, reasons, region, social goals, daily goal, preferred activities, difficulties, grammatical gender, levels and voice notes. |
 | **Madrid world** | An illustrated, animated map whose sky follows your local time of day. It has 3 playable chapters (*La llegada*, *El piso nuevo*, *Café La Plaza*) and 5 locked future locations. |

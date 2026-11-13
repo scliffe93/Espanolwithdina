@@ -1,9 +1,9 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
-import { Character, type Mood } from '../components/Character';
+import type { Mood } from '../components/Character';
+import { DinaArt } from '../components/Dina';
 import { Icon } from '../components/Icon';
 import { Bar } from '../components/ui';
-import { CHARACTERS } from '../data/story';
 import {
   ACTIVITIES, DIFFICULTIES, GENDER, INTERESTS, MINUTES, PROFICIENCY, REASONS, RELOCATION, SOCIAL, blankProfile,
 } from '../data/profileOptions';
@@ -34,7 +34,7 @@ interface Step {
 }
 
 const STEPS: Step[] = [
-  { id: 'name', es: '¡Hola! Soy Lucía, tu guía. ¿Cómo te llamas?', en: 'Hi! I\'m Lucía, your guide. What\'s your name?', kind: 'text', field: 'name', placeholder: 'Your first name', mood: 'wave' },
+  { id: 'name', es: '¡Hola! Soy Dina, tu profe. ¿Cómo te llamas?', en: 'Hi! I\'m Dina, your teacher. What\'s your name?', kind: 'text', field: 'name', placeholder: 'Your first name', mood: 'wave' },
   { id: 'gender', es: 'En español, algunas palabras cambian: cansado o cansada. ¿Cómo te hablo?', en: 'In Spanish, some words change form: cansado or cansada. Which should I use for you?', kind: 'single', field: 'gender', options: GENDER },
   { id: 'proficiency', es: '¿Cuánto español hablas ahora mismo?', en: 'How much Spanish do you speak right now?', kind: 'single', field: 'proficiencySelf', options: PROFICIENCY },
   { id: 'city', es: '¿Dónde quieres vivir tu nueva vida?', en: 'Where do you want to live your new life? Each city has its own story, people, colours — and its own Spanish.', kind: 'city', mood: 'happy' },
@@ -157,7 +157,7 @@ export function Welcome() {
           <button className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-olive underline-offset-4 hover:underline" onClick={() => navigate('home')}><Icon name="calendar" size={15} /> {cloudConfigured ? 'Lessons with Dina: log in, teacher & student dashboards' : 'Teacher demo: Dina’s dashboard, Sam and Anneka'}</button>
         </div>
         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2, type: 'spring' }} className="shrink-0">
-          <Character look={CHARACTERS.lucia.look} mood="wave" size={260} label="Lucía, your guide, waving hello" />
+          <DinaArt size={260} expression="beam" waving title="Dina, your teacher, waving hello with Toby" />
         </motion.div>
       </main>
     </div>
@@ -208,7 +208,6 @@ export function Onboarding() {
     set({ [step.field!]: arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v] } as Partial<LearnerProfile>);
   };
 
-  const guideMood: Mood = speaking ? 'happy' : step.mood ?? 'listening';
 
   return (
     <div className="min-h-[100dvh] bg-cream-warm">
@@ -225,7 +224,7 @@ export function Onboarding() {
 
         <div className={`mt-4 grid flex-1 items-start gap-6 md:gap-10 md:pt-6 ${step.kind === 'city' ? 'md:grid-cols-[180px_1fr]' : 'md:grid-cols-[300px_1fr]'}`}>
           <div className="flex flex-col items-center">
-            <Character look={CHARACTERS.lucia.look} speaking={speaking} mood={guideMood} size={190} label="Lucía, your guide" />
+            <DinaArt size={190} speaking={speaking} title="Dina, your teacher" />
           </div>
 
           <AnimatePresence mode="wait">
@@ -234,7 +233,7 @@ export function Onboarding() {
                 <p className="font-display text-2xl font-medium leading-snug sm:text-[28px]">{step.es.replace('{name}', profile.name)}</p>
                 <p className="mt-2 text-ink-soft">{step.en}</p>
                 {ttsSupported && (
-                  <button className="ctrl mt-3" onClick={() => speak(step.es, { region: profile.region, rate: 0.85 })}><Icon name="replay" size={16} /> Hear Lucía</button>
+                  <button className="ctrl mt-3" onClick={() => speak(step.es, { region: profile.region, rate: 0.85 })}><Icon name="replay" size={16} /> Hear Dina</button>
                 )}
               </div>
 
