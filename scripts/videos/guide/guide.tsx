@@ -11,9 +11,9 @@ import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { DinaArt } from '../../../src/components/Dina';
 
-const C = { top: '#181513', topHi: '#2A2522', lace: '#E9DCC2', skin: '#ECB288', skinSh: '#C07E56', denim: '#3A5A85', denimSh: '#2B4567', denimHi: '#5377A6', shoe: '#FDFBF6', sole: '#D9CFBF', fur: '#FDFCFA', furSh: '#E8E1D6', furDeep: '#B9AA95', ink: '#2B2420', terra: '#C4573A' };
+const C = { top: '#181513', topHi: '#2A2522', lace: '#E9DCC2', skin: '#ECB288', skinHi: '#F6CDAA', skinSh: '#C07E56', denim: '#3A5A85', denimSh: '#2B4567', denimHi: '#5377A6', shoe: '#FDFBF6', sole: '#D9CFBF', fur: '#FDFCFA', furSh: '#E8E1D6', furDeep: '#B9AA95', ink: '#2B2420', terra: '#C4573A' };
 const W = 390, H = 844;
-const DW = 84, UNIT = DW / 166, DH = Math.round((513 - 10) * UNIT); // Dina is drawn in the artwork's units: x 26..192, y 10..513
+const DW = 88, UNIT = DW / 166, DH = Math.round(506 * UNIT); // Dina is drawn in the artwork's units: x 26..192, y 10..516
 const TW = 74, TH = 55; // Toby's width, and his height above his feet
 const PANEL = { bottom: { top: 610, floor: 832, height: H - 610 }, top: { top: 0, floor: 252, height: 262 } } as const;
 type Mode = keyof typeof PANEL;
@@ -62,55 +62,65 @@ function fluff(cx: number, cy: number, rx: number, ry: number, n: number, amp = 
   return d + 'Z';
 }
 
-// ── Dina's body ──
-// Drawn in the artwork's units (her head is centred on x = 120) so it joins the app's head-and-shoulders picture.
-// Her top is the one in the artwork: a black crew-neck knit with a cream crochet panel over one shoulder.
-const SHOULDER = { A: { x: 80, y: 163 }, B: { x: 160, y: 163 } }; // A is the arm on the left of the picture
-const UPPER = 72, FORE = 68; // arm lengths: shoulder to elbow, elbow to wrist
+// ── Dina, whole ──
+// She is one picture. The app's artwork draws her head, hair, neck and (when she holds him) Toby; the rest of her is
+// drawn here *inside that same picture*, with its colours and soft shading, so there is no join at the shoulders.
+// Units are the artwork's own: her head is centred on x = 120 and the picture runs from y = 10 down to her feet.
+type Paint = (name: string) => string;
+const FIG_H = 506;
+const SHOULDER = { A: { x: 71, y: 168 }, B: { x: 169, y: 168 } }; // A is the arm on the left of the picture
+const UPPER = 72, FORE = 66; // arm lengths: shoulder to elbow, elbow to wrist
+const TORSO = 'M104 141.7C92 144.5 78 149 68 156C62 161 61 170 64 180C70 200 80 222 84 248C85 268 83 288 81 308L159 308C157 288 155 268 156 248C160 222 170 200 176 180C179 170 178 161 172 156C162 149 148 144.5 138 141.7Z';
 
 /** A hand, drawn at the wrist pointing down. `point` extends the index finger; `open` is a relaxed open hand. */
-function Hand({ kind }: { kind: 'open' | 'point' }) {
-  const sk = { fill: C.skin, stroke: C.skinSh, strokeWidth: 0.7, strokeLinejoin: 'round' as const };
+function Hand({ kind, paint }: { kind: 'open' | 'point'; paint: Paint }) {
+  const sk = { fill: paint('hand'), stroke: C.skinSh, strokeWidth: 0.5, strokeLinejoin: 'round' as const };
   return (
     <g>
-      {/* thumb, on the side nearer the body */}
       <path d="M-6.4 3C-10.6 4.6 -12.6 9.4 -11.4 13.6C-10.6 16 -7.8 15.6 -7.4 13.2L-6.2 8Z" {...sk} />
       {kind === 'open' ? (
-        <path d="M-6.8 -1C-7.8 5 -7.6 11 -6.6 15L-6.6 23.4C-6.6 26.4 -3.9 26.6 -3.7 23.8L-3.5 25.6C-3.3 28.8 -0.5 28.8 -0.3 25.8L-0.1 26.4C0.1 29.4 3 29.2 3.1 26.2L3.2 24.6C3.5 27.4 6.3 27 6.3 24.2L6.5 15C7.6 11 7.8 5 6.8 -1Z" {...sk} />
+        <>
+          <path d="M-6.8 -1C-7.8 5 -7.6 11 -6.6 15L-6.6 23.4C-6.6 26.4 -3.9 26.6 -3.7 23.8L-3.5 25.6C-3.3 28.8 -0.5 28.8 -0.3 25.8L-0.1 26.4C0.1 29.4 3 29.2 3.1 26.2L3.2 24.6C3.5 27.4 6.3 27 6.3 24.2L6.5 15C7.6 11 7.8 5 6.8 -1Z" {...sk} />
+          <path d="M-3.6 17.6L-3.6 23M-0.2 17.6L-0.2 25M3.1 17.6L3.1 24" stroke={C.skinSh} strokeWidth=".7" fill="none" strokeLinecap="round" opacity=".55" filter={paint('b03')} />
+        </>
       ) : (
         <>
-          {/* index finger out, the others curled into the palm */}
           <path d="M-6.8 -1C-7.8 5 -7.6 11 -6.6 15C-6.8 18.6 -4.4 20 -2.6 18.4C-1.6 20.6 1.2 20.4 1.6 18.2L1.8 15.6L6.5 15C7.6 11 7.8 5 6.8 -1Z" {...sk} />
           <path d="M1.9 13L2.1 29.4C2.2 32.8 6 32.8 6.1 29.4L6.5 13Z" {...sk} />
-          <path d="M-2.6 14.6L-2.6 18M1.6 15L1.6 18" stroke={C.skinSh} strokeWidth=".6" fill="none" strokeLinecap="round" />
+          <path d="M-2.6 14.6L-2.6 18M1.6 15L1.6 18" stroke={C.skinSh} strokeWidth=".7" fill="none" strokeLinecap="round" opacity=".6" filter={paint('b03')} />
         </>
       )}
-      {kind === 'open' && <path d="M-3.6 17.6L-3.6 23M-0.2 17.6L-0.2 25M3.1 17.6L3.1 24" stroke={C.skinSh} strokeWidth=".55" fill="none" strokeLinecap="round" opacity=".8" />}
+      <ellipse cx="-1" cy="7" rx="4.5" ry="5" fill={C.skinHi} opacity=".35" filter={paint('b15')} />
     </g>
   );
 }
 
-interface ArmPose { s: number; e: number; hand: 'open' | 'point' | 'none'; swing?: string; flick?: string }
+interface ArmPose { s: number; e: number; hand: 'open' | 'point'; swing?: string; flick?: string }
 /**
  * One arm with a shoulder and an elbow. It is drawn hanging straight down and turned at each joint; the left arm is
  * the same drawing mirrored, so the same angles mean the same thing on both sides (negative lifts it away from her body).
  */
-function Arm({ side, pose, lace }: { side: 'A' | 'B'; pose: ArmPose; lace?: boolean }) {
+function Arm({ side, pose, paint }: { side: 'A' | 'B'; pose: ArmPose; paint: Paint }) {
   const o = SHOULDER[side];
   const joint = (deg: number): React.CSSProperties => ({ transform: `rotate(${deg}deg)`, transformOrigin: '0px 0px', transition: `transform .5s ${EASE}` });
   const loop = (name?: string): React.CSSProperties => ({ transformOrigin: '0px 0px', animation: name });
+  const upper = `M-11 -2C-12 -11.5 12 -11.5 11.5 -2C12 22 10.8 50 9.6 ${UPPER + 4}L-9.6 ${UPPER + 4}C-10.8 50 -11.6 22 -11 -2Z`;
+  const fore = `M-9.8 -5C-11 -11 11 -11 9.8 -5C10 18 8.4 44 7.2 ${FORE}L-7.2 ${FORE}C-8.4 44 -10 18 -9.8 -5Z`;
   return (
     <g transform={`translate(${o.x} ${o.y}) scale(${side === 'A' ? -1 : 1} 1)`}>
       <g style={joint(pose.s)}>
         <g style={loop(pose.swing)}>
-          <path d={`M-11 -4C-12 -13 12 -13 11.5 -3C12 22 10.6 50 9.2 ${UPPER + 3}L-9.2 ${UPPER + 3}C-10.4 50 -11.5 22 -11 -4Z`} fill="url(#vg-sleeve)" />
-          {lace && <path d={`M4 -10.4C8.6 -9.8 11.7 -7 11.5 -3C12 12 11.4 28 10.4 44L4.4 44C5 28 5 10 4 -10.4Z`} fill="url(#vg-lace)" />}
+          <path d={upper} fill={paint('top')} />
+          <path d={upper} fill={paint('knit')} opacity=".35" />
+          <path d={`M-5 4C-6 26 -5.4 50 -4.6 ${UPPER - 2}`} stroke="#4A4440" strokeWidth="3" fill="none" opacity=".5" strokeLinecap="round" filter={paint('b2')} />
           <g transform={`translate(0 ${UPPER})`}>
             <g style={joint(pose.e)}>
               <g style={loop(pose.flick)}>
-                <path d={`M-9.2 -5C-10.2 -10 10.2 -10 9.2 -5C9.6 18 8 44 7 ${FORE}L-7 ${FORE}C-8 44 -9.6 18 -9.2 -5Z`} fill="url(#vg-sleeve)" />
-                <path d={`M-7 ${FORE - 3.2}L7 ${FORE - 3.2}`} stroke={C.lace} strokeWidth="3.2" strokeLinecap="round" />
-                {pose.hand !== 'none' && <g transform={`translate(0 ${FORE}) scale(1.12)`}><Hand kind={pose.hand} /></g>}
+                <path d={fore} fill={paint('top')} />
+                <path d={fore} fill={paint('knit')} opacity=".35" />
+                <path d={`M-4 2C-4.6 22 -4 44 -3.4 ${FORE - 6}`} stroke="#4A4440" strokeWidth="2.6" fill="none" opacity=".5" strokeLinecap="round" filter={paint('b2')} />
+                <path d={`M-7.2 ${FORE - 3}L7.2 ${FORE - 3}`} stroke={C.lace} strokeWidth="2.6" strokeLinecap="round" />
+                <g transform={`translate(0 ${FORE}) scale(1.14)`}><Hand kind={pose.hand} paint={paint} /></g>
               </g>
             </g>
           </g>
@@ -120,11 +130,12 @@ function Arm({ side, pose, lace }: { side: 'A' | 'B'; pose: ArmPose; lace?: bool
   );
 }
 
-function DinaBody({ walking, waving, talking, carrying, point, pointArm }: { walking: boolean; waving: boolean; talking: boolean; carrying: boolean; point: number | null; pointArm: 'A' | 'B' }) {
+interface Pose { walking: boolean; waving: boolean; talking: boolean; carrying: boolean; point: number | null; pointArm: 'A' | 'B' }
+/** Everything below her neck: jeans and trainers, the knit top with its crochet shoulder, and her arms. */
+function Body({ paint, pose }: { paint: Paint; pose: Pose }) {
+  const { walking, waving, talking, carrying, point, pointArm } = pose;
   const leg = (cls: string): React.CSSProperties => ({ transformBox: 'fill-box', transformOrigin: '50% 3%', animation: walking ? `${cls} .62s ease-in-out infinite` : undefined });
-  // What each arm is doing right now.
   const poseOf = (side: 'A' | 'B'): ArmPose => {
-    if (side === 'A' && carrying) return { s: -8, e: 162, hand: 'none' }; // folded up to the hand that holds Toby (that hand is in the artwork)
     if (side === 'B' && waving) return { s: -72, e: -84, hand: 'open', flick: 'vg-wave .5s ease-in-out infinite' };
     if (point !== null && pointArm === side) return { s: point, e: -6, hand: 'point' };
     if (walking) return { s: 0, e: -14, hand: 'open', swing: `${side === 'A' ? 'vg-swingA' : 'vg-swingB'} .62s ease-in-out infinite` };
@@ -132,65 +143,83 @@ function DinaBody({ walking, waving, talking, carrying, point, pointArm }: { wal
     if (talking) return side === 'B' ? { s: -10, e: -46, hand: 'open', flick: 'vg-talkB 1.7s ease-in-out infinite' } : { s: 1, e: -16, hand: 'open', flick: 'vg-talkA 2.3s ease-in-out infinite' };
     return { s: 3, e: -7, hand: 'open' };
   };
+  const legA = 'M83 304C82 370 82 440 82 498L118 498C118.5 440 120 372 120 316Z', legB = 'M157 304C158 370 158 440 158 498L122 498C121.5 440 120 372 120 316Z';
   return (
-    <svg viewBox="26 130 166 390" style={{ position: 'absolute', left: 0, top: (130 - 10) * UNIT, width: DW, height: 390 * UNIT, overflow: 'visible' }} aria-hidden>
+    <>
       <defs>
-        <linearGradient id="vg-knit" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stopColor="#100E0D" /><stop offset=".3" stopColor="#201C1A" /><stop offset=".62" stopColor="#1A1715" /><stop offset="1" stopColor="#0E0C0B" /></linearGradient>
-        <linearGradient id="vg-sleeve" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stopColor="#141110" /><stop offset=".45" stopColor="#25211E" /><stop offset="1" stopColor="#100E0D" /></linearGradient>
-        <linearGradient id="vg-denim" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stopColor={C.denimSh} /><stop offset=".35" stopColor={C.denimHi} /><stop offset=".7" stopColor={C.denim} /><stop offset="1" stopColor={C.denimSh} /></linearGradient>
-        <pattern id="vg-lace" width="3.6" height="3.2" patternUnits="userSpaceOnUse" patternTransform="rotate(-20)"><rect width="3.6" height="3.2" fill={C.lace} /><ellipse cx="1.8" cy="1.6" rx="1.15" ry="1" fill="#3A322B" /><circle cx="0" cy="0" r=".55" fill="#3A322B" /><circle cx="3.6" cy="3.2" r=".55" fill="#3A322B" /></pattern>
+        <linearGradient id="vgf-denim" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stopColor="#2F4B70" /><stop offset=".3" stopColor="#56799F" /><stop offset=".62" stopColor="#40618C" /><stop offset="1" stopColor="#2A4263" /></linearGradient>
+        <clipPath id="vgf-torso"><path d={TORSO} /></clipPath>
+        <clipPath id="vgf-legA"><path d={legA} /></clipPath>
+        <clipPath id="vgf-legB"><path d={legB} /></clipPath>
       </defs>
-      {/* legs: high-waisted jeans and white trainers */}
+      {/* jeans and white trainers */}
       <g style={leg('vg-legA')}>
-        <path d="M87 300C85 370 84 440 84 496L117 496C118 440 120 370 120 312Z" fill="url(#vg-denim)" />
-        <path d="M84 489L117 489L117 496L84 496Z" fill={C.denimSh} />
-        <path d="M78 506C78 499 86 496 100 496C112 496 120 500 120 506C120 510 117 512 112 512L84 512C80 512 78 510 78 506Z" fill={C.shoe} stroke={C.sole} strokeWidth="1.4" />
-        <path d="M79 508.5L119 508.5" stroke={C.sole} strokeWidth="2.2" strokeLinecap="round" />
+        <path d={legA} fill="url(#vgf-denim)" />
+        <g clipPath="url(#vgf-legA)" filter={paint('b2')}><path d="M88 396C96 400 108 400 116 396" stroke="#1F3350" strokeWidth="3" fill="none" opacity=".45" /><path d="M116 320L117 494" stroke="#1F3350" strokeWidth="5" opacity=".4" /></g>
+        <path d="M82 491L118 491L118 498L82 498Z" fill="#2A4263" />
+        <path d="M76 508C76 501 84 498 99 498C112 498 120 502 120 508C120 512 117 514 112 514L82 514C78 514 76 512 76 508Z" fill={C.shoe} stroke={C.sole} strokeWidth="1.2" />
+        <path d="M77 510.6L119 510.6" stroke={C.sole} strokeWidth="2.2" strokeLinecap="round" />
       </g>
       <g style={leg('vg-legB')}>
-        <path d="M153 300C155 370 156 440 156 496L123 496C122 440 120 370 120 312Z" fill="url(#vg-denim)" />
-        <path d="M123 489L156 489L156 496L123 496Z" fill={C.denimSh} />
-        <path d="M120 506C120 500 128 496 140 496C154 496 162 499 162 506C162 510 160 512 156 512L128 512C123 512 120 510 120 506Z" fill={C.shoe} stroke={C.sole} strokeWidth="1.4" />
-        <path d="M121 508.5L161 508.5" stroke={C.sole} strokeWidth="2.2" strokeLinecap="round" />
+        <path d={legB} fill="url(#vgf-denim)" />
+        <g clipPath="url(#vgf-legB)" filter={paint('b2')}><path d="M124 396C132 400 144 400 152 396" stroke="#1F3350" strokeWidth="3" fill="none" opacity=".45" /><path d="M123 320L122 494" stroke="#1F3350" strokeWidth="5" opacity=".4" /></g>
+        <path d="M122 491L158 491L158 498L122 498Z" fill="#2A4263" />
+        <path d="M120 508C120 502 128 498 141 498C156 498 164 501 164 508C164 512 162 514 158 514L128 514C123 514 120 512 120 508Z" fill={C.shoe} stroke={C.sole} strokeWidth="1.2" />
+        <path d="M121 510.6L163 510.6" stroke={C.sole} strokeWidth="2.2" strokeLinecap="round" />
       </g>
-      <path d="M92 314C96 322 104 325 111 324M148 314C144 322 136 325 129 324" stroke={C.denimSh} strokeWidth="1.4" fill="none" strokeLinecap="round" opacity=".8" />
-      {/* the knit top: sloping shoulders, a waist, and a ribbed hem that sits over the jeans */}
-      <path d="M100 141C90 142 80 148 73 158C77 168 82 178 84 190C86 215 89 240 90 262C89 278 87 294 85 310L155 310C153 294 151 278 150 262C151 240 154 215 156 190C158 178 163 168 167 158C160 148 150 142 140 141Z" fill="url(#vg-knit)" />
-      <path d="M85.6 302L154.4 302" stroke="#2C2724" strokeWidth="1" opacity=".9" />
-      <path d="M90 303.5L90 309M96 303.5L96 309M102 303.5L102 309M108 303.5L108 309M114 303.5L114 309M120 303.5L120 309M126 303.5L126 309M132 303.5L132 309M138 303.5L138 309M144 303.5L144 309M150 303.5L150 309" stroke="#2C2724" strokeWidth=".9" opacity=".8" />
-      <path d="M96 196C100 230 100 262 97 296M144 196C140 230 140 262 143 296" stroke="#0B0A09" strokeWidth="3" fill="none" opacity=".5" strokeLinecap="round" />
+      <path d="M83 300L157 300L157.4 320L120 322L82.6 320Z" fill="url(#vgf-denim)" />
+      {/* the black knit top, running straight from her neck out over her shoulders */}
+      <path d={TORSO} fill={paint('top')} />
+      <path d={TORSO} fill={paint('knit')} opacity=".35" />
+      <g clipPath="url(#vgf-torso)">
+        <g filter={paint('b2')}>
+          <path d="M120 149.7C106 152 92 156 80 164" stroke="#4A4440" strokeWidth="3" fill="none" opacity=".6" />
+          <path d="M170 172C164 206 158 244 158 302" stroke="#000" strokeWidth="9" fill="none" opacity=".4" />
+          <path d="M74 178C82 208 87 244 86 300" stroke="#4A4440" strokeWidth="4" fill="none" opacity=".45" />
+          <path d="M94 218C108 226 132 226 146 218" stroke="#000" strokeWidth="3" fill="none" opacity=".28" />
+          <ellipse cx="90" cy="161" rx="9" ry="7" fill="#000" opacity=".3" /><ellipse cx="161" cy="163" rx="9" ry="7" fill="#000" opacity=".3" />
+        </g>
+        <path d="M81 300.5L159 300.5" stroke="#3A3532" strokeWidth=".9" opacity=".8" />
+        <path d="M86 301L85.6 308M92 301L91.8 308M98 301L98 308M104 301L104 308M110 301L110 308M116 301L116 308M122 301L122 308M128 301L128 308M134 301L134 308M140 301L140 308M146 301L146.2 308M152 301L152.4 308" stroke="#3A3532" strokeWidth=".8" opacity=".7" />
+      </g>
+      {carrying ? (
+        // The arm that holds Toby: this is the part above the elbow. He sits in front of it; the forearm comes after him.
+        <>
+          <path d="M62 157C54 165 49 181 49 193C50 203 58 208 66 204L80 187C82 176 84 166 86 158Z" fill={paint('top')} />
+          <path d="M57 170C53 180 52 190 54 198" stroke="#4A4440" strokeWidth="3" fill="none" opacity=".5" strokeLinecap="round" filter={paint('b2')} />
+        </>
+      ) : <Arm side="A" pose={poseOf('A')} paint={paint} />}
+      <Arm side="B" pose={poseOf('B')} paint={paint} />
       {/* the cream crochet panel over her shoulder, as in the artwork */}
-      <path d="M141 141.4C151 143 161 149 167 158L160.5 164.5C155.5 157 147.5 152 138.6 149.4Z" fill="url(#vg-lace)" />
-      <Arm side="A" pose={poseOf('A')} />
-      <Arm side="B" pose={poseOf('B')} lace />
-    </svg>
+      <path d="M146 144.6C157 147.6 166 151.6 172 156C178 161 179 169 177 178L169.4 178.4C171 170 170 164.4 166 161C160 156.6 152 153.2 142.6 150.6Z" fill={paint('lace')} />
+      <path d="M143.4 150.8C153 153.4 160.6 156.8 166.4 161.2C170.2 164.6 171 170 169.6 178" stroke={C.lace} strokeWidth="1.4" strokeDasharray="1.2 1.4" strokeLinecap="round" fill="none" />
+    </>
   );
 }
-
-// The app's artwork is a head-and-shoulders crop whose shoulders run off both edges. Keep her head, hair and neck
-// (plus Toby when she holds him, and her raised hand when she waves); the drawn body supplies shoulders of a natural width.
-const u = (x: number, y: number) => `${((x - 26) * UNIT).toFixed(1)}px ${((y - 10) * UNIT).toFixed(1)}px`;
-function bustClip(carrying: boolean): string {
-  // When she holds him, keep Toby and her hand from the artwork but not the wide shoulder behind them.
-  const left = carrying ? [u(116, 170), u(116, 178), u(72, 178), u(50, 170), u(46, 143), u(26, 143)] : [u(77, 170), u(76, 143), u(26, 143)];
-  return `polygon(${[u(26, 10), u(192, 10), u(192, 143), u(168, 143), u(167, 170), ...left].join(',')})`;
+/** Her forearm under Toby when she holds him: from the elbow across to the hand that curls round him. */
+function HoldingForearm({ paint }: { paint: Paint }) {
+  const d = 'M52 187C62 183 82 180 101 176L107.5 190C89 195 71 199 61 205C52 207 46 197 52 187Z';
+  return (
+    <>
+      <path d={d} fill={paint('top')} />
+      <path d={d} fill={paint('knit')} opacity=".35" />
+      <path d="M58 190C72 186 86 183 99 180" stroke="#4A4440" strokeWidth="2.4" fill="none" opacity=".6" strokeLinecap="round" filter={paint('b15')} />
+    </>
+  );
 }
 
 function Dina() {
   const d = useStore((s) => s.dina); const mode = useStore((s) => s.mode); const scale = useStore((s) => s.scale);
   const lean = d.walking ? 2.2 * d.face : 0;
+  const pose: Pose = { walking: d.walking, waving: d.waving, talking: d.talking, carrying: d.carrying, point: d.point, pointArm: d.pointArm };
   return (
     <div style={{ position: 'fixed', left: 0, top: floorOf(mode) - DH, width: DW, height: DH, transform: `translateX(${d.x}px)`, transition: `transform ${d.ms}ms ${EASE}`, zIndex: 2147483645, pointerEvents: 'none', willChange: 'transform' }}>
       <div style={{ position: 'absolute', inset: 0, transformOrigin: '50% 100%', transform: `scale(${d.shown ? scale : 0})`, opacity: d.shown ? 1 : 0, transition: `transform .45s ${POP}, opacity .25s` }}>
         <div style={{ position: 'absolute', left: '6%', right: '6%', bottom: -4, height: 11, borderRadius: '50%', background: 'rgba(43,36,32,.2)', filter: 'blur(3px)' }} />
         <div style={{ position: 'absolute', inset: 0, transformOrigin: '50% 100%', transform: `rotate(${lean}deg)`, transition: 'transform .3s ease-out' }}>
           <div style={{ position: 'absolute', inset: 0, transformOrigin: '50% 100%', animation: d.walking ? 'vg-bob .31s ease-in-out infinite' : 'vg-sway 4.6s ease-in-out infinite' }}>
-            <DinaBody walking={d.walking} waving={d.waving} talking={d.talking} carrying={d.carrying} point={d.point} pointArm={d.pointArm} />
-            <div style={{ position: 'absolute', left: 0, top: 0, width: DW, transformOrigin: `${(120 - 26) * UNIT}px ${(132 - 10) * UNIT}px`, animation: d.talking ? 'vg-nod 1.3s ease-in-out infinite' : 'vg-head 5.2s ease-in-out infinite' }}>
-              <div style={{ clipPath: bustClip(d.carrying) }}>
-                <DinaArt size={DW} toby={d.carrying} animate speaking={d.talking} expression={d.waving || !d.talking ? 'beam' : 'smile'} />
-              </div>
-            </div>
+            <DinaArt size={DW} toby={d.carrying} animate speaking={d.talking} expression={d.waving || !d.talking ? 'beam' : 'smile'}
+              figure={{ height: FIG_H, body: (paint) => <Body paint={paint} pose={pose} />, arm: (paint) => <HoldingForearm paint={paint} /> }} />
           </div>
         </div>
       </div>

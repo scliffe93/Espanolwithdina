@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 
 // Dina — high-fidelity vector portrait of the tutor behind "Learning with Dina",
 // cradling her Maltese, Toby. Hair, lashes and fringe are tapered ribbons generated
@@ -370,6 +370,19 @@ function Toby({ id, blink, animate }: { id: string; blink: boolean; animate: boo
   );
 }
 
+/**
+ * A whole-figure version of the picture. The head, hair, neck and Toby stay exactly as they are; `body` replaces the
+ * head-and-shoulders top with a full body, `arm` replaces the forearm Toby sits on, and `front` is drawn last. They are
+ * all drawn inside the same picture, so they can use its colours and soft shading (`paint('top')`, `paint('b2')`, …)
+ * and nothing has to be cropped or joined. `height` is how far down the picture goes, in its own units.
+ */
+export interface DinaFigure {
+  height: number;
+  body: (paint: (name: string) => string) => ReactNode;
+  arm?: (paint: (name: string) => string) => ReactNode;
+  front?: (paint: (name: string) => string) => ReactNode;
+}
+
 export function DinaArt({
   expression = 'smile',
   speaking = false,
@@ -379,6 +392,7 @@ export function DinaArt({
   className,
   title,
   toby = true,
+  figure,
 }: {
   expression?: DinaExpression;
   speaking?: boolean;
@@ -388,6 +402,8 @@ export function DinaArt({
   className?: string;
   title?: string;
   toby?: boolean;
+  /** Draws the whole of her in this same picture (used by the how-to video guide). See DinaFigure. */
+  figure?: DinaFigure;
 }) {
   const id = `dvc${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const blink = useBlink(animate, 2600, 3400);
@@ -397,6 +413,7 @@ export function DinaArt({
   const label = title ?? (toby ? 'Dina, your Spanish tutor, holding her Maltese, Toby' : 'Dina, your Spanish tutor');
   const tilt = toby ? -5 : -1.5;
   const { w, h } = DINA_VIEWBOX;
+  const fh = figure ? figure.height : h; // the picture is taller when it shows all of her
   const B = (n: string) => `url(#${id}-${n})`;
 
   // Eye openness and mouth shape per expression (beam squeezes the eyes into a crinkle).
@@ -413,7 +430,7 @@ export function DinaArt({
   ];
 
   return (
-    <svg viewBox={`${VX} ${VY} ${w} ${h}`} width={size} height={(size * h) / w} className={className} role="img" aria-label={label} style={{ overflow: 'visible' }}>
+    <svg viewBox={`${VX} ${VY} ${w} ${fh}`} width={size} height={(size * fh) / w} className={className} role="img" aria-label={label} style={{ overflow: 'visible' }}>
       <title>{label}</title>
       <defs>
         {([['b03', 0.3], ['b05', 0.5], ['b08', 0.8], ['b15', 1.5], ['b2', 2.2], ['b4', 4]] as const).map(([n, s]) => (
@@ -508,7 +525,7 @@ export function DinaArt({
         <clipPath id={`${id}-face`}><path d={FACE} /></clipPath>
         <clipPath id={`${id}-hairc`}><path d={HAIR_BACK} /><path d={HAIR_L} /><path d={HAIR_R} /><path d={HAIR_CROWN} /></clipPath>
         <clipPath id={`${id}-torso`}><path d={BODY} /><path d={LACE} /></clipPath>
-        <clipPath id={`${id}-frame`}><rect x="-40" y="-40" width="300" height={VY + h + 40} /></clipPath>
+        <clipPath id={`${id}-frame`}>{figure ? <rect x="-300" y="-300" width="840" height={VY + fh + 600} /> : <rect x="-40" y="-40" width="300" height={VY + h + 40} />}</clipPath>
       </defs>
 
       <g clipPath={B('frame')}>
@@ -519,19 +536,23 @@ export function DinaArt({
             <path d={HAIR_BACK} fill={B('hairB')} filter={B('b03')} />
           </g>
 
-          {/* black knit top with the cream crochet shoulder */}
-          <path id={`${id}-body`} d={BODY} fill={B('top')} />
-          <use href={`#${id}-body`} fill={B('knit')} opacity=".35" />
-          <path d={LACE} fill={B('lace')} />
-          <path d="M146 150.7C157 153.7 167 157.7 175 163.7C182 169.7 187 177.7 189 190.7" stroke={C.lace} strokeWidth="1.6" strokeDasharray="1.2 1.4" strokeLinecap="round" fill="none" />
-          {/* soft shading, kept inside the silhouette so nothing haloes onto the page */}
-          <g clipPath={B('torso')}>
-            <path d="M150 144.7C164 147.7 177 152.7 186 159.7C193 165.7 197 175.7 199 187.7" stroke="#000" strokeWidth="3" fill="none" opacity=".25" filter={B('b15')} />
-            <g filter={B('b2')} opacity=".6">
-              <path d="M120 149.7C108 151.7 96 155.7 88 163.7" stroke="#4A4440" strokeWidth="3" fill="none" />
-              <path d="M150 155.7C162 161.7 170 171.7 176 185.7" stroke="#000" strokeWidth="5" fill="none" opacity=".5" />
+          {figure ? figure.body(B) : (
+            <>
+            {/* black knit top with the cream crochet shoulder */}
+            <path id={`${id}-body`} d={BODY} fill={B('top')} />
+            <use href={`#${id}-body`} fill={B('knit')} opacity=".35" />
+            <path d={LACE} fill={B('lace')} />
+            <path d="M146 150.7C157 153.7 167 157.7 175 163.7C182 169.7 187 177.7 189 190.7" stroke={C.lace} strokeWidth="1.6" strokeDasharray="1.2 1.4" strokeLinecap="round" fill="none" />
+            {/* soft shading, kept inside the silhouette so nothing haloes onto the page */}
+            <g clipPath={B('torso')}>
+              <path d="M150 144.7C164 147.7 177 152.7 186 159.7C193 165.7 197 175.7 199 187.7" stroke="#000" strokeWidth="3" fill="none" opacity=".25" filter={B('b15')} />
+              <g filter={B('b2')} opacity=".6">
+                <path d="M120 149.7C108 151.7 96 155.7 88 163.7" stroke="#4A4440" strokeWidth="3" fill="none" />
+                <path d="M150 155.7C162 161.7 170 171.7 176 185.7" stroke="#000" strokeWidth="5" fill="none" opacity=".5" />
+              </g>
             </g>
-          </g>
+            </>
+          )}
 
           {/* slim neck with the jaw's shadow */}
           <path d="M106.5 112L107 132.8C106.5 138.3 104 141.3 101.5 143.2C111 148.7 129 148.7 138.5 143.2C136 141.3 133.5 138.3 133 132.8L133.5 112Z" fill={B('neck')} />
@@ -671,8 +692,12 @@ export function DinaArt({
                 </g>
               </g>
               {/* her forearm under him */}
-              <path d="M18 170C40 175 70 178 100 176L106 190C74 194 42 193 18 188Z" fill={B('top')} />
-              <path d="M30 173C50 177 74 179 98 177" stroke="#3A3532" strokeWidth="1.2" fill="none" opacity=".7" filter={B('b05')} />
+              {figure ? figure.arm?.(B) : (
+                <>
+                  <path d="M18 170C40 175 70 178 100 176L106 190C74 194 42 193 18 188Z" fill={B('top')} />
+                  <path d="M30 173C50 177 74 179 98 177" stroke="#3A3532" strokeWidth="1.2" fill="none" opacity=".7" filter={B('b05')} />
+                </>
+              )}
               <g transform={TOBY_T}>
                 <g filter={B('fur')}>
                   <path d={`M${TX - 16} ${TY + 54}C${TX - 8} ${TY + 63} ${TX + 8} ${TY + 63} ${TX + 20} ${TY + 56}L${TX + 17} ${TY + 50}L${TX - 14} ${TY + 50}Z`} fill={C.fur} />
@@ -701,7 +726,7 @@ export function DinaArt({
           )}
 
           {/* a gentle wave from her free hand */}
-          {waving && (
+          {waving && !figure && (
             <motion.g
               style={{ originX: `${176 - VX}px`, originY: `${152 - VY}px` }}
               initial={animate ? { opacity: 0, y: 8, rotate: 0 } : false}
@@ -721,6 +746,7 @@ export function DinaArt({
               </g>
             </motion.g>
           )}
+          {figure?.front?.(B)}
         </motion.g>
       </g>
     </svg>
