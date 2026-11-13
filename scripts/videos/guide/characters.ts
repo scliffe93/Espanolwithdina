@@ -1,16 +1,17 @@
-// Dina and Toby, drawn for animation. One style for both: flat colour with a little soft shading, big readable faces.
+// Dina and Toby, drawn for animation. Dina has the head of the app's portrait (same shapes and colours) on a jointed body.
 // Each is an SVG "puppet": named parts that the rig turns and moves every frame (see rig.ts). Nothing here moves by itself.
 //
 // Dina's units: her feet are at (0, 0) and she is about 370 tall (y is negative going up). Toby's: his feet are at
 // (0, 0), he faces right, and he is about 110 long.
 
 export const C = {
-  skin: '#EFB78D', skinSh: '#D9986C', skinHi: '#F8D2B0', blush: '#E88B78',
-  hair: '#3A2317', hairSh: '#26150D', hairHi: '#7A4F33',
-  top: '#1F1C1A', topSh: '#121010', topHi: '#3A3532', lace: '#EADFC8', laceDot: '#3A322B',
+  // Dina's colours are the app artwork's own (src/components/Dina.tsx), so she is the same person in both.
+  skin: '#ECB288', skinMid: '#DA9B70', skinSh: '#C07E56', skinDeep: '#9D6044', skinHi: '#F6CDAA', blush: '#DF7E6A',
+  hair: '#2D1A12', hairSh: '#190D08', hairMid: '#4B2F21', hairHi: '#7E5438', hairSheen: '#AE7D5C',
+  top: '#181513', topSh: '#0D0B0A', topHi: '#3A3431', lace: '#E9DCC2', laceDot: '#3A322B',
   denim: '#4169A6', denimSh: '#2E4D80', denimHi: '#6189C4',
   shoe: '#FDFBF6', sole: '#CFC5B5',
-  eye: '#7A4A28', pupil: '#22130B', lip: '#B4574F', mouth: '#6E2A30', tongue: '#E98A8F',
+  eye: '#7A4A28', pupil: '#22130B', lip: '#B5635B', lipHi: '#EFB0A2', mouth: '#6E2A30', tongue: '#E98A8F',
   fur: '#FFFEFB', furSh: '#E9E1D4', furLine: '#BFB09A', nose: '#1C1210',
   terra: '#C4573A', ink: '#2B2420',
 };
@@ -34,10 +35,54 @@ export const DINA = {
   shoulder: { A: { x: -38, y: -229 }, B: { x: 38, y: -229 } }, // A is on the left of the picture
   hip: { A: { x: -16, y: -122 }, B: { x: 16, y: -122 } },
   upper: 46, fore: 44, thigh: 58, shin: 52,
-  neck: { x: 0, y: -248 }, mouth: { x: 0, y: -272 }, head: { x: 0, y: -300 },
+  neck: { x: 0, y: -246 }, mouth: { x: 0, y: -269 }, head: { x: 0, y: -301 },
+  /** How far an eyelid travels to shut. */
+  lid: 8.6,
   /** Where Toby sits when she holds him (the middle of his body). */
   held: { x: -26, y: -202 },
 };
+
+// ── Her head is the app's portrait, shape for shape ──
+// The app draws it in its own space (head centred on x = 120, chin at y = 129.3). ART moves that onto the puppet's neck,
+// and everything inside her head, including the points the rig turns her hair about, is in the app's units.
+export const ART = 'translate(-120 -381.3)';
+type Pt = [number, number]; type Cub = [Pt, Pt, Pt, Pt];
+const f = (n: number) => Math.round(n * 100) / 100;
+const rnd = (i: number) => { const v = Math.sin(i * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
+const bz = (c: Cub, t: number): Pt => { const u = 1 - t, a = u * u * u, b = 3 * u * u * t, d = 3 * u * t * t, e = t * t * t; return [a * c[0][0] + b * c[1][0] + d * c[2][0] + e * c[3][0], a * c[0][1] + b * c[1][1] + d * c[2][1] + e * c[3][1]]; };
+const bzd = (c: Cub, t: number): Pt => { const u = 1 - t, a = 3 * u * u, b = 6 * u * t, d = 3 * t * t; return [a * (c[1][0] - c[0][0]) + b * (c[2][0] - c[1][0]) + d * (c[3][0] - c[2][0]), a * (c[1][1] - c[0][1]) + b * (c[2][1] - c[1][1]) + d * (c[3][1] - c[2][1])]; };
+const nrm = (c: Cub, t: number): Pt => { const [dx, dy] = bzd(c, t), l = Math.hypot(dx, dy) || 1; return [-dy / l, dx / l]; };
+/** A tapered strip along a curve: width w0 at the start, w1 at the end, plus a bulge in the middle. */
+function ribbon(c: Cub, w0: number, w1: number, bulge = 0, n = 8): string {
+  const L: string[] = [], R: string[] = [];
+  for (let i = 0; i <= n; i++) { const t = i / n, [x, y] = bz(c, t), [nx, ny] = nrm(c, t); const w = ((1 - t) * w0 + t * w1 + 4 * t * (1 - t) * bulge) / 2; L.push(`${f(x + nx * w)} ${f(y + ny * w)}`); R.push(`${f(x - nx * w)} ${f(y - ny * w)}`); }
+  const end = R[n]; R.reverse();
+  return `M${L.join('L')}L${end}L${R.slice(1).join('L')}Z`;
+}
+function spray(c: Cub, k: number, seed: number, spread: number, w: number, tail: number): string[] {
+  const n0 = nrm(c, 0), n1 = nrm(c, 1); const sh = (q: Pt, nn: Pt, d: number): Pt => [q[0] + nn[0] * d, q[1] + nn[1] * d];
+  return Array.from({ length: k }, (_, i) => { const o = (rnd(seed + i) - 0.5) * spread, e = o + (rnd(seed + i + 31) - 0.5) * tail, w1 = 0.55 + rnd(seed + i + 77) * 0.9; return ribbon([sh(c[0], n0, o), sh(c[1], n0, o), sh(c[2], n1, e), sh(c[3], n1, e)], w * w1 * 0.5, 0, w * w1, 7); });
+}
+const FACE = 'M120 34.5C136.5 34.5 146.5 49 147 68C147.5 84 146.5 96 143.2 106.5C140.4 117.6 132.8 128.4 120 129.3C107.2 128.4 99.6 117.6 96.8 106.5C93.5 96 92.5 84 93 68C93.5 49 103.5 34.5 120 34.5Z';
+const HAIR_BACK = 'M120 22.5C99 22.5 85 33 82.5 54C80.5 72 84 94 81.5 114C80 130 78 142 78 154C79.5 157.5 82 157.5 84 154L85.5 160.5C88 158 89.5 154 91 150C97 147 103 145.5 108 145L132 145C138 146 144 148 148.5 151.5L151 160C153 157 154 154 155 151L159.5 158C161.5 152 161 146 160 140C158.5 130 158 122 158 114C157.5 94 160.5 74 158.5 54C156 33 141 22.5 120 22.5Z';
+const HAIR_CROWN = 'M95.5 72C87.5 58 91 33 108.5 26.5C114.5 24 127 24 133 26.5C150 33.5 154 56 147 63.5C144 59.5 140 55.5 136 53C131 50 125.5 46.8 122 45.8C119.2 45.1 116.8 45.4 115.2 46.6C109.5 50 104 56.5 100 62.5C98.3 65.3 96.8 68.6 95.5 72Z';
+const HAIR_L = 'M102 40C91.5 47 86.5 62 86.5 80C86.5 100 85.5 120 85.2 140C85 148 84.6 155 85.5 161.5C88.5 156.5 91.5 151 93.5 146C95.5 141 97 137 97.4 133C96.8 118 96.2 102 96.4 88C96.6 74 97.5 60 103.5 49Z';
+const HAIR_R = 'M146 58C155 64 159.5 82 159.5 100C159.5 118 160 134 161 146C161.5 152 163 157 165.5 161.5C162 160.5 158.5 159.5 156 161.5C154.5 158 152.5 159 150.5 162C150.5 154 149 146 148.5 138C147.5 126 148.5 110 148 96C147.5 84 147.5 70 146 58Z';
+const SWEEP: [Cub, number, number, number][] = [
+  [[[118, 40], [105, 43], [96.5, 57], [93.5, 80]], 8, 3.5, 2], [[[120.5, 43], [109, 47], [101, 59], [98, 76]], 3.6, 1.2, 1],
+  [[[122, 47], [113, 51], [106, 60], [103.5, 70]], 1.6, 0.4, 0.4], [[[121, 41], [132, 42.5], [141, 49], [146, 60]], 2.6, 0.6, 0.6],
+  [[[119, 46], [112, 52], [104, 64], [99, 84]], 1.3, 0.3, 0.3], [[[117.5, 44], [108, 50], [100, 62], [95, 88]], 1.1, 0.25, 0.3],
+  [[[119.5, 44], [116, 50], [111.5, 57], [109, 63]], 1.2, 0.25, 0.3],
+];
+const FLOW: [Cub, number, number, number][] = [
+  [[[117, 29], [104, 31], [92, 44], [89.5, 66]], 8, 1, 4.5], [[[118, 26], [100, 27.5], [87, 42], [85.5, 70]], 5, 2, 4.5],
+  [[[122, 28], [138, 31], [150, 46], [152, 68]], 7, 3, 4.5], [[[121, 25], [141, 26.5], [155, 44], [155.5, 74]], 4, 4, 4.5],
+  [[[89, 72], [88, 96], [86.5, 126], [86.5, 154]], 6, 5, 4], [[[93, 78], [93.5, 102], [93, 130], [91.5, 152]], 5, 6, 3],
+  [[[150, 62], [160, 84], [161.5, 120], [160, 154]], 7, 7, 4.5], [[[147, 66], [154, 92], [154, 130], [153, 154]], 5, 8, 4],
+];
+function strandsOf(from: number, to: number): string {
+  return FLOW.slice(from, to).map(([c, k, sd, sp]) => spray(c, k, sd * 97, sp, 1.1, 3).map((d, i) => { const kind = (i + sd) % 3; return `<path d="${d}" fill="${kind === 0 ? C.hairHi : kind === 1 ? C.hairSh : C.hairSheen}" opacity="${kind === 1 ? 0.55 : 0.42}"/>`; }).join('')).join('');
+}
 
 const HAND_OPEN = `<path d="M-6.4 3C-10.6 4.6-12.6 9.4-11.4 13.6C-10.6 16-7.8 15.6-7.4 13.2L-6.2 8Z"/><path d="M-6.8-1C-7.8 5-7.6 11-6.6 15L-6.6 22.4C-6.6 25.4-3.9 25.6-3.7 22.8L-3.5 24.6C-3.3 27.8-.5 27.8-.3 24.8L-.1 25.4C.1 28.4 3 28.2 3.1 25.2L3.2 23.6C3.5 26.4 6.3 26 6.3 23.2L6.5 15C7.6 11 7.8 5 6.8-1Z"/><path d="M-3.6 17L-3.6 22M-.2 17L-.2 24M3.1 17L3.1 23" fill="none" stroke-width=".8" opacity=".6"/>`;
 const HAND_POINT = `<path d="M-6.4 3C-10.6 4.6-12.6 9.4-11.4 13.6C-10.6 16-7.8 15.6-7.4 13.2L-6.2 8Z"/><path d="M-6.8-1C-7.8 5-7.6 11-6.6 15C-6.8 18.6-4.4 20-2.6 18.4C-1.6 20.6 1.2 20.4 1.6 18.2L1.8 15.6L6.5 15C7.6 11 7.8 5 6.8-1Z"/><path d="M1.9 13L2.1 29C2.2 32.4 6 32.4 6.1 29L6.5 13Z"/>`;
@@ -57,15 +102,30 @@ function leg(side: 'A' | 'B'): string {
     </g></g>`;
 }
 function eye(side: 'A' | 'B'): string {
-  const x = side === 'A' ? -16 : 16; const out = side === 'A' ? -1 : 1;
-  return `<g transform="translate(${x} -300)">
-    <g clip-path="url(#d-eyeclip)"><ellipse rx="8.8" ry="7.6" fill="#fff"/>
-    <g id="d-pupil${side}"><circle r="5.4" fill="${C.eye}"/><circle r="2.7" fill="${C.pupil}"/><circle cx="-1.9" cy="-2.1" r="1.7" fill="#fff"/><circle cx="1.8" cy="1.9" r=".8" fill="#fff" opacity=".7"/></g>
-    <path d="M-10-7.6L10-7.6L10 8L-10 8Z" fill="${C.skin}" id="d-lid${side}" transform="translate(0 -15.2)"/></g>
-    <path d="M${-9 * out} -1C${-5 * out}-8.4 ${5 * out}-8.6 ${9.4 * out}-2.4L${11.6 * out}-5" fill="none" stroke="${C.hairSh}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" id="d-lash${side}"/>
-    <path d="M-8.6 0C-4 4.6 4 4.6 8.6 0" fill="none" stroke="${C.hairSh}" stroke-width="2.2" stroke-linecap="round" id="d-shut${side}" style="display:none"/>
-  </g>
-  <path id="d-brow${side}" d="M${-9 * out} 1C${-4 * out}-3.4 ${4 * out}-3.6 ${9 * out}-.6" transform="translate(${x} -316)" fill="none" stroke="${C.hair}" stroke-width="2.8" stroke-linecap="round"/>`;
+  const x = side === 'A' ? 107.5 : 132.5, y = 80, m = side === 'A' ? 1 : -1, up = 3.2, low = 2.3;
+  const X = (v: number) => x + m * v, Y = (v: number) => y + v;
+  const topC: Cub = [[X(-6.5), Y(0.6)], [X(-4.3), Y(-up - 0.5)], [X(1.4), Y(-up - 1.1)], [X(6.5), Y(-0.2)]];
+  const top = `M${f(topC[0][0])} ${f(topC[0][1])}C${f(topC[1][0])} ${f(topC[1][1])} ${f(topC[2][0])} ${f(topC[2][1])} ${f(topC[3][0])} ${f(topC[3][1])}`;
+  const lowL = `C${f(X(3.6))} ${f(Y(low + 0.7))} ${f(X(-3.4))} ${f(Y(low + 0.5))} ${f(X(-6.5))} ${f(Y(0.6))}`;
+  const shape = `${top}${lowL}Z`; const ix = X(0.5), iy = y - 0.15, r = 3.35;
+  const cl: Cub = [[X(-6.5), Y(0.6)], [X(-3.8), Y(low + 1.6)], [X(2.6), Y(low + 1.6)], [X(6.5), Y(-0.1)]];
+  const rays = [20, 70, 115, 160, 205, 250, 300, 340].map((a) => `M${f(Math.cos(a * 0.01745) * 1.5)} ${f(Math.sin(a * 0.01745) * 1.5)}L${f(Math.cos(a * 0.01745) * r)} ${f(Math.sin(a * 0.01745) * r)}`).join('');
+  const lashes = [0.07, 0.19, 0.33].map((t, i) => { const [px, py] = bz(topC, t), [nx, ny] = nrm(topC, t), l = 1.05 - i * 0.28; return `<path d="${ribbon([[px, py], [px + nx * l * 0.5 - m * 0.3, py + ny * l * 0.5 - 0.3], [px + nx * l - m * 0.6, py + ny * l - 0.6], [px + nx * l - m * 0.9, py + ny * l - 0.8]], 0.4, 0.05, 0, 3)}"/>`; }).join('');
+  const bc: Cub = [[120 + m * (113.8 - 120), 72.5], [120 + m * (109 - 120), 69.2], [120 + m * (103 - 120), 68.6], [120 + m * (98.2 - 120), 71.4]];
+  return `<path d="M${f(X(-5.6))} ${f(Y(-up - 1.2))}C${f(X(-2.4))} ${f(Y(-up - 3.5))} ${f(X(3))} ${f(Y(-up - 3.4))} ${f(X(6.6))} ${f(Y(-up - 0.9))}" stroke="${C.skinSh}" stroke-width=".7" fill="none" opacity=".3" filter="url(#d-b03)"/>
+    <clipPath id="d-eyec${side}"><path d="${shape}"/></clipPath>
+    <g clip-path="url(#d-eyec${side})">
+      <path d="${shape}" fill="url(#d-scl)"/>
+      <g id="d-pupil${side}"><g transform="translate(${f(ix)} ${f(iy)})"><circle r="${r}" fill="url(#d-iris)"/><circle r="${r - 0.25}" fill="none" stroke="#1E1008" stroke-width=".5" opacity=".75"/><path d="${rays}" stroke="#2B170C" stroke-width=".35" opacity=".32" fill="none"/><circle r="1.3" fill="#0C0604"/><circle cx="-1.1" cy="-1.25" r=".9" fill="#fff" opacity=".96"/><circle cx="1.25" cy="1.35" r=".42" fill="#fff" opacity=".4"/></g></g>
+      <path d="${top}" stroke="#3B2016" stroke-width="2" fill="none" opacity=".36" filter="url(#d-b08)"/>
+      <rect id="d-lid${side}" x="${f(x - 9)}" y="${f(y - up - 2.6)}" width="18" height="${DINA.lid}" fill="${C.skinMid}" transform="translate(0 ${-DINA.lid})"/>
+    </g>
+    <g id="d-lash${side}">
+      <path d="M${f(X(4.5))} ${f(Y(0.8))}${lowL}" stroke="${C.skinHi}" stroke-width=".6" fill="none" opacity=".55" transform="translate(0 1)" filter="url(#d-b03)"/>
+      <path d="${ribbon(topC, 1.15, 0.3, 0.3, 10)}" fill="#211209" transform="translate(0 -0.25)"/><g fill="#241510" opacity=".8">${lashes}</g>
+    </g>
+    <g id="d-shut${side}" style="display:none"><path d="${ribbon(cl, 0.8, 0.4, 0.5, 8)}" fill="#241510" opacity=".92"/></g>
+    <g id="d-brow${side}"><path d="${ribbon(bc, 1.6, 0.8, 1.5, 10)}" fill="url(#d-brow${side})" filter="url(#d-b05)"/></g>`;
 }
 
 /** Toby as she holds him: facing us, tucked on her forearm. Drawn in Dina's units, in two layers either side of her arm. */
@@ -95,14 +155,34 @@ function heldToby(): { back: string; front: string } {
 export function dinaSvg(): string {
   const A = arm('A'), B = arm('B'); const held = heldToby();
   return `<svg id="d-svg" viewBox="-110 -390 220 410" width="220" height="410" style="position:absolute;left:-110px;top:-390px;overflow:visible" aria-hidden="true">
-  <defs><clipPath id="d-eyeclip"><ellipse rx="8.8" ry="7.6"/></clipPath><pattern id="d-lace" width="3.6" height="3.2" patternUnits="userSpaceOnUse" patternTransform="rotate(-20)"><rect width="3.6" height="3.2" fill="${C.lace}"/><ellipse cx="1.8" cy="1.6" rx="1.1" ry=".95" fill="${C.laceDot}"/></pattern></defs>
+  <defs>
+    <pattern id="d-lace" width="3.6" height="3.2" patternUnits="userSpaceOnUse" patternTransform="rotate(-20)"><rect width="3.6" height="3.2" fill="${C.lace}"/><ellipse cx="1.8" cy="1.6" rx="1.1" ry=".95" fill="${C.laceDot}"/></pattern>
+    <filter id="d-b03" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="0.3"/></filter><filter id="d-b05" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="0.5"/></filter><filter id="d-b08" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="0.8"/></filter><filter id="d-b15" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.5"/></filter><filter id="d-b2" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.2"/></filter><filter id="d-b4" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
+    <radialGradient id="d-skin" cx=".42" cy=".38" r=".74"><stop offset="0" stop-color="${C.skinHi}"/><stop offset=".5" stop-color="${C.skin}"/><stop offset=".85" stop-color="${C.skinMid}"/><stop offset="1" stop-color="${C.skinSh}"/></radialGradient>
+    <linearGradient id="d-neck" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A86E52"/><stop offset=".45" stop-color="${C.skinMid}"/><stop offset="1" stop-color="${C.skin}"/></linearGradient>
+    <linearGradient id="d-hair" x1=".2" y1="0" x2=".7" y2="1"><stop offset="0" stop-color="${C.hairMid}"/><stop offset=".45" stop-color="${C.hair}"/><stop offset="1" stop-color="${C.hairSh}"/></linearGradient>
+    <linearGradient id="d-hairB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${C.hair}"/><stop offset="1" stop-color="#120905"/></linearGradient>
+    <linearGradient id="d-sweep" gradientUnits="userSpaceOnUse" x1="0" y1="40" x2="0" y2="88"><stop offset="0" stop-color="${C.hair}"/><stop offset=".55" stop-color="${C.hairMid}"/><stop offset="1" stop-color="${C.hairMid}" stop-opacity=".5"/></linearGradient>
+    <radialGradient id="d-scl" cx=".5" cy=".55" r=".6"><stop offset="0" stop-color="#FDFBF8"/><stop offset=".7" stop-color="#F5EDE6"/><stop offset="1" stop-color="#DECBBF"/></radialGradient>
+    <radialGradient id="d-iris" cx=".5" cy=".6" r=".5"><stop offset=".2" stop-color="#B07A48"/><stop offset=".6" stop-color="#6F4225"/><stop offset="1" stop-color="#3A2012"/></radialGradient>
+    <radialGradient id="d-mouthG" cx=".5" cy=".3" r=".7"><stop offset="0" stop-color="#8A3E42"/><stop offset="1" stop-color="#4E1D23"/></radialGradient>
+    <linearGradient id="d-teethG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#B09D8C"/><stop offset=".2" stop-color="#E5DBCE"/><stop offset=".5" stop-color="#FBF7F0"/><stop offset=".8" stop-color="#E5DBCE"/><stop offset="1" stop-color="#B09D8C"/></linearGradient>
+    <linearGradient id="d-lipU" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B5635B"/><stop offset="1" stop-color="#9E514C"/></linearGradient>
+    <linearGradient id="d-lipL" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D98C80"/><stop offset="1" stop-color="#C07266"/></linearGradient>
+    <linearGradient id="d-browA" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${C.hair}" stop-opacity=".92"/><stop offset=".6" stop-color="${C.hair}" stop-opacity=".85"/><stop offset="1" stop-color="${C.hairMid}" stop-opacity=".55"/></linearGradient>
+    <linearGradient id="d-browB" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="${C.hair}" stop-opacity=".92"/><stop offset=".6" stop-color="${C.hair}" stop-opacity=".85"/><stop offset="1" stop-color="${C.hairMid}" stop-opacity=".55"/></linearGradient>
+    <linearGradient id="d-topG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2A2522"/><stop offset="1" stop-color="${C.top}"/></linearGradient>
+    <clipPath id="d-facec"><path d="${FACE}"/></clipPath>
+    <clipPath id="d-hairc"><path d="${HAIR_L}"/><path d="${HAIR_R}"/><path d="${HAIR_CROWN}"/></clipPath>
+  </defs>
   <ellipse id="d-shadow" cx="0" cy="12" rx="46" ry="7" fill="${C.ink}" opacity=".16"/>
   <g id="d-body">
-    <g id="d-hairBack"><path d="M-46-318C-53-288-55-248-52-214C-50-203-44-199-38-206L-34-199C-28-206-24-204-20-211L20-211C24-204 28-206 34-199L38-206C44-199 50-203 52-214C55-248 53-288 46-318C40-352-40-352-46-318Z" fill="${C.hairSh}"/></g>
+    <g id="d-hairBack"><g transform="${ART}"><path d="${HAIR_BACK}" fill="url(#d-hairB)" filter="url(#d-b03)"/></g></g>
     ${leg('A')}${leg('B')}
     <path d="M-34-128L34-128C35.4-118 34.6-108 33-99L3-97L0-104L-3-97L-33-99C-34.6-108-35.4-118-34-128Z" fill="${C.denim}"/>
     <path d="M0-104L0-124" stroke="${C.denimSh}" stroke-width="1.6" opacity=".8"/><path d="M-26-112C-22-106-14-104-8-105M26-112C22-106 14-104 8-105" fill="none" stroke="${C.denimSh}" stroke-width="1.5" stroke-linecap="round" opacity=".8"/>
     <g id="d-torso">
+      <g transform="${ART}"><path d="M106.5 112L107 132.8C106.5 138.3 104 141.3 101.5 143.2C111 148.7 129 148.7 138.5 143.2C136 141.3 133.5 138.3 133 132.8L133.5 112Z" fill="url(#d-neck)"/><g filter="url(#d-b2)"><path d="M107 123C114 134.5 127 134.5 133 123L133 115L107 115Z" fill="${C.skinDeep}" opacity=".55"/><ellipse cx="128" cy="134" rx="3" ry="8" fill="${C.skinSh}" opacity=".35"/></g></g>
       <path d="M-12-244C-24-243-36-240-41-232C-45-224-40-210-35-200C-30-186-27-174-27-162C-28-150-32-140-34.6-128L-35-119L35-119L34.6-128C32-140 28-150 27-162C27-174 30-186 35-200C40-210 45-224 41-232C36-240 24-243 12-244C8-238-8-238-12-244Z" fill="${C.top}"/>
       <path d="M30-222C28-200 23-180 24-160C25-146 29-134 31-121" fill="none" stroke="${C.topSh}" stroke-width="8" stroke-linecap="round" opacity=".7"/>
       <path d="M-30-218C-27-200-22-182-22-164C-23-150-27-138-29-124" fill="none" stroke="${C.topHi}" stroke-width="3" stroke-linecap="round" opacity=".6"/>
@@ -110,24 +190,41 @@ export function dinaSvg(): string {
       <path d="M-34.6-126L34.6-126" stroke="${C.topHi}" stroke-width="1" opacity=".9"/><path d="M-30-125.4L-30-119.4M-24-125.4L-24-119.4M-18-125.4L-18-119.4M-12-125.4L-12-119.4M-6-125.4L-6-119.4M0-125.4L0-119.4M6-125.4L6-119.4M12-125.4L12-119.4M18-125.4L18-119.4M24-125.4L24-119.4M30-125.4L30-119.4" stroke="${C.topHi}" stroke-width=".9" opacity=".8"/>
       <path d="M13.4-243.8C24-242.8 35-240 41-232C43.4-228 43.4-223.4 42-219L35-221.6C36-226 35-229 32-232C28-235 21-237 12.4-238Z" fill="${C.lace}"/>
       <path d="M15-240.8C24-239.6 32-237 37-231.6C39-228.4 39.2-225 38.4-221.6" fill="none" stroke="${C.laceDot}" stroke-width="1.5" stroke-dasharray=".2 3.2" stroke-linecap="round"/>
-      <path d="M-9.4-262L-9.4-240C-5-235 5-235 9.4-240L9.4-262Z" fill="${C.skinSh}"/>
-      <path d="M-12-244C-8-237 8-237 12-244" fill="none" stroke="${C.topHi}" stroke-width="2.6" stroke-linecap="round"/>
+      <path d="M-12-244C-8-237.6 8-237.6 12-244" fill="none" stroke="${C.topHi}" stroke-width="1.6" stroke-linecap="round" opacity=".8"/>
     </g>
     ${A.upper}${B.upper}
-    <g id="d-head">
-      <path d="M-38-306C-38-334-22-347 0-347C22-347 38-334 38-306C38-282 30-262 12-254.4C4-251.4-4-251.4-12-254.4C-30-262-38-282-38-306Z" fill="${C.skin}"/>
-      <path d="M-38-306C-38-322-33-334-24-340C-28-326-30-312-34-300C-32-286-26-270-12-258C-28-264-38-282-38-306Z" fill="${C.skinSh}" opacity=".45"/>
-      <ellipse cx="-25" cy="-281" rx="7" ry="4.4" fill="${C.blush}" opacity=".5" id="d-cheekA"/><ellipse cx="25" cy="-281" rx="7" ry="4.4" fill="${C.blush}" opacity=".5" id="d-cheekB"/>
-      <g id="d-face">
-        ${eye('A')}${eye('B')}
-        <path d="M-2-291C-3.6-285.4-.4-282.6 3.4-284.6" fill="none" stroke="${C.skinSh}" stroke-width="2" stroke-linecap="round"/>
-        <g id="d-mouth"><path id="d-mouthIn" d="" fill="${C.mouth}"/><path id="d-teeth" d="" fill="#fff"/><path id="d-tongue" d="" fill="${C.tongue}"/><path id="d-lips" d="" fill="none" stroke="${C.lip}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></g>
+    <g id="d-head"><g transform="${ART}">
+      <path d="${FACE}" fill="url(#d-skin)"/>
+      <g clip-path="url(#d-facec)">
+        <g filter="url(#d-b4)">
+          <ellipse cx="149.5" cy="92" rx="9" ry="38" fill="${C.skinSh}" opacity=".52"/><ellipse cx="91" cy="94" rx="5.5" ry="30" fill="${C.skinSh}" opacity=".32"/>
+          <ellipse cx="120" cy="40" rx="32" ry="8" fill="#7E4B36" opacity=".5"/><ellipse cx="116" cy="57" rx="11" ry="7" fill="${C.skinHi}" opacity=".55"/>
+          <ellipse cx="96" cy="72" rx="5" ry="9" fill="${C.skinSh}" opacity=".3"/><ellipse cx="145" cy="70" rx="5" ry="9" fill="${C.skinSh}" opacity=".4"/>
+          <ellipse cx="105" cy="95" rx="8" ry="5" fill="${C.skinHi}" opacity=".6"/><ellipse cx="139" cy="95" rx="7" ry="5" fill="${C.skinHi}" opacity=".35"/>
+          <ellipse cx="104" cy="101" rx="8.5" ry="5.5" fill="${C.blush}" opacity=".25"/><ellipse cx="140" cy="101" rx="8.5" ry="5.5" fill="${C.blush}" opacity=".23"/>
+          <ellipse cx="100" cy="109" rx="7" ry="4.5" fill="${C.skinSh}" opacity=".1"/><ellipse cx="143" cy="109" rx="7" ry="4.5" fill="${C.skinSh}" opacity=".16"/>
+          <ellipse cx="120" cy="128.3" rx="18" ry="4.6" fill="${C.skinDeep}" opacity=".34"/><ellipse cx="119" cy="122" rx="5" ry="2.6" fill="${C.skinHi}" opacity=".5"/>
+        </g>
+        <g fill="#5A2E1F" opacity=".4" transform="translate(1.2 2.4)" filter="url(#d-b2)">${SWEEP.slice(0, 4).map(([c, w0, w1, b]) => `<path d="${ribbon(c, w0, w1, b, 10)}"/>`).join('')}<path d="${HAIR_L}" transform="translate(0.6 -1)"/><path d="${HAIR_R}" transform="translate(-3.2 -1)"/></g>
       </g>
-      <path d="M-45-296C-50-340-28-365 0-365C28-365 50-340 45-296L39.4-302C36-322 24-336 6-342.4C-4-326-20-310-39.6-298Z" fill="${C.hair}"/>
-      <path d="M-30-341C-16-353 10-355 28-345" fill="none" stroke="${C.hairHi}" stroke-width="4" stroke-linecap="round" opacity=".7"/><path d="M5-343C-3-330-16-318-33-308" fill="none" stroke="${C.hairSh}" stroke-width="2" stroke-linecap="round" opacity=".6"/>
-      <g id="d-curtA"><path d="M-45.4-300C-51-270-51-236-48-204C-45-197-38-197-34-204C-33-230-34-262-39.6-298Z" fill="${C.hair}"/><path d="M-44-286C-46-262-46-236-44-212" fill="none" stroke="${C.hairHi}" stroke-width="2.6" stroke-linecap="round" opacity=".6"/></g>
-      <g id="d-curtB"><path d="M45.4-300C51-270 51-236 48-204C45-197 38-197 34-204C33-230 34-262 39.6-298Z" fill="${C.hair}"/><path d="M41-290C43.4-266 43.6-240 42-214" fill="none" stroke="${C.hairSh}" stroke-width="2.4" stroke-linecap="round" opacity=".6"/></g>
-    </g>
+      <g id="d-face">
+        <g filter="url(#d-b2)"><ellipse cx="107.5" cy="77" rx="9" ry="4.5" fill="#B07760" opacity=".14"/><ellipse cx="132.5" cy="77" rx="9" ry="4.5" fill="#A86E58" opacity=".18"/><ellipse cx="115.5" cy="80.5" rx="2.4" ry="3.2" fill="${C.skinSh}" opacity=".18"/><ellipse cx="125" cy="81.5" rx="2.6" ry="4" fill="${C.skinSh}" opacity=".24"/></g>
+        <path d="M124.5 84C126.2 90 127.2 96 126.8 100.5L123 101C123.6 96 123.4 90 122.6 85Z" fill="${C.skinSh}" opacity=".32" filter="url(#d-b15)"/>
+        <g filter="url(#d-b08)" fill="none" stroke-linecap="round"><path d="M114 101C109.5 104 107.3 108 107 112.5" stroke="${C.skinSh}" stroke-width="1" opacity=".2"/><path d="M126 101C130.5 104 132.7 108 133 112.5" stroke="${C.skinDeep}" stroke-width="1" opacity=".2"/><path d="M120.2 82C120 88 120.1 94 120.4 98" stroke="${C.skinHi}" stroke-width="1.5" opacity=".55"/></g>
+        <g filter="url(#d-b08)"><path d="M115.8 96.5C113 98.2 112.6 102.4 115.6 104" stroke="#B37760" stroke-width="1.3" fill="none" opacity=".5"/><path d="M124.2 96.5C127.2 98.2 127.6 102.6 124.4 104.2" stroke="#9A604A" stroke-width="1.5" fill="none" opacity=".7"/><ellipse cx="120" cy="105.8" rx="5.5" ry="1.5" fill="#9A604A" opacity=".38"/><path d="M114.5 103.5C117 105.5 123 105.5 125.5 103.5" stroke="#8E563F" stroke-width=".9" fill="none" opacity=".4"/></g>
+        <g filter="url(#d-b05)"><ellipse cx="117.1" cy="103.1" rx="1.5" ry=".75" transform="rotate(16 117.1 103.1)" fill="#6E3C2C" opacity=".62"/><ellipse cx="122.9" cy="103.1" rx="1.5" ry=".75" transform="rotate(-16 122.9 103.1)" fill="#6E3C2C" opacity=".68"/></g>
+        <ellipse cx="120.2" cy="100.2" rx="2.4" ry="1.8" fill="#FFE8D6" opacity=".55" filter="url(#d-b08)"/>
+        ${eye('A')}${eye('B')}
+        <g id="d-mouth"></g>
+      </g>
+      <g id="d-curtB"><path d="${HAIR_R}" fill="url(#d-hair)"/><path d="M153 64C159 82 160.5 104 159.5 124" stroke="${C.hairSheen}" stroke-width="3" fill="none" opacity=".22" filter="url(#d-b2)"/><g filter="url(#d-b03)">${strandsOf(6, 8)}</g></g>
+      <g id="d-curtA"><path d="${HAIR_L}" fill="url(#d-hair)"/><path d="M89.5 66C88 84 88 104 88.5 122" stroke="${C.hairSheen}" stroke-width="3" fill="none" opacity=".22" filter="url(#d-b2)"/><g filter="url(#d-b03)">${strandsOf(4, 6)}</g></g>
+      <path d="${HAIR_CROWN}" fill="url(#d-hair)"/>
+      ${SWEEP.map(([c, w0, w1, b], i) => `<path d="${ribbon(c, w0, w1, b, 10)}" fill="${i === 0 || i === 3 ? 'url(#d-hair)' : 'url(#d-sweep)'}"${w0 > 2 ? '' : ' opacity=".72"'}/>`).join('')}
+      <path d="M98 42C108 32 134 31 146 41" stroke="${C.hairSheen}" stroke-width="4.5" fill="none" opacity=".3" filter="url(#d-b2)" clip-path="url(#d-hairc)"/>
+      <path d="M118.4 25.5C118 29 118.2 33 119 36" stroke="${C.skinSh}" stroke-width="1.1" fill="none" opacity=".4" stroke-linecap="round" filter="url(#d-b08)"/>
+      <g filter="url(#d-b03)">${strandsOf(0, 4)}</g>
+    </g></g>
     ${held.back}
     ${A.fore}${B.fore}
     ${held.front}
@@ -135,20 +232,25 @@ export function dinaSvg(): string {
 </svg>`;
 }
 
-/** Dina's mouth for a given openness (0 closed … 1 wide) and smile (0 … 1). */
-export function mouthPaths(open: number, smile: number): { lips: string; inside: string; teeth: string; tongue: string } {
-  const { x, y } = DINA.mouth; const o = Math.max(0, Math.min(1, open));
-  const w = 12.5 - 3.4 * o + 1.5 * smile, lift = 1.2 + 2.6 * smile * (1 - o * 0.5), drop = 2.4 + 13 * o;
-  const L = x - w, R = x + w, cy = y - lift; // the corners sit a little higher than the middle: a smile
-  const upper = `M${L} ${cy}Q${x} ${y + 1.6 - o * 1.4} ${R} ${cy}`;
-  if (o < 0.07) return { lips: `M${L} ${cy}Q${x} ${y + 3.4 + 2.6 * smile} ${R} ${cy}`, inside: '', teeth: '', tongue: '' };
-  const lower = `Q${x} ${y + drop * 1.9} ${L} ${cy}`;
-  const th = Math.min(3.6, 1.4 + 6 * o);
-  return {
-    lips: `${upper}${lower}Z`, inside: `${upper}${lower}Z`,
-    teeth: `M${L + 2.6} ${cy + 0.9}Q${x} ${y + 2.2 - o * 1.2} ${R - 2.6} ${cy + 0.9}L${R - 3.6} ${cy + 0.9 + th}Q${x} ${y + 2.4 + th - o} ${L + 3.6} ${cy + 0.9 + th}Z`,
-    tongue: o > 0.42 ? `M${x - w * 0.5} ${y + drop * 0.72}Q${x} ${y + drop * 0.5} ${x + w * 0.5} ${y + drop * 0.72}Q${x} ${y + drop * 1.1} ${x - w * 0.5} ${y + drop * 0.72}Z` : '',
-  };
+/** Dina's mouth for a given openness (0 at rest … 1 wide) and smile (0 … 1): the app's own mouth, in the app's units. */
+export function mouthMarkup(open: number, smile: number): string {
+  const o = Math.max(0, Math.min(1, open)), cx = 120, my = 112;
+  const W = 13.2 - 2 * o + 1.4 * smile, lift = 2.4 + 1.6 * smile * (1 - o * 0.5), D = 2.6 + 9.4 * o + 3 * smile * (1 - o), T = 2.6 + 1.8 * o + 0.9 * smile, lt = 3.2, lower = o > 0.5;
+  const cc = my - lift, L = f(cx - W), R = f(cx + W);
+  const openTop = `C${f(cx + W * 0.52)} ${f(my + 0.9)} ${f(cx - W * 0.52)} ${f(my + 0.9)} ${L} ${f(cc)}`;
+  const openBot = `C${f(cx - W * 0.64)} ${f(my + D)} ${f(cx + W * 0.64)} ${f(my + D)} ${R} ${f(cc)}`;
+  const opening = `M${L} ${f(cc)}${openBot}${openTop}Z`;
+  const upperLip = `M${f(cx - W - 0.4)} ${f(cc - 0.2)}C${f(cx - W * 0.58)} ${f(my - 1.9)} ${f(cx - 5)} ${f(my - 3)} ${f(cx - 2.2)} ${f(my - 3.1)}Q${f(cx - 0.9)} ${f(my - 3)} ${cx} ${f(my - 2.4)}Q${f(cx + 0.9)} ${f(my - 3)} ${f(cx + 2.2)} ${f(my - 3.1)}C${f(cx + 5)} ${f(my - 3)} ${f(cx + W * 0.58)} ${f(my - 1.9)} ${f(cx + W + 0.4)} ${f(cc - 0.2)}L${R} ${f(cc)}${openTop}Z`;
+  const lowerLip = `M${L} ${f(cc)}${openBot}C${f(cx + W * 0.52)} ${f(my + D + lt * 1.35)} ${f(cx - W * 0.52)} ${f(my + D + lt * 1.35)} ${L} ${f(cc)}Z`;
+  const xs = [-1, -0.83, -0.65, -0.46, -0.24, 0, 0.24, 0.46, 0.65, 0.83, 1].map((t) => t * W * 0.95);
+  const yb = (x: number) => my + T - (T + lift * 0.85) * (x / W) ** 2;
+  let teeth = `M${f(cx - W)} ${f(cc - 3)}L${f(cx + W)} ${f(cc - 3)}L${f(cx + xs[10])} ${f(yb(xs[10]))}`;
+  for (let i = 10; i > 0; i--) teeth += `Q${f(cx + (xs[i] + xs[i - 1]) / 2)} ${f(yb((xs[i] + xs[i - 1]) / 2) + 0.55)} ${f(cx + xs[i - 1])} ${f(yb(xs[i - 1]))}`;
+  const gaps = xs.slice(1, 10).map((x, i) => `<path d="M${f(cx + x)} ${f(cc - 1.5)}L${f(cx + x * 0.97)} ${f(yb(x) + 0.2)}" stroke="#A89483" stroke-width="${i === 4 ? 0.4 : 0.3}" opacity=".5"/>`).join('');
+  return `<clipPath id="d-moc"><path d="${opening}"/></clipPath><path d="${opening}" fill="url(#d-mouthG)"/>
+    <g clip-path="url(#d-moc)">${D > 5 ? `<ellipse cx="${cx}" cy="${f(my + D * 0.86)}" rx="${f(W * 0.5)}" ry="2.4" fill="#A9555A"/>` : ''}${lower ? `<path d="M${f(cx - W * 0.68)} ${f(my + D * 0.86)}Q${cx} ${f(my + D * 0.7)} ${f(cx + W * 0.68)} ${f(my + D * 0.86)}L${f(cx + W * 0.68)} ${f(my + D + 2)}L${f(cx - W * 0.68)} ${f(my + D + 2)}Z" fill="#EFE6DA" opacity=".92"/>` : ''}<path d="${teeth}Z" fill="url(#d-teethG)"/>${gaps}<path d="M${R} ${f(cc)}${openTop}" stroke="#6E3530" stroke-width="1.6" fill="none" opacity=".36" filter="url(#d-b05)"/></g>
+    <path d="${upperLip}" fill="url(#d-lipU)"/><path d="${lowerLip}" fill="url(#d-lipL)"/>
+    <ellipse cx="${cx + 0.6}" cy="${f(my + D * 0.78 + lt * 0.55)}" rx="${f(W * 0.28)}" ry=".85" fill="${C.lipHi}" opacity=".5" filter="url(#d-b08)"/>`;
 }
 
 // ── Toby (on the ground) ──

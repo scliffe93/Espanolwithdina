@@ -1,7 +1,7 @@
 // The rig: poses Dina and Toby every frame. They are never keyframed by hand; each joint follows a target through a
 // spring (so movement eases in, overshoots a touch and settles), walk cycles come from how far they have travelled,
 // and loose things (hair, ears, tail) lag behind and catch up. Dina's mouth follows the loudness of the actual voice.
-import { DINA, dinaSvg, mouthPaths, tobySvg } from './characters';
+import { DINA, dinaSvg, mouthMarkup, tobySvg } from './characters';
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const TAU = Math.PI * 2;
@@ -33,7 +33,7 @@ export class DinaRig {
   private curtA = new Spring(0, 55, 6.5); private curtB = new Spring(0, 55, 6.5); private back = new Spring(0, 40, 6);
   private heldTilt = new Spring(0, 40, 7);
   private blinkAt = 1.2; private blink = 0; private gestureAt = 0; private gesture = 0; private wanderAt = 0; private wander = { tilt: 0, lx: 0, ly: 0 };
-  private heldBlinkAt = 2.4;
+  private heldBlinkAt = 2.4; private mouthKey = "";
 
   constructor(parent: HTMLElement) {
     this.el = document.createElement('div'); this.el.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;z-index:2147483645;pointer-events:none;will-change:transform';
@@ -122,32 +122,32 @@ export class DinaRig {
     const T = this.tilt.step(dt), LX = this.lookX.step(dt), LY = this.lookY.step(dt);
     const nod = this.talking ? loud * 1.6 : 0;
     P['d-head'].setAttribute('transform', `translate(${(LX * 1.4).toFixed(2)} ${(nod - breathe * 0.6).toFixed(2)}) rotate(${T.toFixed(2)} ${DINA.neck.x} ${DINA.neck.y})`);
-    P['d-face'].setAttribute('transform', `translate(${(LX * 3.4).toFixed(2)} ${(LY * 2.3).toFixed(2)})`);
-    for (const side of ['A', 'B'] as const) P[`d-pupil${side}`].setAttribute('transform', `translate(${(LX * 2.3).toFixed(2)} ${(LY * 1.7).toFixed(2)})`);
+    P['d-face'].setAttribute('transform', `translate(${(LX * 1.5).toFixed(2)} ${(LY * 1).toFixed(2)})`);
+    for (const side of ['A', 'B'] as const) P[`d-pupil${side}`].setAttribute('transform', `translate(${(LX * 1.5).toFixed(2)} ${(LY * 0.9).toFixed(2)})`);
     // blinking
     if (t > this.blinkAt) { this.blink = 0.001; this.blinkAt = t + 2 + rnd() * 3.2; if (rnd() < 0.18) this.blinkAt = t + 0.34; }
     if (this.blink > 0) { this.blink += dt / 0.17; if (this.blink >= 1) this.blink = 0; }
     const lid = this.blink > 0 ? Math.sin(this.blink * Math.PI) : 0; const smileEyes = this.waving ? 0.28 : 0;
     const closed = Math.max(lid, smileEyes);
     for (const side of ['A', 'B'] as const) {
-      P[`d-lid${side}`].setAttribute('transform', `translate(0 ${(-15.2 * (1 - closed)).toFixed(2)})`);
+      P[`d-lid${side}`].setAttribute('transform', `translate(0 ${(-DINA.lid * (1 - closed)).toFixed(2)})`);
       (P[`d-shut${side}`] as SVGElement).style.display = closed > 0.86 ? '' : 'none';
       (P[`d-lash${side}`] as SVGElement).style.display = closed > 0.86 ? 'none' : '';
     }
     // mouth: open with the voice, smile otherwise
     this.mouth.t = this.talking ? clamp(loud * 1.25, 0, 1) : 0;
     const open = clamp(this.mouth.step(dt), 0, 1); const smile = this.waving ? 1 : this.talking ? 0.45 : 0.7;
-    const m = mouthPaths(open, smile);
-    P['d-lips'].setAttribute('d', m.lips); P['d-mouthIn'].setAttribute('d', m.inside); P['d-teeth'].setAttribute('d', m.teeth); P['d-tongue'].setAttribute('d', m.tongue);
+    const mk = `${Math.round(open * 24)}/${Math.round(smile * 10)}`; // redraw only when the shape really changes
+    if (mk !== this.mouthKey) { this.mouthKey = mk; P['d-mouth'].innerHTML = mouthMarkup(Math.round(open * 24) / 24, smile); }
     this.brow.t = this.talking ? clamp(loud * 1.6 - 0.25, 0, 1) : this.waving ? 0.7 : 0.15;
     const br = this.brow.step(dt);
-    for (const side of ['A', 'B'] as const) P[`d-brow${side}`].setAttribute('transform', `translate(${(side === 'A' ? -16 : 16) + LX * 3.2} ${(-316 - br * 3.4 + LY * 2).toFixed(2)})`);
+    for (const side of ['A', 'B'] as const) P[`d-brow${side}`].setAttribute('transform', `translate(${(LX * 1.2).toFixed(2)} ${(-br * 1.7 + LY * 0.7).toFixed(2)})`);
 
     // ── hair: it swings a beat behind her ──
     const drag = -this.vx * 0.045 - T * 0.85 - lean * 0.8;
     this.curtA.t = drag + Math.sin(t * 1.25) * 0.5; this.curtB.t = drag + Math.sin(t * 1.25 + 1) * 0.5; this.back.t = drag * 0.55;
-    P['d-curtA'].setAttribute('transform', `rotate(${this.curtA.step(dt).toFixed(2)} -42 -300)`);
-    P['d-curtB'].setAttribute('transform', `rotate(${this.curtB.step(dt).toFixed(2)} 42 -300)`);
+    P['d-curtA'].setAttribute('transform', `rotate(${(this.curtA.step(dt) * 0.6).toFixed(2)} 92 48)`);
+    P['d-curtB'].setAttribute('transform', `rotate(${(this.curtB.step(dt) * 0.6).toFixed(2)} 150 60)`);
     P['d-hairBack'].setAttribute('transform', `rotate(${this.back.step(dt).toFixed(2)} 0 -330)`);
 
     // ── Toby in her arms ──
