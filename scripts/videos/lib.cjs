@@ -28,7 +28,7 @@ async function make(name, opts, steps) {
     title: async () => { lines.push(opts.hello); }, step: async (t) => { lines.push(t); }, note: async (t) => { lines.push(t); }, end: async () => { lines.push(opts.bye.say); } };
   await steps(collect, { user: 'sam' });
   fs.writeFileSync(path.join(rawDir, 'lines.json'), JSON.stringify(Object.fromEntries(lines.map((t, i) => [`l${i}`, voiceOf(t)])), null, 1));
-  execFileSync(PY, [path.join(__dirname, 'voice.py'), MODEL, path.join(rawDir, 'lines.json'), path.join(rawDir, 'voice'), '--level', ACCENT, '--speed', process.env.DINA_SPEED || '1.0'], { stdio: ['ignore', 'ignore', 'inherit'] });
+  execFileSync(PY, [path.join(__dirname, 'voice.py'), MODEL, path.join(rawDir, 'lines.json'), path.join(rawDir, 'voice'), '--level', ACCENT, '--speed', process.env.DINA_SPEED || '0.97', '--steady'], { stdio: ['ignore', 'ignore', 'inherit'] });
   const durations = JSON.parse(fs.readFileSync(path.join(rawDir, 'voice', 'durations.json'), 'utf8'));
   // A real recording beats the made-up voice: drop l0.m4a, l1.m4a … (or .mp3/.wav) into voice-recordings/<video>/ and
   // those lines use it instead. The script to read from is written to voice-recordings/<video>/script.txt.

@@ -114,13 +114,16 @@ function DinaBody({ walking, waving, talking, carrying, point, pointArm }: { wal
   );
 }
 
-/** Her arm around Toby when she carries him, drawn over the artwork so it reads as holding him. */
+/**
+ * Her arm around Toby when she carries him. The artwork already shows her hand holding him, so this is only the
+ * sleeve: down from the shoulder, bent at the elbow and up to that hand. One arm, one hand.
+ */
 function HoldingArm() {
   return (
     <svg viewBox="26 130 166 390" style={{ position: 'absolute', left: 0, top: (130 - 10) * UNIT, width: DW, height: 390 * UNIT, overflow: 'visible' }} aria-hidden>
-      <path d="M72 152C60 160 56 184 58 204C59 214 66 220 76 218L112 208C118 206 119 196 113 193L82 190C80 178 84 164 86 156Z" fill={C.top} />
-      <path d="M109 193.5L111.5 207" stroke={C.lace} strokeWidth="3.2" strokeLinecap="round" />
-      <path d="M112 193C119 191 126 193 128 198C129 203 125 207 118 208L112.5 207.5Z" fill={C.skin} stroke={C.skinSh} strokeWidth=".7" />
+      <path d="M74 153C63 160 59 180 62 196C64 206 73 210 82 205C91 199 97 186 101 172L92 167C88 177 84 184 80 187C79 176 82 164 86 156Z" fill={C.top} />
+      <path d="M69 198C76 202 86 192 94 174" stroke={C.topHi} strokeWidth="2" fill="none" strokeLinecap="round" opacity=".85" />
+      <path d="M91.5 167.5L100.5 172" stroke={C.lace} strokeWidth="3" strokeLinecap="round" />
     </svg>
   );
 }
@@ -130,7 +133,8 @@ function HoldingArm() {
 const u = (x: number, y: number) => `${((x - 26) * UNIT).toFixed(1)}px ${((y - 10) * UNIT).toFixed(1)}px`;
 function bustClip(carrying: boolean, waving: boolean): string {
   const right = waving ? [u(200, 10), u(200, 186), u(160, 186), u(160, 170)] : [u(192, 10), u(192, 143), u(168, 143), u(167, 170)];
-  const left = carrying ? [u(114, 170), u(114, 186), u(32, 186), u(32, 143), u(26, 143)] : [u(77, 170), u(76, 143), u(26, 143)];
+  // When she holds him, keep Toby and her hand from the artwork but not the wide shoulder behind them.
+  const left = carrying ? [u(116, 170), u(116, 178), u(72, 178), u(50, 170), u(46, 143), u(26, 143)] : [u(77, 170), u(76, 143), u(26, 143)];
   return `polygon(${[u(26, 10), ...right, ...left].join(',')})`;
 }
 
@@ -144,12 +148,12 @@ function Dina() {
         <div style={{ position: 'absolute', inset: 0, transformOrigin: '50% 100%', transform: `rotate(${lean}deg)`, transition: 'transform .3s ease-out' }}>
           <div style={{ position: 'absolute', inset: 0, transformOrigin: '50% 100%', animation: d.walking ? 'vg-bob .31s ease-in-out infinite' : 'vg-sway 4.6s ease-in-out infinite' }}>
             <DinaBody walking={d.walking} waving={d.waving} talking={d.talking} carrying={d.carrying} point={d.point} pointArm={d.pointArm} />
+            {d.carrying && <HoldingArm />}
             <div style={{ position: 'absolute', left: 0, top: 0, width: DW, transformOrigin: `${(120 - 26) * UNIT}px ${(132 - 10) * UNIT}px`, animation: d.talking ? 'vg-nod 1.3s ease-in-out infinite' : 'vg-head 5.2s ease-in-out infinite' }}>
               <div style={{ clipPath: bustClip(d.carrying, d.waving) }}>
                 <DinaArt size={DW} toby={d.carrying} animate speaking={d.talking} waving={d.waving} expression={d.waving || !d.talking ? 'beam' : 'smile'} />
               </div>
             </div>
-            {d.carrying && <HoldingArm />}
           </div>
         </div>
       </div>

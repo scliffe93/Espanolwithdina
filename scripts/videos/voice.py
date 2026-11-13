@@ -33,13 +33,15 @@ NATIVE = {'ɾ': 't', 'ɹ': 'ɾ', 'ɫ': 'l', 'ː': '', 'ʔ': '', '̩': '', 'ɚ': 
 # The one the videos use, with a real Spanish voice: a generic Spanish accent that stays easy to follow. It keeps
 # "sh" and the English "j", which a listener needs, and takes the rest from NATIVE.
 SPANISH = {**NATIVE, 'ʃ': 'ʃ', 'ʒ': 'ʒ'}
-LEVELS = {'clear': CLEAR, 'light': LIGHT, 'medium': MEDIUM, 'strong': STRONG, 'native': NATIVE, 'spanish': SPANISH}
+# For a voice from Spain: the same, but "th" stays as the Castilian z sound, which that voice has.
+CASTILIAN = {**SPANISH, 'θ': 'θ'}
+LEVELS = {'clear': CLEAR, 'light': LIGHT, 'medium': MEDIUM, 'strong': STRONG, 'native': NATIVE, 'spanish': SPANISH, 'castilian': CASTILIAN}
 VOWELS = set('aeiouɪʊæʌɑɒɔəɛɜɚɝᵻɐ')
 PUNCT = set(' ,.;:!?')
 
 def accent(ph, table, level):
     if level == 'native': ph = list(''.join(ph).replace('dʒ', 'ʝ'))
-    if level in ('native', 'spanish'): ph = list(''.join(ph).replace('ŋɡ', 'nɡ'))
+    if level in ('native', 'spanish', 'castilian'): ph = list(''.join(ph).replace('ŋɡ', 'nɡ'))
     out = []
     for i, p in enumerate(ph):
         # "estart", "espanish": Spanish has no word-initial s + consonant.
@@ -55,6 +57,7 @@ def accent(ph, table, level):
 class Dina:
     def __init__(self, model, level='spanish', speaker=None):
         self.speaker = speaker
+        self.noise, self.noise_w = 0.6, 0.8  # how much the tone and the timing vary; lower is steadier
         self.voice = PiperVoice.load(model)
         self.es = 'es-419'  # Spanish words are always phonemized as Latin American Spanish
         self.native_spanish = str(self.voice.config.espeak_voice).startswith('es')
@@ -82,7 +85,7 @@ class Dina:
         return [list(s.strip()) for s in re.findall(r'[^.!?]+[.!?]?', text_ph) if s.strip()]
 
     def say(self, text, path, speed=1.0):
-        cfg = SynthesisConfig(length_scale=1.0 / speed, noise_scale=0.6, noise_w_scale=0.8, **({'speaker_id': self.speaker} if self.speaker is not None else {}))
+        cfg = SynthesisConfig(length_scale=1.0 / speed, noise_scale=self.noise, noise_w_scale=self.noise_w, **({'speaker_id': self.speaker} if self.speaker is not None else {}))
         chunks = []
         for sent in self.phonemes(text):
             sent = [p for p in sent if p in self.ids]
@@ -126,6 +129,7 @@ if __name__ == '__main__':
     bark(out / 'bark.wav')
     speaker = int(sys.argv[sys.argv.index('--speaker') + 1]) if '--speaker' in sys.argv else None
     dina = Dina(model, level, speaker)
+    if '--steady' in sys.argv: dina.noise, dina.noise_w = 0.42, 0.55  # calm and even, like a phone assistant
     lines = json.loads(Path(lines_file).read_text())
     durations = {k: round(dina.say(v, out / f'{k}.wav', speed), 3) for k, v in lines.items()}
     (out / 'durations.json').write_text(json.dumps(durations, indent=1))
