@@ -70,7 +70,7 @@ DELE follows the Instituto Cervantes curriculum plan (Plan curricular del Instit
 
 ## How-to videos for students
 
-Six short videos (about 50 to 80 seconds each, with sound) sit at the top of the student guide (`#/guide?for=student`), each with a Download button: getting started, lessons, homework, practising alone, feedback and progress, and invoices. Each video file also has a direct link: `<site>/guides/videos/<name>.mp4`.
+Six short videos (about 40 to 65 seconds each, with sound) sit at the top of the student guide (`#/guide?for=student`), each with a Download button: getting started, lessons, homework, practising alone, feedback and progress, and invoices. Each video file also has a direct link: `<site>/guides/videos/<name>.mp4`.
 
 Dina and Toby guide each one, and they stay together:
 

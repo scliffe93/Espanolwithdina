@@ -28,12 +28,12 @@ const STUDENT: { title: string; steps: string[] }[] = [
 
 /** Short guided videos for students, with a spoken voiceover: Dina and Toby walk through each task. Files live in public/guides/videos (made by scripts/videos). */
 const VIDEOS: { file: string; title: string; about: string; seconds: number }[] = [
-  { file: '1-getting-started', title: 'Getting started', about: 'Log in and put the app on your iPhone.', seconds: 65 },
-  { file: '2-your-lessons', title: 'Your lessons', about: 'Your next lesson and what to prepare.', seconds: 57 },
-  { file: '3-your-homework', title: 'Your homework', about: 'Find it, do it, read the feedback.', seconds: 52 },
-  { file: '4-practise-on-your-own', title: 'Practise on your own', about: 'Verbs, word packs and games.', seconds: 77 },
-  { file: '5-feedback-and-progress', title: 'Feedback and progress', about: 'What Dina said and how far you have come.', seconds: 68 },
-  { file: '6-invoices', title: 'Invoices', about: 'What is due and how to say you have paid.', seconds: 69 },
+  { file: '1-getting-started', title: 'Getting started', about: 'Log in and put the app on your iPhone.', seconds: 57 },
+  { file: '2-your-lessons', title: 'Your lessons', about: 'Your next lesson and what to prepare.', seconds: 46 },
+  { file: '3-your-homework', title: 'Your homework', about: 'Find it, do it, read the feedback.', seconds: 42 },
+  { file: '4-practise-on-your-own', title: 'Practise on your own', about: 'Verbs, word packs and games.', seconds: 65 },
+  { file: '5-feedback-and-progress', title: 'Feedback and progress', about: 'What Dina said and how far you have come.', seconds: 56 },
+  { file: '6-invoices', title: 'Invoices', about: 'What is due and how to say you have paid.', seconds: 61 },
 ];
 
 function VideoGuides() {

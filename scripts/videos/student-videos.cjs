@@ -3,7 +3,8 @@
 // The voice needs Piper: set PIPER_PYTHON and PIPER_MODEL, or put a venv and the model under scripts/videos/voice-env (see docs/PLATFORM.md).
 // Needs: the normal build served on :4173 (npx vite preview --port 4173 --strictPort) for videos 2 to 6, which use the demo
 // workspace with its demo labels hidden. Video 1 (logging in) needs real accounts: an API on :8787
-// (ALLOWED_ORIGINS=http://localhost:4174 npx tsx server/dev-server.ts 8787 memory) and a build made with
+// (ALLOWED_ORIGINS=http://localhost:4174 npx tsx server/dev-server.ts 8787 memory, started with a throwaway
+// VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY so the notifications card shows) and a build made with
 // VITE_LWD_API_URL=http://localhost:8787/account served on :4174. Needs ffmpeg. Output: scripts/videos/out/*.mp4.
 // Usage: node scripts/videos/student-videos.cjs [1 2 3 ...]
 const { make } = require('./lib.cjs');
