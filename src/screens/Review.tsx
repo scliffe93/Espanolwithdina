@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { HelpMeRemember, type MemorySource } from '../components/HelpMeRemember';
 import { Icon } from '../components/Icon';
 import { Bar, Empty, PageHeader } from '../components/ui';
-import { personLabel, VERB_BY_INF, conjugate, groupLabel, type Tense } from '../data/verbs';
+import { personShort, VERB_BY_INF, conjugate, groupLabel, type Tense } from '../data/verbs';
 import { VOCAB_BY_ID, acceptedAnswers, vocabForm, vocabKey } from '../data/vocab';
 import { PACK_BY_ID, VOCAB_PACKS } from '../data/vocabPacks';
 import { withinLevel } from '../lib/platform/level';
@@ -52,7 +52,7 @@ function toItem(card: SrsCard, region: import('../types').Region): Item | null {
   if (region !== 'spain' && person === 4) return null;
   const form = conjugate(verb, tense, person);
   return {
-    key: card.key, prompt: `${verb.pronominal ? '' : personLabel(person).split(' ')[0] + ' · '}${verb.inf}`, sub: `${verb.en} — ${tense === 'present' ? 'present' : tense === 'progressive' ? 'present progressive' : 'present perfect'}${verb.pronominal ? ` · ${['a mí', 'a ti', 'a él/ella', 'a nosotros', 'a vosotros', 'a ellos'][person]}` : ''}`,
+    key: card.key, prompt: `${verb.pronominal ? '' : personShort(person) + ' · '}${verb.inf}`, sub: `${verb.en} — ${tense === 'present' ? 'present' : tense === 'progressive' ? 'present progressive' : 'present perfect'}${verb.pronominal ? ` · ${['a mí', 'a ti', 'a él/ella', 'a nosotros', 'a vosotros', 'a ellos'][person]}` : ''}`,
     answers: [form], display: form, isNew: false, verb: { inf: verb.inf, tense, person },
     memory: { key: card.key, answer: form, en: verb.en, origin: verb.origin, trick: verb.trick, pattern: `${groupLabel(verb.group)}. ${verb.note ?? ''}` },
   };

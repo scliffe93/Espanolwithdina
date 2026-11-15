@@ -2,6 +2,8 @@ import { NotificationsCard } from '../../components/NotificationsCard';
 import { motion } from 'motion/react';
 import { InvoiceNudge } from './InvoiceNudge';
 import { LessonBrief, lastLessonBefore } from './LessonBrief';
+import { levelReadiness, shouldSuggest } from '../../lib/levelUp';
+import { overallLevel } from '../../lib/platform/level';
 import { useMemo, useState } from 'react';
 import { DinaArt } from '../../components/Dina';
 import { Icon } from '../../components/Icon';
@@ -54,6 +56,15 @@ export function Today() {
   const insights = people.map((p) => studentInsight(p, progress[p.id] ?? null, homework.data ?? [], bookings.data ?? []));
   const needSupport = insights.filter((i) => i.support.length);
   const hour = Number(utcIsoToZoned(nowIso, zone).time.slice(0, 2));
+  // Students the app thinks are ready for the next level. It only suggests: she confirms on the student's page.
+  const ids = people.map((p) => p.id).join(',');
+  const settings = usePlatformQuery((b) => Promise.all(people.map((p) => b.studentSettings(p.id).catch(() => null))), [ids]);
+  const movers = people.map((p, i) => {
+    const st = progress[p.id]; const set = settings.data?.[i] ?? null;
+    if (!st || !settings.data) return null;
+    const r = levelReadiness(st, set?.maxLevel ?? set?.verified?.level ?? overallLevel(st.profile?.levels));
+    return shouldSuggest(r, set?.notYet) ? { p, r } : null;
+  }).filter((x): x is NonNullable<typeof x> => !!x);
 
   const setStatus = async (b: Booking, status: Booking['status'], title: string) => {
     if (!backend) return;
@@ -150,6 +161,20 @@ export function Today() {
               </ul>
             ) : <p className="text-sm text-ink-mute"><Icon name="check" size={14} className="mr-1 inline text-olive" />Everyone is on track: studying regularly, accuracy above 60%, no overdue homework.</p>}
           </Section>
+
+          {movers.length > 0 && (
+            <Section title="Ready to move up" eyebrow="Suggested by the app">
+              <ul className="grid gap-2" data-testid="ready-to-move">
+                {movers.map(({ p, r }) => (
+                  <li key={p.id} className="flex items-center gap-3 rounded-2xl bg-olive-50 p-3 ring-1 ring-olive/30">
+                    <Avatar name={p.firstName} tone={toneFor(people, p.id)} size={36} />
+                    <p className="min-w-0 flex-1 text-sm"><b>{p.firstName}</b> looks ready for <b>{r.next}</b>. <span className="text-ink-soft">Check the evidence and confirm.</span></p>
+                    <button type="button" className="ctrl" onClick={() => openStudent(p.id)}>Review <Icon name="arrowRight" size={14} /></button>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
 
           <Section title="Recent student activity" eyebrow="Live from the app">
             {!activity.data ? <Loading /> : <ActivityList events={activity.data} people={people} />}

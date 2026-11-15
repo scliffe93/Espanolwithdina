@@ -265,7 +265,7 @@ class CloudBackend implements PlatformBackend {
   }
   async saveStudentSettings(input: StudentSettingsInput) {
     this.assertTeacher();
-    const s: StudentSettings = { id: settingsId(input.studentId), studentId: input.studentId, teacherId: this.actor.id, maxLevel: input.maxLevel, ...(input.note?.trim() ? { note: input.note.trim() } : {}), ...(input.stepped ? { stepped: true } : {}), ...(input.unlocked?.length ? { unlocked: [...new Set(input.unlocked)] } : {}), updatedAt: this.iso() };
+    const s: StudentSettings = { id: settingsId(input.studentId), studentId: input.studentId, teacherId: this.actor.id, maxLevel: input.maxLevel, ...(input.note?.trim() ? { note: input.note.trim() } : {}), ...(input.stepped ? { stepped: true } : {}), ...(input.unlocked?.length ? { unlocked: [...new Set(input.unlocked)] } : {}), ...(input.verified ? { verified: input.verified } : {}), ...(input.notYet ? { notYet: input.notYet } : {}), updatedAt: this.iso() };
     return this.put('student', s.id, s.studentId, s);
   }
 

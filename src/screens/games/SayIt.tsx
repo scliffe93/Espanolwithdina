@@ -1,7 +1,10 @@
+import { useT } from '../../lib/i18n';
 import { motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../../components/Icon';
-import { conjugate, personsForRegion, verbKey, type Verb } from '../../data/verbs';
+import { conjugate, verbKey, type Tense, type Verb } from '../../data/verbs';
+import { useLevelAccess } from '../../lib/platform/useLevelAccess';
+import { personFor, tenseForLevel, tenseLabel } from './level';
 import { checkAnswer, classifyVerbError } from '../../lib/answer';
 import { pronounFor } from '../../lib/exercises';
 import { useSay, stopSpeaking } from '../../hooks/useSpeech';
@@ -14,21 +17,25 @@ import { useVerbPool } from './MetroRush';
 
 // Say It: a pronoun and a verb; say the form aloud and the phone checks what it heard.
 
-interface Round { id: number; verb: Verb; person: number; pronoun: string; answer: string }
+interface Round { id: number; verb: Verb; person: number; pronoun: string; answer: string; tense: Tense }
 
 function Mic({ api }: { api: GameApi }) {
   const { state, update } = useStore();
   const say = useSay();
   const pool = useVerbPool();
-  const persons = personsForRegion();
+  const { t } = useT();
   const idRef = useRef(0);
+  const { level } = useLevelAccess();
+  const region = useStore().state.profile?.region ?? 'spain';
   const make = (): Round => {
-    for (let i = 0; i < 20; i++) {
-      const verb = pool[Math.floor(Math.random() * pool.length)], person = persons[Math.floor(Math.random() * persons.length)];
-      const answer = conjugate(verb, 'present', person);
-      if (answer && !verb.pronominal) return { id: ++idRef.current, verb, person, pronoun: pronounFor(verb, person), answer };
+    for (let i = 0; i < 30; i++) {
+      const verb = pool[Math.floor(Math.random() * pool.length)];
+      const tense = tenseForLevel(level);
+      const person = personFor(verb, tense, region);
+      if (person === null || verb.pronominal) continue;
+      return { id: ++idRef.current, verb, person, pronoun: pronounFor(verb, person), answer: conjugate(verb, tense, person), tense };
     }
-    const verb = pool[0]; return { id: ++idRef.current, verb, person: 0, pronoun: pronounFor(verb, 0), answer: conjugate(verb, 'present', 0) };
+    const verb = pool[0]; return { id: ++idRef.current, verb, person: 0, pronoun: pronounFor(verb, 0), answer: conjugate(verb, 'present', 0), tense: 'present' };
   };
   const [round, setRound] = useState<Round>(make);
   const [listening, setListening] = useState(false);
@@ -39,7 +46,7 @@ function Mic({ api }: { api: GameApi }) {
   useEffect(() => () => { window.clearTimeout(stopTimer.current); mic.current?.stop(); }, []);
   useEffect(() => { if (!api.playing) mic.current?.stop(); }, [api.playing]);
   const label = `${round.pronoun} ${round.answer}`;
-  const attempt = { key: verbKey(round.verb.inf, 'present', round.person), exerciseType: 'game-say', verb: round.verb.inf, tense: 'present' };
+  const attempt = { key: verbKey(round.verb.inf, round.tense, round.person), exerciseType: 'game-say', verb: round.verb.inf, tense: round.tense };
   const next = () => { setResult(null); setNote(null); setRound(make()); };
 
   const judge = (heard: string) => {
@@ -48,7 +55,7 @@ function Mic({ api }: { api: GameApi }) {
     update((s) => addSpeakingAttempt(s));
     if (ok) { api.hit(130, attempt, { label, correct: true }); setTimeout(next, 900); }
     else {
-      const category = classifyVerbError(round.verb, 'present', round.person, heard);
+      const category = classifyVerbError(round.verb, round.tense, round.person, heard);
       api.miss({ ...attempt, mistake: { expected: round.answer, given: heard, category, context: `Say It · ${round.verb.inf}` } }, { label, correct: false, detail: `I heard “${heard}”`, category });
       void say(label);
       setTimeout(next, 2200);
@@ -72,7 +79,7 @@ function Mic({ api }: { api: GameApi }) {
   return (
     <div className="overflow-hidden rounded-4xl bg-olive text-white shadow-lift">
       <div className="p-5 text-center sm:p-7">
-        <p className="eyebrow !text-white/75">Present · say it in Spanish</p>
+        <p className="eyebrow !text-white/75"><b className="text-saffron-light">{tenseLabel(round.tense)}</b> · say it in Spanish</p>
         <motion.p key={round.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }} className="mt-1 font-display text-4xl font-semibold sm:text-5xl" lang="es"><span className="text-saffron-light">{round.pronoun}</span> · {round.verb.inf}</motion.p>
         <p className="mt-1 text-sm text-white/80">{round.verb.en.split(' (')[0]}</p>
       </div>
@@ -83,7 +90,7 @@ function Mic({ api }: { api: GameApi }) {
           <Icon name={result ? (result.ok ? 'check' : 'x') : 'mic'} size={44} />
         </motion.button>
         <p className="min-h-[3.2rem] text-center" role="status">
-          {result ? (result.ok ? <span className="font-display text-2xl font-semibold text-olive" lang="es">{label}</span> : <>I heard “{result.heard}”. It is <b lang="es">{label}</b></>) : listening ? <span className="font-semibold text-terracotta">Listening…</span> : note ? <span className="text-sm text-ink-soft">{note}</span> : <span className="text-sm text-ink-mute">Tap the microphone, then say the form</span>}
+          {result ? (result.ok ? <span className="font-display text-2xl font-semibold text-olive" lang="es">{label}</span> : <>I heard “{result.heard}”. It is <b lang="es">{label}</b></>) : listening ? <span className="font-semibold text-terracotta">Listening…</span> : note ? <span className="text-sm text-ink-soft">{note}</span> : <span className="text-sm text-ink-mute">{t('Tap the microphone, then say the form')}</span>}
         </p>
         <button type="button" className="ctrl" disabled={!!result || listening} onClick={() => { api.miss({ ...attempt, mistake: { expected: round.answer, given: '(skipped)', category: 'other', context: `Say It · ${round.verb.inf}` } }, { label, correct: false, detail: 'skipped' }); setResult({ ok: false, heard: '…' }); void say(label); setTimeout(next, 1800); }}>I don’t know this one</button>
       </div>

@@ -14,6 +14,15 @@ export function withinLevel(level: Cefr, maxLevel: Cefr | null | undefined): boo
   return !maxLevel || levelIdx(level) <= levelIdx(maxLevel);
 }
 
+/** One level for a learner from their six skill levels: the middle one. */
+export function overallLevel(levels: Record<string, Cefr> | null | undefined): Cefr {
+  const sorted = Object.values(levels ?? {}).map(levelIdx).filter((i) => i >= 0).sort((a, b) => a - b);
+  return sorted.length ? CEFR_LEVELS[sorted[Math.floor(sorted.length / 2)]] : 'A1';
+}
+
+/** The level above, or null at the top. */
+export const nextLevel = (l: Cefr): Cefr | null => CEFR_LEVELS[levelIdx(l) + 1] ?? null;
+
 /** The settings row id for a student (one row per student). */
 export const settingsId = (studentId: string) => `student-${studentId}`;
 

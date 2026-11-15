@@ -1,5 +1,6 @@
 import { NotificationsCard } from '../../components/NotificationsCard';
 import { FocusAreas } from '../../components/FocusAreas';
+import { MovingUp } from '../../components/MovingUp';
 import { focusAreas, lessonPrep } from '../../lib/focus';
 import { currentStreak } from '../../lib/analytics';
 import { DailyReminder } from '../../components/DailyReminder';
@@ -275,6 +276,7 @@ export function Home() {
             <ContinueLearning state={state} />
           </div>
           <Concentrate state={state} />
+          <MovingUp className="mt-4" />
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
             <HomeworkGlance buckets={homeworkBuckets(data.homework, now)} now={now} />
             <LatestFeedback list={data.feedback.slice(0, 3)} now={now} />

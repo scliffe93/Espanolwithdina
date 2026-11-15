@@ -110,17 +110,17 @@ async function playScene(page, id) {
 
   // Verb gym session
   await page.goto(`${BASE}#/verbs`);
-  await page.getByRole('button', { name: /Start 12-exercise session/ }).click();
+  await page.getByRole('button', { name: /Start 12-exercise session|Empezar sesión/ }).click();
   for (let s = 0; s < 40; s++) {
     if (await page.getByText(/correct ·/).isVisible().catch(() => false)) break;
     const cont = page.getByRole('button', { name: /^Continue/ });
     if (await cont.isVisible().catch(() => false)) { await tap(cont); await page.waitForTimeout(250); continue; }
     const input = page.getByLabel('Your answer');
-    if (await input.isVisible().catch(() => false)) { await input.fill(s % 2 ? 'hablo' : 'tieno'); await page.getByRole('button', { name: 'Check' }).click(); await page.waitForTimeout(150); if (s === 5) await page.screenshot({ path: `${OUT}/10-verb-feedback.png` }); continue; }
+    if (await input.isVisible().catch(() => false)) { await input.fill(s % 2 ? 'hablo' : 'tieno'); await page.getByRole('button', { name: /^(Check|Comprobar)$/ }).click(); await page.waitForTimeout(150); if (s === 5) await page.screenshot({ path: `${OUT}/10-verb-feedback.png` }); continue; }
     const tiles = page.locator('div.mt-3.flex.flex-wrap.gap-2 > button:not(.invisible)');
     if (await page.getByText('Tap the words in order.').isVisible().catch(() => false)) {
       while (await tiles.count()) { await tiles.first().click(); await page.waitForTimeout(60); }
-      await page.getByRole('button', { name: 'Check' }).click(); continue;
+      await page.getByRole('button', { name: /^(Check|Comprobar)$/ }).click(); continue;
     }
     if (await page.getByText(/Match each pronoun/).isVisible().catch(() => false)) {
       const left = page.locator('div.grid.grid-cols-2 > div:first-child > button:not([disabled])');
@@ -151,7 +151,7 @@ async function playScene(page, id) {
     const hint = page.getByRole('button', { name: 'Help me remember' });
     if (s === 1 && await hint.isVisible().catch(() => false)) { await hint.click(); await page.screenshot({ path: `${OUT}/14-help-me-remember.png` }); }
     const input = page.getByLabel('Your answer');
-    if (await input.isEnabled({ timeout: 500 }).catch(() => false)) { await input.fill('maleta').catch(() => {}); await page.getByRole('button', { name: 'Check' }).click({ timeout: 2000 }).catch(() => {}); }
+    if (await input.isEnabled({ timeout: 500 }).catch(() => false)) { await input.fill('maleta').catch(() => {}); await page.getByRole('button', { name: /^(Check|Comprobar)$/ }).click({ timeout: 2000 }).catch(() => {}); }
     const nxt = page.getByRole('button', { name: /^Next/ });
     if (await nxt.isVisible().catch(() => false)) await nxt.click({ timeout: 2000 }).catch(() => {});
     await page.waitForTimeout(120);

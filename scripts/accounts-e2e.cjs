@@ -174,11 +174,11 @@ async function newDevice(browser, kind) {
   await laptop.page.waitForTimeout(300);
   await laptop.page.goto(`${BASE}#/verbs`).catch(() => {});
   await laptop.page.waitForTimeout(600);
-  await laptop.page.getByRole('button', { name: /Start 12-exercise session/ }).click();
+  await laptop.page.getByRole('button', { name: /Start 12-exercise session|Empezar sesión/ }).click();
   for (let i = 0; i < 6; i++) {
     const opt = laptop.page.locator('div.mt-5.grid button:not([disabled])').first();
     const input = laptop.page.getByLabel('Your answer');
-    if (await input.isVisible().catch(() => false)) { await input.fill('hablo'); await tap(laptop.page.getByRole('button', { name: 'Check' })); }
+    if (await input.isVisible().catch(() => false)) { await input.fill('hablo'); await tap(laptop.page.getByRole('button', { name: /^(Check|Comprobar)$/ })); }
     else if (await opt.isVisible().catch(() => false)) await tap(opt);
     else await tap(laptop.page.locator('div.grid.grid-cols-2 button:not([disabled])').first());
     await laptop.page.waitForTimeout(300);

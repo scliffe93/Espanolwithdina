@@ -1,7 +1,8 @@
 import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CITY_THEMES } from '../../data/cityThemes';
-import { VERBS, conjugate, personsForRegion, verbKey, type Verb } from '../../data/verbs';
+import { VERBS, conjugate, verbKey, type Tense, type Verb } from '../../data/verbs';
+import { personFor, tenseForLevel, tenseLabel } from './level';
 import { classifyVerbError } from '../../lib/answer';
 import { formOptions, pronounFor } from '../../lib/exercises';
 import { useSay } from '../../hooks/useSpeech';
@@ -9,7 +10,7 @@ import { useStore } from '../../lib/store';
 import { useLevelAccess } from '../../lib/platform/useLevelAccess';
 import { GameShell, type GameApi } from './GameShell';
 
-interface Round { id: number; verb: Verb; person: number; pronoun: string; options: string[]; answer: string }
+interface Round { id: number; verb: Verb; person: number; pronoun: string; options: string[]; answer: string; tense: Tense }
 
 export function useVerbPool(): Verb[] {
   const { state } = useStore();
@@ -34,12 +35,20 @@ function Track({ api }: { api: GameApi }) {
   const city = CITY_THEMES[state.profile?.city ?? 'madrid'];
   const cable = city.transit.style === 'cable';
   const pool = useVerbPool();
-  const persons = personsForRegion();
   const idRef = useRef(0);
+  const { level } = useLevelAccess();
+  const region = state.profile?.region ?? 'spain';
   const make = (): Round => {
-    const verb = pool[Math.floor(Math.random() * pool.length)];
-    const person = persons[Math.floor(Math.random() * persons.length)];
-    return { id: ++idRef.current, verb, person, pronoun: pronounFor(verb, person), options: formOptions(verb, 'present', person, state.profile?.region ?? 'spain'), answer: conjugate(verb, 'present', person) };
+    for (let i = 0; i < 30; i++) {
+      const verb = pool[Math.floor(Math.random() * pool.length)];
+      const tense = tenseForLevel(level);
+      const person = personFor(verb, tense, region);
+      if (person === null) continue;
+      const options = formOptions(verb, tense, person, region);
+      if (options.length >= 3) return { id: ++idRef.current, verb, person, pronoun: pronounFor(verb, person), options, answer: conjugate(verb, tense, person), tense };
+    }
+    const verb = pool[0];
+    return { id: ++idRef.current, verb, person: 0, pronoun: pronounFor(verb, 0), options: formOptions(verb, 'present', 0, region), answer: conjugate(verb, 'present', 0), tense: 'present' };
   };
   const [round, setRound] = useState<Round>(make);
   const [result, setResult] = useState<{ picked: string; ok: boolean } | null>(null);
@@ -62,13 +71,13 @@ function Track({ api }: { api: GameApi }) {
     if (result || !api.playing) return;
     const ok = opt === round.answer;
     setResult({ picked: opt, ok });
-    const attempt = { key: verbKey(round.verb.inf, 'present', round.person), exerciseType: 'game-metro', verb: round.verb.inf, tense: 'present' };
+    const attempt = { key: verbKey(round.verb.inf, round.tense, round.person), exerciseType: 'game-metro', verb: round.verb.inf, tense: round.tense };
     if (ok) {
       api.hit(100, attempt, { label: `${round.pronoun} ${round.answer}`, correct: true }, e ? { x: e.clientX, y: e.clientY } : undefined);
       say(`${round.pronoun} ${round.answer}`);
       setTimeout(next, 450);
     } else {
-      const category = classifyVerbError(round.verb, 'present', round.person, opt);
+      const category = classifyVerbError(round.verb, round.tense, round.person, opt);
       api.miss({ ...attempt, mistake: { expected: round.answer, given: opt, category, context: 'Metro Rush' } }, { label: `${round.pronoun} ${round.answer}`, correct: false, detail: `you picked “${opt}”`, category });
       setTimeout(next, 1300);
     }
@@ -78,7 +87,7 @@ function Track({ api }: { api: GameApi }) {
     if (result) return;
     if (!api.playing) { next(); return; }
     setResult({ picked: '', ok: false });
-    api.miss({ key: verbKey(round.verb.inf, 'present', round.person), exerciseType: 'game-metro', verb: round.verb.inf, tense: 'present', mistake: { expected: round.answer, given: '(too slow)', category: 'other', context: 'Metro Rush' } }, { label: `${round.pronoun} ${round.answer}`, correct: false, detail: 'the train left' });
+    api.miss({ key: verbKey(round.verb.inf, round.tense, round.person), exerciseType: 'game-metro', verb: round.verb.inf, tense: round.tense, mistake: { expected: round.answer, given: '(too slow)', category: 'other', context: 'Metro Rush' } }, { label: `${round.pronoun} ${round.answer}`, correct: false, detail: 'the train left' });
     setTimeout(next, 1100);
   };
 
@@ -97,7 +106,7 @@ function Track({ api }: { api: GameApi }) {
         <motion.p key={round.id} initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="mt-1 font-display text-4xl font-semibold sm:text-5xl">
           <span className="text-saffron-light">{round.pronoun}</span> · {round.verb.inf}
         </motion.p>
-        <p className="mt-1 text-sm text-white/75">{round.verb.en.split(' (')[0]}</p>
+        <p className="mt-1 text-sm text-white/75">{round.verb.en.split(' (')[0]}{round.tense !== 'present' && <> · <b className="text-saffron-light">{tenseLabel(round.tense)}</b></>}</p>
       </div>
       {/* track */}
       <div ref={track} className="relative h-44 overflow-hidden bg-gradient-to-b from-azul to-[#0d1a2c] sm:h-48">

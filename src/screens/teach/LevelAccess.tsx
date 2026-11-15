@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { Icon } from '../../components/Icon';
 import { usePlatform, usePlatformQuery } from '../../lib/platform/context';
 import { useStore } from '../../lib/store';
-import { CEFR_LEVELS, type Cefr } from '../../types';
+import { CEFR_LEVELS, type AppState, type Cefr } from '../../types';
+import { levelReadiness, shouldSuggest } from '../../lib/levelUp';
+import { overallLevel } from '../../lib/platform/level';
 import { ReleaseBlocks } from './ReleaseBlocks';
 import { ErrorText, useAction } from './shared';
 
 /** The teacher's level ceiling for one student: the highest level of work they can open on their own. */
-export function LevelAccess({ studentId, name }: { studentId: string; name: string }) {
+export function LevelAccess({ studentId, name, state }: { studentId: string; name: string; state?: AppState | null }) {
   const { backend } = usePlatform();
   const { notify } = useStore();
   const { run, busy, error, setError } = useAction();
@@ -20,7 +22,7 @@ export function LevelAccess({ studentId, name }: { studentId: string; name: stri
 
   const save = async () => {
     if (!backend) return;
-    const saved = await run(() => backend.saveStudentSettings({ studentId, maxLevel: level || null, note, stepped: q.data?.stepped, unlocked: q.data?.unlocked }));
+    const saved = await run(() => backend.saveStudentSettings({ studentId, maxLevel: level || null, note, stepped: q.data?.stepped, unlocked: q.data?.unlocked, verified: q.data?.verified, notYet: q.data?.notYet }));
     if (saved) {
       q.reload();
       notify('Level access saved', saved.maxLevel ? `${name} can open work up to ${saved.maxLevel}.` : `${name} can open everything.`);
@@ -31,12 +33,56 @@ export function LevelAccess({ studentId, name }: { studentId: string; name: stri
   /** Saves a change to the gradual-release blocks, keeping the ceiling and note as they are. */
   const saveRelease = async (patch: { stepped: boolean; unlocked: string[] }, message: string) => {
     if (!backend) return;
-    const saved = await run(() => backend.saveStudentSettings({ studentId, maxLevel: current, note: q.data?.note, ...patch }));
+    const saved = await run(() => backend.saveStudentSettings({ studentId, maxLevel: current, note: q.data?.note, verified: q.data?.verified, notYet: q.data?.notYet, ...patch }));
     if (saved) { notify('Saved', message); q.reload(); }
+  };
+
+  // The app's suggestion: it weighs the student's own practice and proposes; the teacher decides.
+  const working: Cefr = current ?? q.data?.verified?.level ?? overallLevel(state?.profile?.levels);
+  const ready = state && q.data !== undefined ? levelReadiness(state, working) : null;
+  const suggest = !!ready && shouldSuggest(ready, q.data?.notYet);
+  const [showWhy, setShowWhy] = useState(false);
+  const moveUp = async () => {
+    if (!backend || !ready?.next) return;
+    const at = new Date().toISOString();
+    // A student with a ceiling has it raised; one without keeps everything open and just has the new level recorded.
+    const saved = await run(() => backend.saveStudentSettings({ studentId, maxLevel: current ? ready.next : null, note: q.data?.note, stepped: q.data?.stepped, unlocked: q.data?.unlocked, verified: { level: ready.next!, at } }));
+    if (saved) { q.reload(); notify(`${name} moved up to ${ready.next}`, 'They will see it in their app, with the new games and tenses open.'); }
+  };
+  const notYet = async () => {
+    if (!backend || !ready) return;
+    const saved = await run(() => backend.saveStudentSettings({ studentId, maxLevel: current, note: q.data?.note, stepped: q.data?.stepped, unlocked: q.data?.unlocked, verified: q.data?.verified, notYet: { level: ready.level, at: new Date().toISOString() } }));
+    if (saved) { q.reload(); notify('Not yet', `The app will not suggest it again for three weeks.`); }
   };
 
   return (
     <div className="mx-4 mb-4 rounded-2xl bg-cream-100 p-3 text-sm" data-testid="level-access">
+      {ready?.next && (
+        <div className={`mb-3 rounded-2xl p-3 ring-1 ${suggest ? 'bg-olive-50 ring-olive/40' : 'bg-white ring-ink/5'}`} data-testid="level-suggestion" data-ready={suggest}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="min-w-0 flex-1">
+              <span className="eyebrow mr-2 !text-[10px]">{suggest ? 'Suggested by the app' : `Working at ${working}`}</span>
+              {suggest ? <><b>{name} looks ready to move up from {ready.level} to {ready.next}.</b> You decide.</> : <span className="text-ink-soft">{ready.summary}</span>}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              <button type="button" className="ctrl !py-1.5" onClick={() => setShowWhy(!showWhy)} aria-expanded={showWhy}>{showWhy ? 'Hide the evidence' : 'See the evidence'}</button>
+              {suggest && <button type="button" className="btn-dark !py-1.5" disabled={busy} onClick={moveUp} data-testid="level-approve"><Icon name="check" size={14} /> Move up to {ready.next}</button>}
+              {suggest && <button type="button" className="ctrl !py-1.5" disabled={busy} onClick={notYet} data-testid="level-not-yet">Not yet</button>}
+            </div>
+          </div>
+          {showWhy && (
+            <ul className="mt-3 grid gap-1.5 border-t border-ink/10 pt-3">
+              {ready.checks.map((c) => (
+                <li key={c.id} className="flex items-start gap-2.5">
+                  <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full ${c.met ? 'bg-olive text-white' : 'bg-white text-ink-mute ring-1 ring-ink/15'}`}>{c.met && <Icon name="check" size={12} />}</span>
+                  <span><b>{c.label}</b> <span className="text-ink-mute">· {c.detail}</span></span>
+                </li>
+              ))}
+              {!suggest && ready.next && <li className="mt-1"><button type="button" className="ctrl !py-1.5" disabled={busy} onClick={moveUp}>Move up to {ready.next} anyway</button></li>}
+            </ul>
+          )}
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p>
           <span className="eyebrow mr-2 !text-[10px]">Level access</span>

@@ -5,6 +5,7 @@ import { StoreProvider } from './lib/store';
 import { AccountProvider } from './lib/account';
 import { PlatformProvider } from './lib/platform/context';
 import { installDiagnostics } from './lib/diagnostics';
+import { LanguageProvider } from './lib/i18n';
 import './index.css';
 
 installDiagnostics();
@@ -14,7 +15,7 @@ createRoot(document.getElementById('root')!).render(
     <StoreProvider>
       <AccountProvider>
         <PlatformProvider>
-          <App />
+          <LanguageProvider><App /></LanguageProvider>
         </PlatformProvider>
       </AccountProvider>
     </StoreProvider>

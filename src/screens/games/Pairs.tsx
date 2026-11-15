@@ -1,3 +1,4 @@
+import { useT } from '../../lib/i18n';
 import { motion } from 'motion/react';
 import { useMemo, useRef, useState } from 'react';
 import { VOCAB, vocabForm, vocabKey, type VocabItem } from '../../data/vocab';
@@ -17,6 +18,7 @@ function Board({ api }: { api: GameApi }) {
   const { state } = useStore();
   const say = useSay();
   const region = state.profile?.region ?? 'spain';
+  const { t } = useT();
   const { maxLevel } = useLevelAccess();
   const pool = useMemo(() => {
     const ok = VOCAB.filter((v) => withinLevel(v.level, maxLevel) && v.en.length <= 26 && vocabForm(v, region).length <= 26);
@@ -74,7 +76,7 @@ function Board({ api }: { api: GameApi }) {
 
   return (
     <div className="rounded-4xl bg-azul p-4 shadow-lift sm:p-5">
-      <p className="mb-3 text-center text-sm font-medium text-white/80">Tap a word, then its meaning</p>
+      <p className="mb-3 text-center text-sm font-medium text-white/80">{t('Tap a word, then its meaning')}</p>
       <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
         {[left, right].map((col, c) => (
           <div key={c} className="grid gap-2.5 sm:gap-3">

@@ -12,8 +12,8 @@ async function completeVerbSession(page) {
     const cont = page.getByRole('button', { name: /^Continue/ });
     if (await cont.isVisible().catch(() => false)) { await tap(cont); await page.waitForTimeout(150); continue; }
     const input = page.getByLabel('Your answer');
-    if (await input.isVisible().catch(() => false)) { await input.fill('tengo'); await tap(page.getByRole('button', { name: 'Check' })); await page.waitForTimeout(150); continue; }
-    if (await page.getByText('Tap the words in order.').isVisible().catch(() => false)) { const tiles = page.locator('div.mt-3.flex.flex-wrap.gap-2 > button:not(.invisible)'); while (await tiles.count()) { await tiles.first().click(); } await tap(page.getByRole('button', { name: 'Check' })); continue; }
+    if (await input.isVisible().catch(() => false)) { await input.fill('tengo'); await tap(page.getByRole('button', { name: /^(Check|Comprobar)$/ })); await page.waitForTimeout(150); continue; }
+    if (await page.getByText('Tap the words in order.').isVisible().catch(() => false)) { const tiles = page.locator('div.mt-3.flex.flex-wrap.gap-2 > button:not(.invisible)'); while (await tiles.count()) { await tiles.first().click(); } await tap(page.getByRole('button', { name: /^(Check|Comprobar)$/ })); continue; }
     if (await page.getByText(/Match each pronoun/).isVisible().catch(() => false)) {
       const left = page.locator('div.grid.grid-cols-2 > div:first-child > button:not([disabled])'), right = page.locator('div.grid.grid-cols-2 > div:last-child > button:not([disabled])');
       for (let g = 0; g < 20 && (await left.count()); g++) { await left.first().click(); const n = await right.count(); for (let r = 0; r < n; r++) { await right.nth(r).click(); await page.waitForTimeout(60); if ((await left.count()) < n) break; } }

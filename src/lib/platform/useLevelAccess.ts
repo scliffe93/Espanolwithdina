@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import type { Cefr } from '../../types';
 import { usePlatform, usePlatformQuery } from './context';
-import { allowedPacks, allowedVerbs } from './level';
+import { allowedPacks, allowedVerbs, overallLevel } from './level';
+import { useStore } from '../store';
 import type { StudentSettings } from './types';
 
 export interface LevelAccess {
@@ -12,6 +13,8 @@ export interface LevelAccess {
   /** Gradual release: the verbs and word packs the teacher has released, or null when there is no restriction. */
   verbs: Set<string> | null;
   packs: Set<string> | null;
+  /** The level this person is working at: the teacher's ceiling, else the level she last confirmed, else their own. Games and the app's language follow it. */
+  level: Cefr;
 }
 
 /** The current actor's level ceiling. Only students have one; everyone else gets null. */
@@ -23,5 +26,7 @@ export function useLevelAccess(): LevelAccess {
   const key = `${s?.stepped ? 1 : 0}|${(s?.unlocked ?? []).join(',')}`;
   const verbs = useMemo(() => allowedVerbs(s), [key]); // eslint-disable-line react-hooks/exhaustive-deps
   const packs = useMemo(() => allowedPacks(s), [key]); // eslint-disable-line react-hooks/exhaustive-deps
-  return { maxLevel: s?.maxLevel ?? null, loading: isStudent && q.loading, settings: q.data, verbs, packs };
+  const { state } = useStore();
+  const level = s?.maxLevel ?? s?.verified?.level ?? overallLevel(state.profile?.levels);
+  return { maxLevel: s?.maxLevel ?? null, loading: isStudent && q.loading, settings: q.data, verbs, packs, level };
 }

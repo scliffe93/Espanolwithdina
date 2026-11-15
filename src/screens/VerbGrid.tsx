@@ -1,6 +1,7 @@
+import { useT } from '../lib/i18n';
 import { useMemo, useRef, useState } from 'react';
 import { Icon } from '../components/Icon';
-import { TENSES, VERB_BY_INF, conjugate, personLabel, type Tense, type Verb } from '../data/verbs';
+import { TENSES, VERB_BY_INF, conjugate, personShort, type Tense, type Verb } from '../data/verbs';
 import { useSay } from '../hooks/useSpeech';
 import { CATEGORY_LABEL, checkAnswer, classifyVerbError } from '../lib/answer';
 import { personsWithForm, pickVerbs } from '../lib/exercises';
@@ -58,6 +59,7 @@ export function VerbGrid({ tense, focus, maxLevel, allowed, onExit }: { tense: T
   const say = useSay();
   const hw = useHomeworkCompletion();
   const region: Region = state.profile?.region ?? 'spain';
+  const { t, stage } = useT();
   // Three verbs fit a phone without scrolling sideways; wider screens start with four.
   const [count, setCount] = useState(() => (typeof window !== 'undefined' && window.innerWidth < 480 ? 3 : 4));
   const [mode, setMode] = useState<'weak' | 'all'>('weak');
@@ -133,30 +135,30 @@ export function VerbGrid({ tense, focus, maxLevel, allowed, onExit }: { tense: T
     <div className="mx-auto max-w-4xl" data-testid="verb-grid">
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <button className="ctrl !px-2" onClick={onExit} aria-label="Back to the verb gym"><Icon name="arrowLeft" size={18} /></button>
-        <div className="min-w-0 flex-1"><p className="eyebrow">Tabla de verbos · Grid drill</p><h1 className="font-display text-2xl font-semibold leading-tight">{tenseLabel}: fill in the table</h1></div>
+        <div className="min-w-0 flex-1"><p className="eyebrow">Tabla de verbos · Grid drill</p><h1 className="font-display text-2xl font-semibold leading-tight">{stage >= 2 ? `${TENSES.find((x) => x.id === tense)?.es}: rellena la tabla` : `${tenseLabel}: fill in the table`}</h1></div>
       </div>
 
       {!marks && !only && (
         <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
-          <span className="flex items-center gap-1.5"><span className="text-ink-mute">Verbs</span>{[3, 4, 5].map((n) => <button key={n} className="chip !px-3 !py-1" aria-pressed={count === n} onClick={() => { setCount(n); setValues({}); }} data-testid={`grid-count-${n}`}>{n}</button>)}</span>
-          <span className="flex items-center gap-1.5"><span className="text-ink-mute">Blanks</span><button className="chip !py-1" aria-pressed={mode === 'weak'} onClick={() => { setMode('weak'); setValues({}); }}>My weak spots</button><button className="chip !py-1" aria-pressed={mode === 'all'} onClick={() => { setMode('all'); setValues({}); }} data-testid="grid-all">Everything</button></span>
-          {!focus?.length && <button className="ctrl" onClick={() => reset({ newVerbs: true })}><Icon name="refresh" size={14} /> Other verbs</button>}
+          <span className="flex items-center gap-1.5"><span className="text-ink-mute">{t('Verbs')}</span>{[3, 4, 5].map((n) => <button key={n} className="chip !px-3 !py-1" aria-pressed={count === n} onClick={() => { setCount(n); setValues({}); }} data-testid={`grid-count-${n}`}>{n}</button>)}</span>
+          <span className="flex items-center gap-1.5"><span className="text-ink-mute">{t('Blanks')}</span><button className="chip !py-1" aria-pressed={mode === 'weak'} onClick={() => { setMode('weak'); setValues({}); }}>{t('My weak spots')}</button><button className="chip !py-1" aria-pressed={mode === 'all'} onClick={() => { setMode('all'); setValues({}); }} data-testid="grid-all">{t('Everything')}</button></span>
+          {!focus?.length && <button className="ctrl" onClick={() => reset({ newVerbs: true })}><Icon name="refresh" size={14} /> {t('Other verbs')}</button>}
         </div>
       )}
 
       {/* The hint at the top: which verbs follow the pattern and which do not. */}
       <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-2xl bg-white px-4 py-2.5 text-sm ring-1 ring-ink/5" data-testid="grid-legend">
-        {kinds.includes('regular') && <span className="flex items-center gap-1.5"><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ${TONE.regular}`}>Regular</span><span className="text-ink-soft">follows the pattern</span></span>}
-        {kinds.includes('change') && <span className="flex items-center gap-1.5"><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ${TONE.change}`}>Stem change</span><span className="text-ink-soft">the vowel changes, not for nosotros or vosotros</span></span>}
-        {kinds.includes('irregular') && <span className="flex items-center gap-1.5"><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ${TONE.irregular}`}>Irregular</span><span className="text-ink-soft">has its own forms</span></span>}
+        {kinds.includes('regular') && <span className="flex items-center gap-1.5"><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ${TONE.regular}`}>{t('Regular')}</span><span className="text-ink-soft">{t('follows the pattern')}</span></span>}
+        {kinds.includes('change') && <span className="flex items-center gap-1.5"><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ${TONE.change}`}>{t('Stem change')}</span><span className="text-ink-soft">{t('the vowel changes, not for nosotros or vosotros')}</span></span>}
+        {kinds.includes('irregular') && <span className="flex items-center gap-1.5"><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ${TONE.irregular}`}>{t('Irregular')}</span><span className="text-ink-soft">{t('has its own forms')}</span></span>}
       </div>
 
-      {count > 3 && <p className="mb-1 text-xs text-ink-mute sm:hidden">Slide the table sideways to see every verb.</p>}
+      {count > 3 && <p className="mb-1 text-xs text-ink-mute sm:hidden">{t('Slide the table sideways to see every verb.')}</p>}
       <div className="-mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
         <table className="w-full border-separate border-spacing-x-1 border-spacing-y-1.5 sm:border-spacing-x-1.5">
           <thead>
             <tr>
-              <th className="w-[3.4rem] sm:w-24" />
+              <th className="w-[3.6rem] sm:w-28" />
               {verbs.map((v) => { const k = verbKind(v); return (
                 <th key={v.inf} scope="col" className="min-w-[5.9rem] rounded-2xl bg-white p-2 text-left align-top font-normal ring-1 ring-ink/5" title={k.hint}>
                   <span className="block font-display text-xl font-semibold leading-tight" lang="es">{v.inf}</span>
@@ -169,7 +171,7 @@ export function VerbGrid({ tense, focus, maxLevel, allowed, onExit }: { tense: T
           <tbody>
             {persons.map((p) => (
               <tr key={p}>
-                <th scope="row" className="pr-0.5 text-right text-xs font-medium text-ink-mute sm:text-sm" lang="es">{personLabel(p).split(' / ')[0]}</th>
+                <th scope="row" className="pr-0.5 text-right text-xs font-medium text-ink-mute sm:text-sm" lang="es">{personShort(p)}</th>
                 {verbs.map((v) => {
                   const c = cellAt(v.inf, p); const k = `${v.inf}|${p}`;
                   if (!c) return <td key={k} className="rounded-xl bg-cream-100 text-center text-ink-mute">–</td>;
@@ -185,7 +187,7 @@ export function VerbGrid({ tense, focus, maxLevel, allowed, onExit }: { tense: T
                         <input ref={(el) => { inputs.current[k] = el; }} value={values[k] ?? ''} onChange={(e) => setValues((x) => ({ ...x, [k]: e.target.value }))} onFocus={() => { lastFocus.current = k; }}
                           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); nextBlank(k); } }} enterKeyHint="next"
                           className="w-full min-w-0 rounded-xl bg-white px-2 py-2.5 text-base ring-2 ring-ink/10 placeholder:text-ink-mute/50 focus:outline-none focus:ring-terracotta" autoCapitalize="off" autoComplete="off" autoCorrect="off" spellCheck={false} lang="es"
-                          aria-label={`${personLabel(p).split(' / ')[0]} ${v.inf}`} data-testid={`grid-cell-${v.inf}-${p}`} />
+                          aria-label={`${personShort(p)} ${v.inf}`} data-testid={`grid-cell-${v.inf}-${p}`} />
                       )}
                     </td>
                   );
@@ -200,8 +202,8 @@ export function VerbGrid({ tense, focus, maxLevel, allowed, onExit }: { tense: T
         <div className="sticky bottom-20 z-10 mt-3 rounded-3xl bg-cream/95 p-3 shadow-lift ring-1 ring-ink/10 backdrop-blur lg:bottom-4">
           <div className="flex flex-wrap items-center gap-1.5" aria-label="Insert accented letter">
             {ACCENTS.map((ch) => <button key={ch} type="button" className="h-9 w-9 rounded-xl bg-white text-lg ring-1 ring-ink/10" onMouseDown={(e) => e.preventDefault()} onClick={() => insert(ch)}>{ch}</button>)}
-            <span className="ml-auto text-sm tabular-nums text-ink-mute">{filled}/{blanks.length} filled</span>
-            <button type="button" className="btn-primary !py-2.5" disabled={filled === 0} onClick={check} data-testid="grid-check">Check the table</button>
+            <span className="ml-auto text-sm tabular-nums text-ink-mute">{filled}/{blanks.length} {t('filled')}</span>
+            <button type="button" className="btn-primary !py-2.5" disabled={filled === 0} onClick={check} data-testid="grid-check">{t('Check the table')}</button>
           </div>
         </div>
       ) : (
@@ -210,9 +212,9 @@ export function VerbGrid({ tense, focus, maxLevel, allowed, onExit }: { tense: T
           {wrong.length > 0 && <p className="mt-1 text-ink-soft">The right form is shown under each one you missed. Tap any cell to hear it.</p>}
           {slips.size > 0 && <ul className="mt-2 grid gap-1 text-sm text-ink-soft">{[...slips.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([cat, n]) => <li key={cat}><b className="text-ink">{CATEGORY_LABEL[cat]}</b> ×{n}</li>)}</ul>}
           <div className="mt-4 flex flex-wrap gap-2">
-            {wrong.length > 0 && <button className="btn-primary" onClick={() => reset({ only: new Set(wrong.map((c) => `${c.verb}|${c.person}`)) })} data-testid="grid-retry"><Icon name="refresh" size={18} /> Try the ones I missed</button>}
-            <button className={wrong.length ? 'btn-ghost' : 'btn-primary'} onClick={() => reset({ newVerbs: !focus?.length })} data-testid="grid-again"><Icon name="play" size={18} filled /> {focus?.length ? 'Same verbs again' : 'New grid'}</button>
-            <button className="btn-ghost" onClick={onExit}>Verb gym</button>
+            {wrong.length > 0 && <button className="btn-primary" onClick={() => reset({ only: new Set(wrong.map((c) => `${c.verb}|${c.person}`)) })} data-testid="grid-retry"><Icon name="refresh" size={18} /> {t('Try the ones I missed')}</button>}
+            <button className={wrong.length ? 'btn-ghost' : 'btn-primary'} onClick={() => reset({ newVerbs: !focus?.length })} data-testid="grid-again"><Icon name="play" size={18} filled /> {t(focus?.length ? 'Same verbs again' : 'New grid')}</button>
+            <button className="btn-ghost" onClick={onExit}>{t('Verb gym')}</button>
           </div>
         </div>
       )}

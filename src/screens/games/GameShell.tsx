@@ -1,3 +1,4 @@
+import { useT } from '../../lib/i18n';
 import { AnimatePresence, motion, useAnimationControls } from 'motion/react';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon } from '../../components/Icon';
@@ -45,6 +46,7 @@ function Popup({ text, x, y }: { text: string; x: number; y: number }) {
  */
 export function GameShell({ id, duration = 60, lives: startLives = 3, onExit, children }: { id: GameInfo['id']; duration?: number; lives?: number; onExit?: () => void; children: (api: GameApi) => ReactNode }) {
   const info = GAMES.find((g) => g.id === id)!;
+  const { t } = useT();
   const { state, update } = useStore();
   const [phase, setPhase] = useState<'intro' | 'countdown' | 'play' | 'paused' | 'over'>('intro');
   const [count, setCount] = useState(3);
@@ -203,7 +205,7 @@ export function GameShell({ id, duration = 60, lives: startLives = 3, onExit, ch
           {phase === 'intro' && (
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`relative overflow-hidden rounded-4xl ${info.bg} p-6 text-white shadow-lift sm:p-8`}>
               <motion.span className="absolute -right-6 -top-8 text-[140px] opacity-20" animate={{ rotate: [0, 8, 0] }} transition={{ duration: 4, repeat: Infinity }} aria-hidden>{info.emoji}</motion.span>
-              <p className="eyebrow !text-white/80">How to play</p>
+              <p className="eyebrow !text-white/80">{t('How to play')}</p>
               <h1 className="mt-1 font-display text-4xl font-semibold">{info.title}</h1>
               <ol className="mt-4 grid gap-2">
                 {info.how.map((h, i) => <li key={i} className="flex items-start gap-3"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white/25 text-sm font-bold">{i + 1}</span><span className="pt-0.5">{h}</span></li>)}
@@ -226,8 +228,8 @@ export function GameShell({ id, duration = 60, lives: startLives = 3, onExit, ch
               <div className="text-center text-white">
                 <p className="font-display text-4xl font-semibold">Pausa</p>
                 <div className="mt-4 flex gap-2">
-                  <button className="btn bg-white text-ink" onClick={() => setPhase('play')} autoFocus><Icon name="play" size={18} filled /> Resume</button>
-                  <button className="btn bg-white/15 text-white" onClick={finish}>End game</button>
+                  <button className="btn bg-white text-ink" onClick={() => setPhase('play')} autoFocus><Icon name="play" size={18} filled /> {t('Resume')}</button>
+                  <button className="btn bg-white/15 text-white" onClick={finish}>{t('End game')}</button>
                 </div>
               </div>
             </motion.div>
@@ -235,18 +237,18 @@ export function GameShell({ id, duration = 60, lives: startLives = 3, onExit, ch
           {phase === 'over' && (
             <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="card overflow-hidden">
               <div className={`${info.bg} p-6 text-center text-white`}>
-                <p className="eyebrow !text-white/80">{hud.lives <= 0 ? 'Out of lives' : '¡Tiempo!'}</p>
+                <p className="eyebrow !text-white/80">{hud.lives <= 0 ? t('Out of lives') : '¡Tiempo!'}</p>
                 <motion.p className="font-display text-7xl font-semibold" initial={{ scale: 0.5 }} animate={{ scale: [0.5, 1.15, 1] }}>{hud.score}</motion.p>
                 {newBest ? <p className="mt-1 inline-flex rounded-full bg-white px-3 py-1 text-sm font-bold text-ink">🏆 New personal best!</p> : record && <p className="text-sm opacity-90">Best: {record.best}</p>}
               </div>
               <div className="grid grid-cols-3 gap-2 p-5 text-center">
-                <div className="rounded-2xl bg-cream-100 p-3"><b className="block text-2xl">{log.filter((l) => l.correct).length}</b><span className="text-xs text-ink-mute">correct</span></div>
+                <div className="rounded-2xl bg-cream-100 p-3"><b className="block text-2xl">{log.filter((l) => l.correct).length}</b><span className="text-xs text-ink-mute">{t('correct')}</span></div>
                 <div className="rounded-2xl bg-cream-100 p-3"><b className="block text-2xl">{log.length ? Math.round((log.filter((l) => l.correct).length / log.length) * 100) : 0}%</b><span className="text-xs text-ink-mute">accuracy</span></div>
-                <div className="rounded-2xl bg-cream-100 p-3"><b className="block text-2xl">{bestCombo}</b><span className="text-xs text-ink-mute">best streak</span></div>
+                <div className="rounded-2xl bg-cream-100 p-3"><b className="block text-2xl">{bestCombo}</b><span className="text-xs text-ink-mute">{t('best streak')}</span></div>
               </div>
               {mistakes.length > 0 && (
                 <div className="px-5 pb-2">
-                  <p className="eyebrow mb-2">Learn from these</p>
+                  <p className="eyebrow mb-2">{t('Learn from these')}</p>
                   <ul className="grid gap-1.5">
                     {mistakes.slice(-6).map((m, i) => (
                       <li key={i} className="rounded-xl bg-terracotta-50 px-3 py-2 text-sm"><b>{m.label}</b>{m.detail && <span className="text-ink-soft"> — {m.detail}</span>}</li>
@@ -256,10 +258,10 @@ export function GameShell({ id, duration = 60, lives: startLives = 3, onExit, ch
                 </div>
               )}
               <div className="flex flex-wrap gap-2 p-5 pt-3">
-                <button className="btn-primary" onClick={restart} autoFocus><Icon name="refresh" size={18} /> Play again</button>
+                <button className="btn-primary" onClick={restart} autoFocus><Icon name="refresh" size={18} /> {t('Play again')}</button>
                 {hw.isHomework && <button className="btn-dark" onClick={hw.backToHomework}><Icon name="check" size={18} /> Homework done</button>}
-                {onExit ? <button className="btn-ghost" onClick={onExit}>Back</button> : <button className="btn-ghost" onClick={() => navigate('games')}>Arcade</button>}
-                {!onExit && mistakes.some((m) => m.category) && <button className="btn-ghost" onClick={() => navigate('review')}>Review</button>}
+                {onExit ? <button className="btn-ghost" onClick={onExit}>Back</button> : <button className="btn-ghost" onClick={() => navigate('games')}>{t('Arcade')}</button>}
+                {!onExit && mistakes.some((m) => m.category) && <button className="btn-ghost" onClick={() => navigate('review')}>{t('Review')}</button>}
               </div>
             </motion.div>
           )}

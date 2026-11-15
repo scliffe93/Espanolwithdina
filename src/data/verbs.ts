@@ -623,6 +623,12 @@ export function personLabel(person: number, variety: Variety = activeVariety): s
   return PERSONS[person];
 }
 
+/** A short row label that names both genders: "él / ella", "ellos / ellas" (never just "él"). */
+export function personShort(person: number, variety: Variety = activeVariety): string {
+  if (person === 1 && variety === 'argentina') return 'vos';
+  return ['yo', 'tú', 'él / ella', 'nosotros', 'vosotros', 'ellos / ellas'][person] ?? '';
+}
+
 /** Strips the {braces}, returning the plain sentence and the blanked form. */
 export function parseExample(ex: VerbExample): { before: string; answer: string; after: string; plain: string } {
   const m = ex.es.match(/^(.*)\{(.+?)\}(.*)$/);

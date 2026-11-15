@@ -18,7 +18,7 @@ const asActor = async (p, who) => { await p.goto(BASE + '#/demo'); await p.waitF
   const opts = p.getByRole('button', { name: /^(por|para)$/i });
   ok((await opts.count()) === 2 && /1\/\d+/.test(await p.locator('body').innerText()), 'a por/para drill starts with the two options');
   await opts.first().click();
-  await p.getByRole('button', { name: /Continue/ }).waitFor({ timeout: 10000 });
+  await p.getByRole('button', { name: /Continu(e|ar)/ }).waitFor({ timeout: 10000 });
   const fb = await p.locator('body').innerText();
   ok(/→ (por|para)|por\.|para\./i.test(fb), 'the drill explains why');
   await p.screenshot({ path: OUT + '/content-drill.png' });

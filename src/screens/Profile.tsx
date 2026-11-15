@@ -1,5 +1,6 @@
 import { NotificationsCard } from '../components/NotificationsCard';
 import { Troubleshooting } from '../components/Troubleshooting';
+import { APP_LANGUAGES, type AppLanguage } from '../lib/i18n';
 import { DailyReminder } from '../components/DailyReminder';
 import { motion } from 'motion/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -304,6 +305,13 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <span><span className="font-medium">English translations</span><span className="block text-sm text-ink-mute">In conversations.</span></span>
                     <Segmented label="Translations" value={state.settings.showTranslations} onChange={(v) => update((s) => ({ ...s, settings: { ...s.settings, showTranslations: v } }))} options={[{ value: 'on-tap', label: 'On tap' }, { value: 'always', label: 'Always' }]} />
+                  </div>
+                  <div className="grid gap-1">
+                    <label className="font-medium" htmlFor="app-language">Language of the app itself</label>
+                    <select id="app-language" className="input" value={state.settings.appLanguage ?? 'auto'} onChange={(e) => update((x) => ({ ...x, settings: { ...x.settings, appLanguage: e.target.value as AppLanguage } }))} data-testid="app-language">
+                      {APP_LANGUAGES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                    <span className="text-xs text-ink-mute">Buttons, headings and exercise names move into Spanish as your level rises (Continuar, Comprobar, Escuchar). Explanations of grammar always stay in English.</span>
                   </div>
                   <VoicePicker />
                   <label className="grid gap-1">

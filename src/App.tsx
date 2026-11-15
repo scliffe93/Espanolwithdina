@@ -1,3 +1,4 @@
+import { useT } from './lib/i18n';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon, type IconName } from './components/Icon';
@@ -37,6 +38,7 @@ import { MetroRush } from './screens/games/MetroRush';
 import { Pairs } from './screens/games/Pairs';
 import { QuickKeys } from './screens/games/QuickKeys';
 import { SayIt } from './screens/games/SayIt';
+import { GrammarDash } from './screens/games/GrammarDash';
 import { OrderUp } from './screens/games/OrderUp';
 import { SwipeCheck } from './screens/games/SwipeCheck';
 import { SerEstarDrop } from './screens/games/SerEstarDrop';
@@ -94,6 +96,7 @@ function DemoPill() {
 
 function Shell({ children, route, routeId }: { children: ReactNode; route: RouteName; routeId?: string }) {
   const { me, demoActor } = usePlatform();
+  const { t, stage } = useT();
   const teacher = me?.role === 'teacher' || me?.role === 'admin';
   const items = teacher ? [...TEACHER_NAV.filter((n) => (n.name === 'demo' ? !!demoActor : n.name === 'account' ? !demoActor : true)), ...(me?.role === 'admin' ? [{ name: 'admin' as RouteName, label: 'Admin', es: 'Administración', icon: 'shield' as IconName, mobile: true }] : [])] : me?.role === 'student' ? [{ name: 'student' as RouteName, label: 'My lessons', es: 'Clases', icon: 'calendar' as IconName, mobile: true }, ...(demoActor ? [{ name: 'demo' as RouteName, label: 'Switch person', es: 'Cambiar', icon: 'refresh' as IconName, mobile: true }] : []), { name: 'guide' as RouteName, label: 'How to use', es: 'Guía', icon: 'book' as IconName }, ...NAV.filter((n) => n.name !== 'progress' && n.name !== 'teacher')] : [...NAV, { name: 'home' as RouteName, label: 'Lessons with Dina', es: 'Clases', icon: 'calendar' as IconName, mobile: true }];
   const sub = routeId?.split('/')[0];
@@ -121,7 +124,7 @@ function Shell({ children, route, routeId }: { children: ReactNode; route: Route
           {items.map((n) => (
             <button key={`${n.name}/${n.sub ?? ''}`} onClick={() => go(n)} aria-current={isActive(n) ? 'page' : undefined} className={`relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left font-medium transition ${isActive(n) ? 'text-white' : 'text-ink-soft hover:bg-white/70 hover:text-ink'}`}>
               {isActive(n) && <motion.span layoutId="rail-pill" className="absolute inset-0 rounded-2xl bg-terracotta shadow-glow" transition={{ type: 'spring', stiffness: 400, damping: 32 }} />}
-              <span className="relative flex w-full items-center gap-3"><Icon name={n.icon} size={20} /> {n.label} <span className={`ml-auto text-xs ${isActive(n) ? 'text-white/70' : 'text-ink-mute'}`}>{n.es}</span></span>
+              <span className="relative flex w-full items-center gap-3"><Icon name={n.icon} size={20} /> {stage >= 1 ? n.es : n.label} <span className={`ml-auto text-xs ${isActive(n) ? 'text-white/70' : 'text-ink-mute'}`}>{stage >= 1 ? n.label : n.es}</span></span>
             </button>
           ))}
         </nav>
@@ -157,12 +160,12 @@ function Shell({ children, route, routeId }: { children: ReactNode; route: Route
           )}
         </div>
       </nav>
-      <Sheet open={more} onClose={() => setMore(false)} title="More">
+      <Sheet open={more} onClose={() => setMore(false)} title={t('More')}>
         <div className="grid grid-cols-2 gap-2" data-testid="more-menu">
           {rest.map((n) => (
             <button key={`${n.name}/${n.sub ?? ''}`} onClick={() => { setMore(false); go(n); }} aria-current={isActive(n) ? 'page' : undefined} className={`flex items-center gap-3 rounded-2xl p-3.5 text-left ring-1 ${isActive(n) ? 'bg-terracotta-50 ring-terracotta/40' : 'bg-white ring-ink/10'}`}>
               <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${isActive(n) ? 'bg-terracotta text-white' : 'bg-cream-100 text-ink-soft'}`}><Icon name={n.icon} size={20} /></span>
-              <span className="min-w-0"><span className="block font-semibold leading-tight">{n.label}</span><span className="block text-xs text-ink-mute">{n.es}</span></span>
+              <span className="min-w-0"><span className="block font-semibold leading-tight">{stage >= 1 ? n.es : n.label}</span><span className="block text-xs text-ink-mute">{stage >= 1 ? n.label : n.es}</span></span>
             </button>
           ))}
         </div>
@@ -260,7 +263,7 @@ export default function App() {
     case 'account': screen = <Account />; break;
     case 'journey': screen = <Journey />; break;
     case 'game':
-      screen = route.id === 'order' ? <OrderUp key="order" /> : route.id === 'swipe' ? <SwipeCheck key="swipe" /> : route.id === 'serestar' ? <SerEstarDrop key="serestar" /> : route.id === 'penalty' ? <Penalty key="penalty" /> : route.id === 'derbi' ? <Derbi key="derbi" /> : route.id === 'lineup' ? <LineUp key="lineup" /> : route.id === 'pairs' ? <Pairs key="pairs" /> : route.id === 'type' ? <QuickKeys key="type" /> : route.id === 'say' ? <SayIt key="say" /> : <MetroRush key="metro" />;
+      screen = route.id === 'order' ? <OrderUp key="order" /> : route.id === 'swipe' ? <SwipeCheck key="swipe" /> : route.id === 'serestar' ? <SerEstarDrop key="serestar" /> : route.id === 'penalty' ? <Penalty key="penalty" /> : route.id === 'derbi' ? <Derbi key="derbi" /> : route.id === 'lineup' ? <LineUp key="lineup" /> : route.id === 'pairs' ? <Pairs key="pairs" /> : route.id === 'type' ? <QuickKeys key="type" /> : route.id === 'say' ? <SayIt key="say" /> : route.id === 'porpara' ? <GrammarDash key="porpara" id="porpara" mode="por-para" /> : route.id === 'pasado' ? <GrammarDash key="pasado" id="pasado" mode="pret-imp" /> : route.id === 'subjuntivo' ? <GrammarDash key="subjuntivo" id="subjuntivo" mode="subjunctive" /> : route.id === 'si' ? <GrammarDash key="si" id="si" mode="conditional" /> : <MetroRush key="metro" />;
       break;
     default: screen = <World />;
   }

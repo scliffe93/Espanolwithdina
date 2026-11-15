@@ -87,6 +87,8 @@ export interface Settings {
   sound: boolean;
   /** voiceURI of a voice the learner picked for Spanish (empty = best available). */
   voiceURI?: string;
+  /** How much of the app's own wording is in Spanish (absent = automatic, following the learner's level). */
+  appLanguage?: 'auto' | 'en' | 'some' | 'most' | 'all';
 }
 
 /** Spaced-repetition card. Keys: `verb:hablar|present|0` or `vocab:cafe`. */

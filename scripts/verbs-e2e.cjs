@@ -10,10 +10,10 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
 async function answer(p) {
   // One exercise, answered any old way; returns its kind.
   const input = p.getByLabel('Your answer', { exact: true });
-  if (await input.count()) { await input.fill('x'); await p.getByRole('button', { name: 'Check' }).click(); return 'type'; }
+  if (await input.count()) { await input.fill('x'); await p.getByRole('button', { name: /^(Check|Comprobar)$/ }).click(); return 'type'; }
   if (await p.getByText('Tap the words in order.').count()) {
     for (let k = 0; k < 20; k++) { const t = p.locator('.mt-3.flex.flex-wrap button:not(.invisible):not([disabled])'); if (!(await t.count())) break; await t.first().click(); }
-    await p.getByRole('button', { name: 'Check' }).click(); return 'build';
+    await p.getByRole('button', { name: /^(Check|Comprobar)$/ }).click(); return 'build';
   }
   if (await p.getByText(/Match each pronoun/).count()) {
     const cols = p.locator('.grid.grid-cols-2.gap-3 > div');
@@ -39,7 +39,7 @@ async function playThrough(p, label) {
     const head = await p.locator('span.tabular-nums').first().innerText().catch(() => '');
     total = Math.max(total, Number((head.split('/')[1] || 0)));
     kinds.add(await answer(p));
-    await p.getByRole('button', { name: /Continue/ }).click({ timeout: 8000 });
+    await p.getByRole('button', { name: /Continu(e|ar)/ }).click({ timeout: 8000 });
     await p.waitForTimeout(330);
   }
   const done = await p.getByText(/of \d+ correct/).count();
@@ -56,7 +56,7 @@ async function playThrough(p, label) {
     await p.goto(BASE + '#/world'); await p.waitForTimeout(300);
     await p.goto(BASE + `#/verbs?start=1&tense=${tense}&hw=`); await p.waitForTimeout(900);
     const chip = p.getByTestId(`tense-${tense}`);
-    if (await chip.count()) { if (await chip.isDisabled()) { console.log('-', tense, 'is locked for Sam; skipped'); continue; } await chip.click(); await p.getByRole('button', { name: /Start 12-exercise session/ }).click(); await p.waitForTimeout(500); }
+    if (await chip.count()) { if (await chip.isDisabled()) { console.log('-', tense, 'is locked for Sam; skipped'); continue; } await chip.click(); await p.getByRole('button', { name: /Start 12-exercise session|Empezar sesión/ }).click(); await p.waitForTimeout(500); }
     await playThrough(p, tense);
   }
   // gustar has no command form: asking for it must not produce an unanswerable question.
@@ -69,8 +69,8 @@ async function playThrough(p, label) {
   // Keep going starts another full session.
   await p.getByTestId('session-again').click(); await p.waitForTimeout(600);
   ok(/^1\/1[2-9]/.test(await p.locator('span.tabular-nums').first().innerText()), '"Keep going" starts another session');
-  await answer(p); await p.getByRole('button', { name: /Continue/ }).click(); await p.waitForTimeout(400);
-  await answer(p); await p.getByRole('button', { name: /Continue/ }).click(); await p.waitForTimeout(400);
+  await answer(p); await p.getByRole('button', { name: /Continu(e|ar)/ }).click(); await p.waitForTimeout(400);
+  await answer(p); await p.getByRole('button', { name: /Continu(e|ar)/ }).click(); await p.waitForTimeout(400);
   // Leave half-way (as when the phone reloads the app) and come back.
   await p.goto(BASE + '#/world'); await p.waitForTimeout(500); await p.reload(); await p.waitForTimeout(1500);
   await p.goto(BASE + '#/verbs'); await p.waitForTimeout(1200);

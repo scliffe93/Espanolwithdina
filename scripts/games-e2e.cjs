@@ -40,7 +40,7 @@ const start = async (p) => { await p.getByRole('button', { name: /Vamos/ }).clic
 
   // Quick Keys: let one run out to learn the answer format, then type one right.
   await p.goto(BASE + '#/world'); await p.waitForTimeout(300); await p.goto(BASE + '#/game/type'); await p.waitForTimeout(900); await start(p);
-  await p.getByRole('button', { name: 'Skip' }).click(); await p.waitForTimeout(300);
+  await p.getByRole('button', { name: /Skip|Saltar/ }).click(); await p.waitForTimeout(300);
   ok(/\w+ \w+/.test(await p.getByTestId('keys-answer').innerText()), 'Quick Keys: skipping shows the right form');
   await p.waitForTimeout(1500);
   const prompt = await p.locator('p[lang="es"]').first().innerText(); // "yo · hablar"

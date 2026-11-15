@@ -1,6 +1,7 @@
 import { motion } from 'motion/react';
 import { useState } from 'react';
 import { FocusAreas, FocusDetail } from '../components/FocusAreas';
+import { MovingUp } from '../components/MovingUp';
 import { TENSE_USE, focusAreas, lessonPrep } from '../lib/focus';
 import { DinaArt } from '../components/Dina';
 import { Icon } from '../components/Icon';
@@ -298,6 +299,8 @@ export function Journey() {
           </>
         ) : <p className="mt-2 text-sm text-ink-soft">Nothing stands out yet. Once you have practised a little more, this section explains exactly what you are finding hard, why, and how to fix it before your next lesson.</p>}
       </section>
+
+      <MovingUp className="mt-4" />
 
       <section className="card mt-4 p-5">
         <h2 className="text-xl font-semibold">Strengths</h2>

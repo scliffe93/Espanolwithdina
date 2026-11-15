@@ -1,3 +1,4 @@
+import { useT } from '../lib/i18n';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../components/Icon';
@@ -10,7 +11,7 @@ import { recognitionSupported, recognize, regionLang, type RecognitionHandle } f
 import { allVerbMastery } from '../lib/analytics';
 import { CATEGORY_LABEL, CATEGORY_TIP, checkAnswer, classifyVerbError, normalize } from '../lib/answer';
 import { levelIndex } from '../lib/assessmentScore';
-import { EX_LABEL, buildSession, cardKeyFor, shuffle, type Exercise } from '../lib/exercises';
+import { EX_LABEL, buildSession, cardKeyFor, pronounFor, shuffle, type Exercise } from '../lib/exercises';
 import { navigate } from '../lib/router';
 import { addSpeakingAttempt, completeLesson, recordAttempt } from '../lib/state';
 import { useStore } from '../lib/store';
@@ -78,6 +79,7 @@ function loadSaved(): SavedSession | null {
 function clearSaved() { try { sessionStorage.removeItem(SAVED); } catch { /* ignore */ } }
 
 function Session({ exercises: initial, tense, onExit, onAgain, resume }: { exercises: Exercise[]; tense: Tense; onExit: () => void; onAgain?: () => void; resume?: { i: number; log: LogRow[] } }) {
+  const { t, stage } = useT();
   const { update } = useStore();
   const say = useSay();
   const [queue, setQueue] = useState<Exercise[]>(initial);
@@ -121,7 +123,7 @@ function Session({ exercises: initial, tense, onExit, onAgain, resume }: { exerc
     // Revisit a mistake once; a retry that is also wrong is left for spaced repetition (no endless loops).
     if (!r.correct && card && !requeued.current.has(i) && ex.kind !== 'serEstar' && ex.kind !== 'grammar' && !(ex as { retry?: boolean }).retry) {
       requeued.current.add(i);
-      setQueue((q) => [...q, { kind: 'type', verb: verbInf, tense: card.tense, person: card.person, pronoun: (ex as { pronoun?: string }).pronoun || personLabel(card.person).split(' ')[0], retry: true } as Exercise]);
+      setQueue((q) => [...q, { kind: 'type', verb: verbInf, tense: card.tense, person: card.person, pronoun: (ex as { pronoun?: string }).pronoun || pronounFor(VERB_BY_INF[verbInf], card.person), retry: true } as Exercise]);
     }
     if (r.correct) sfx.correct(); else { sfx.wrong(); haptic([30, 30, 30]); }
     // The answer is read out just after the chime, not on top of it: the two together made the voice cut out.
@@ -172,10 +174,10 @@ function Session({ exercises: initial, tense, onExit, onAgain, resume }: { exerc
           )}
           <p className="mt-4 text-sm text-ink-mute">Missed forms are scheduled to come back in your review deck.</p>
           <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-center">
-            {onAgain && !hw.isHomework && <button className="btn-primary" onClick={onAgain} data-testid="session-again"><Icon name="play" size={18} filled /> Keep going: 12 more</button>}
-            {missedVerbs.length > 0 && <button className={onAgain && !hw.isHomework ? 'btn-ghost' : 'btn-primary'} onClick={() => navigate(`verbs?focus=${missedVerbs.join(',')}&tense=${tense}&start=1&t=${Date.now()}`)}><Icon name="refresh" size={18} /> Practise my mistakes</button>}
+            {onAgain && !hw.isHomework && <button className="btn-primary" onClick={onAgain} data-testid="session-again"><Icon name="play" size={18} filled /> {t('Keep going: 12 more')}</button>}
+            {missedVerbs.length > 0 && <button className={onAgain && !hw.isHomework ? 'btn-ghost' : 'btn-primary'} onClick={() => navigate(`verbs?focus=${missedVerbs.join(',')}&tense=${tense}&start=1&t=${Date.now()}`)}><Icon name="refresh" size={18} /> {t('Practise my mistakes')}</button>}
             {hw.isHomework && <button className="btn-dark" onClick={hw.backToHomework}><Icon name="check" size={18} /> Homework done — back to my homework</button>}
-            <button className="btn-ghost" onClick={onExit}>Verb gym</button>
+            <button className="btn-ghost" onClick={onExit}>{t('Verb gym')}</button>
             <button className="btn-ghost" onClick={() => navigate('world')}><Icon name="map" size={18} /> Madrid</button>
           </div>
         </div>
@@ -204,7 +206,7 @@ function Session({ exercises: initial, tense, onExit, onAgain, resume }: { exerc
       </div>
       <AnimatePresence mode="wait">
         <motion.div key={i} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
-          <p className="eyebrow">{ex.kind === 'grammar' ? GRAMMAR_MODES.find((m) => m.id === ex.mode)?.label : EX_LABEL[ex.kind]}{verb && <> · <span className="normal-case tracking-normal">{verb.inf} — {verb.en}</span></>}</p>
+          <p className="eyebrow">{ex.kind === 'grammar' ? GRAMMAR_MODES.find((m) => m.id === ex.mode)?.[stage >= 2 ? 'es' : 'label'] : t(EX_LABEL[ex.kind])}{verb && <> · <span className="normal-case tracking-normal">{verb.inf} — {verb.en}</span></>}</p>
           <ExerciseView key={i} ex={ex} locked={!!result} onSubmit={submit} onHint={() => setHintUsed(true)} />
         </motion.div>
       </AnimatePresence>
@@ -214,17 +216,17 @@ function Session({ exercises: initial, tense, onExit, onAgain, resume }: { exerc
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`mt-6 rounded-3xl p-5 ring-1 ${result.correct ? (result.accentOnly ? 'bg-saffron-50 ring-saffron/40' : 'bg-olive-50 ring-olive/30') : 'bg-terracotta-50 ring-terracotta/30'}`} role="status">
             <p className="flex items-center gap-2 text-lg font-semibold">
               <Icon name={result.correct ? 'check' : 'info'} />
-              {result.correct ? (result.accentOnly ? 'Correct — watch the accent' : hintUsed ? 'Correct (with a hint)' : '¡Correcto!') : 'Not quite'}
+              {result.correct ? (result.accentOnly ? 'Correct — watch the accent' : hintUsed ? 'Correct (with a hint)' : '¡Correcto!') : t('Not quite')}
             </p>
-            {(!result.correct || result.accentOnly) && <p className="mt-1">Answer: <b>{result.expected}</b>{result.given && <span className="text-ink-mute"> · you wrote “{result.given}”</span>}</p>}
+            {(!result.correct || result.accentOnly) && <p className="mt-1">{t('Answer:')} <b>{result.expected}</b>{result.given && <span className="text-ink-mute"> · you wrote “{result.given}”</span>}</p>}
             {result.category && !result.correct && <p className="mt-2 text-sm"><b>{CATEGORY_LABEL[result.category]}.</b> {CATEGORY_TIP[result.category]}</p>}
             {result.explain && <p className="mt-2 text-sm text-ink-soft">{result.explain}</p>}
             {!result.correct && verb && cardKeyFor(ex) && (
               <div className="mt-3"><HelpMeRemember source={memoryFor(verb, result.expected, cardKeyFor(ex)!.key)} /></div>
             )}
             <div className="mt-4 flex flex-wrap gap-2">
-              {result.sayText && <button className="ctrl" onClick={() => say(result.sayText!)}><Icon name="volume" size={16} /> Listen</button>}
-              <button className="btn-dark" autoFocus onClick={next}>Continue <Icon name="arrowRight" size={18} /></button>
+              {result.sayText && <button className="ctrl" onClick={() => say(result.sayText!)}><Icon name="volume" size={16} /> {t('Listen')}</button>}
+              <button className="btn-dark" autoFocus onClick={next}>{t('Continue')} <Icon name="arrowRight" size={18} /></button>
             </div>
           </motion.div>
         )}
@@ -258,6 +260,7 @@ function AccentBar({ onInsert }: { onInsert: (c: string) => void }) {
 }
 
 function TypeInput({ onSubmit, locked, placeholder, verb, answer, cardKey, onHint }: { onSubmit: (v: string) => void; locked: boolean; placeholder: string; verb: Verb; answer: string; cardKey: string; onHint: () => void }) {
+  const { t } = useT();
   const [v, setV] = useState('');
   const ref = useRef<HTMLInputElement>(null);
   const [showHelp, setShowHelp] = useState(false);
@@ -307,14 +310,14 @@ function TypeInput({ onSubmit, locked, placeholder, verb, answer, cardKey, onHin
       <div className="flex gap-2">
         <input ref={ref} autoFocus disabled={locked} className="input text-xl" value={v} onChange={(e) => setV(e.target.value)} placeholder={placeholder} autoCapitalize="off" autoComplete="off" autoCorrect="off" spellCheck={false} lang="es" aria-label="Your answer" />
         {recognitionSupported && micOk && <button type="button" className={`btn-ghost shrink-0 !px-3.5 ${listening ? '!bg-terracotta !text-white' : ''}`} disabled={locked} onClick={listen} aria-label={listening ? 'Stop listening' : 'Say your answer'} aria-pressed={listening} data-testid="say-answer"><Icon name="mic" size={20} /></button>}
-        <button className="btn-primary shrink-0" disabled={locked || !v.trim()}>Check</button>
+        <button className="btn-primary shrink-0" disabled={locked || !v.trim()}>{t('Check')}</button>
       </div>
       {listening && <p className="mt-2 text-sm font-medium text-terracotta" role="status">Listening… say it in Spanish.</p>}
       {heard && !locked && <p className="mt-2 text-sm text-ink-soft" role="status">{heard}</p>}
       {!locked && <AccentBar onInsert={insert} />}
       {!locked && (
         <div className="mt-3">
-          {showHelp ? <HelpMeRemember source={memoryFor(verb, answer, cardKey)} onHintUsed={onHint} onReveal={() => onSubmit('')} /> : <button type="button" className="ctrl" onClick={() => setShowHelp(true)}><Icon name="bulb" size={16} /> Help me remember</button>}
+          {showHelp ? <HelpMeRemember source={memoryFor(verb, answer, cardKey)} onHintUsed={onHint} onReveal={() => onSubmit('')} /> : <button type="button" className="ctrl" onClick={() => setShowHelp(true)}><Icon name="bulb" size={16} /> {t('Help me remember')}</button>}
         </div>
       )}
     </form>
@@ -335,6 +338,7 @@ function Options({ options, onPick, locked, answer, picked }: { options: string[
 }
 
 function ExerciseView({ ex, locked, onSubmit, onHint }: { ex: Exercise; locked: boolean; onSubmit: (r: Result) => void; onHint: () => void }) {
+  const { t } = useT();
   const say = useSay();
   const [picked, setPicked] = useState<string | null>(null);
 
@@ -357,7 +361,7 @@ function ExerciseView({ ex, locked, onSubmit, onHint }: { ex: Exercise; locked: 
             {verb.pronominal && <span className="text-ink-mute"> el café</span>} <span className="text-lg text-terracotta">({verb.inf} · {TENSES.find((t) => t.id === ex.tense)?.label.toLowerCase()})</span>
           </h2>
           <p className="mt-1 text-ink-mute">{PERSONS_EN[ex.person]}</p>
-          <TypeInput locked={locked} verb={verb} answer={answer} cardKey={cardKeyFor(ex)!.key} onHint={onHint} placeholder="Type the form" onSubmit={(v) => onSubmit(conjResult(verb, ex.tense, ex.person, v, `${ex.pronoun} ${answer}`))} />
+          <TypeInput locked={locked} verb={verb} answer={answer} cardKey={cardKeyFor(ex)!.key} onHint={onHint} placeholder={t('Type the form')} onSubmit={(v) => onSubmit(conjResult(verb, ex.tense, ex.person, v, `${ex.pronoun} ${answer}`))} />
         </div>
       );
     }
@@ -371,7 +375,7 @@ function ExerciseView({ ex, locked, onSubmit, onHint }: { ex: Exercise; locked: 
             <p className="mt-2 text-ink-mute">{ex.example.en}</p>
             <p className="mt-1 text-sm text-terracotta">({verb.inf})</p>
           </div>
-          <TypeInput locked={locked} verb={verb} answer={pe.answer} cardKey={cardKeyFor(ex)!.key} onHint={onHint} placeholder="Fill the gap" onSubmit={(v) => {
+          <TypeInput locked={locked} verb={verb} answer={pe.answer} cardKey={cardKeyFor(ex)!.key} onHint={onHint} placeholder={t('Fill the gap')} onSubmit={(v) => {
             const res = checkAnswer(v, [pe.answer]);
             const r = res === 'wrong'
               ? { correct: false, expected: pe.answer, given: v, category: v ? classifyVerbError(verb, 'present', ex.person, v) : ('other' as ErrorCategory), sayText: pe.plain }
@@ -391,8 +395,8 @@ function ExerciseView({ ex, locked, onSubmit, onHint }: { ex: Exercise; locked: 
           {ex.kind === 'listen' ? (
             <div className="mt-4 flex items-center gap-3">
               <button className="btn-dark h-16 w-16 !rounded-full !p-0" onClick={() => say(spoken)} aria-label="Play"><Icon name="play" size={26} filled /></button>
-              <button className="ctrl" onClick={() => say(spoken, { slow: true })}><Icon name="slow" size={16} /> Slower</button>
-              <p className="text-ink-soft">Which form do you hear?</p>
+              <button className="ctrl" onClick={() => say(spoken, { slow: true })}><Icon name="slow" size={16} /> {t('Slower')}</button>
+              <p className="text-ink-soft">{t('Which form do you hear?')}</p>
               <AutoPlay text={spoken} />
             </div>
           ) : (
@@ -421,7 +425,7 @@ function ExerciseView({ ex, locked, onSubmit, onHint }: { ex: Exercise; locked: 
             <p className="font-display text-2xl leading-relaxed">{pe.before}<span className="rounded-lg bg-terracotta-50 px-1.5 text-terracotta-dark line-through decoration-2">{wrongShown}</span>{pe.after}</p>
             <p className="mt-2 text-ink-mute">{ex.example.en}</p>
           </div>
-          <p className="mt-4 font-medium">Which form should replace the mistake?</p>
+          <p className="mt-4 font-medium">{t('Which form should replace the mistake?')}</p>
           <Options options={ex.options} locked={locked} answer={right} picked={picked} onPick={(o) => {
             setPicked(o);
             onSubmit(o === right ? { correct: true, expected: right, given: o, sayText: pe.plain } : { correct: false, expected: right, given: o, category: classifyVerbError(verb, 'present', ex.example.person, o), sayText: pe.plain });
@@ -434,7 +438,7 @@ function ExerciseView({ ex, locked, onSubmit, onHint }: { ex: Exercise; locked: 
       return (
         <div>
           <h2 className="mt-3 font-display text-2xl font-medium">“{ex.example.en}”</h2>
-          <p className="mt-1 text-ink-mute">Choose the correct Spanish.</p>
+          <p className="mt-1 text-ink-mute">{t('Choose the correct Spanish.')}</p>
           <Options options={ex.options} locked={locked} answer={pe.plain} picked={picked} onPick={(o) => {
             setPicked(o);
             onSubmit(o === pe.plain ? { correct: true, expected: pe.plain, given: o, sayText: pe.plain } : { correct: false, expected: pe.plain, given: o, category: 'person-agreement', sayText: pe.plain });
@@ -485,6 +489,7 @@ function AutoPlay({ text }: { text: string }) {
 }
 
 function MatchView({ ex, locked, onSubmit }: { ex: Extract<Exercise, { kind: 'match' }>; locked: boolean; onSubmit: (r: Result) => void }) {
+  const { t } = useT();
   const { update } = useStore();
   const verb = VERB_BY_INF[ex.verb];
   const forms = useMemo(() => shuffle(ex.persons.map((p) => ({ p, f: conjugate(verb, ex.tense, p) }))), [ex, verb]);
@@ -533,12 +538,13 @@ function MatchView({ ex, locked, onSubmit }: { ex: Extract<Exercise, { kind: 'ma
           ))}
         </div>
       </div>
-      {sel === null && matched.length === 0 && <p className="mt-3 text-sm text-ink-mute">Tap a pronoun, then its matching form.</p>}
+      {sel === null && matched.length === 0 && <p className="mt-3 text-sm text-ink-mute">{t('Tap a pronoun, then its matching form.')}</p>}
     </div>
   );
 }
 
 function BuildView({ ex, locked, onSubmit }: { ex: Extract<Exercise, { kind: 'build' }>; locked: boolean; onSubmit: (r: Result) => void }) {
+  const { t } = useT();
   const [used, setUsed] = useState<number[]>([]);
   const pe = parseExample(ex.example);
   const verb = VERB_BY_INF[ex.verb];
@@ -546,7 +552,7 @@ function BuildView({ ex, locked, onSubmit }: { ex: Extract<Exercise, { kind: 'bu
   return (
     <div>
       <h2 className="mt-3 font-display text-2xl font-medium">“{ex.example.en}”</h2>
-      <p className="mt-1 text-ink-mute">Tap the words in order.</p>
+      <p className="mt-1 text-ink-mute">{t('Tap the words in order.')}</p>
       <div className="mt-4 flex min-h-[64px] flex-wrap gap-2 rounded-2xl border-2 border-dashed border-ink/15 bg-white/60 p-3">
         {used.map((ti, k) => (
           <motion.button layout key={ti} disabled={locked} onClick={() => setUsed((u) => u.filter((_, j) => j !== k))} className="rounded-xl bg-ink px-3 py-2 text-lg text-cream">{ex.tiles[ti]}</motion.button>
@@ -560,7 +566,7 @@ function BuildView({ ex, locked, onSubmit }: { ex: Extract<Exercise, { kind: 'bu
       <button className="btn-primary mt-5" disabled={locked || used.length !== ex.tiles.length} onClick={() => {
         const ok = normalize(built) === normalize(pe.plain);
         onSubmit(ok ? { correct: true, expected: pe.plain, given: built, sayText: pe.plain } : { correct: false, expected: pe.plain, given: built, category: built.includes(pe.answer) ? 'other' : classifyVerbError(verb, 'present', ex.example.person, built), sayText: pe.plain, explain: 'Word order: in Spanish the subject pronoun is often dropped, and "no" goes right before the verb.' });
-      }}>Check</button>
+      }}>{t('Check')}</button>
     </div>
   );
 }
@@ -615,6 +621,7 @@ function VerbSheet({ verb, onClose, onPractise }: { verb: Verb | null; onClose: 
 // ─────────────────────────── Gym (entry) ───────────────────────────
 
 export function Verbs({ params }: { params: URLSearchParams }) {
+  const { t, stage } = useT();
   const { state } = useStore();
   const region = state.profile?.region ?? 'spain';
   const level = state.profile?.levels.verbs ?? 'A1';
@@ -675,7 +682,7 @@ export function Verbs({ params }: { params: URLSearchParams }) {
 
   return (
     <div>
-      <PageHeader eyebrow="Verbos" title="Verb gym" subtitle="Every verb, tense and person is tracked separately. Mistakes come back automatically until they stick." />
+      <PageHeader eyebrow="Verbos" title={t('Verb gym')} subtitle="Every verb, tense and person is tracked separately. Mistakes come back automatically until they stick." />
 
       {saved && (
         <div className="card mb-4 flex flex-wrap items-center justify-between gap-3 p-4 ring-2 ring-olive/30" data-testid="session-resume">
@@ -689,18 +696,18 @@ export function Verbs({ params }: { params: URLSearchParams }) {
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className="card p-5">
-          <p className="eyebrow mb-2">Tense</p>
+          <p className="eyebrow mb-2">{t('Tense')}</p>
           <div className="flex flex-wrap gap-2">
-            {TENSES.map((t) => (
-              <button key={t.id} className="chip" aria-pressed={tense === t.id} disabled={tenseLocked(t)} title={tenseLocked(t) ? `Locked by your teacher (from ${t.minLevel})` : undefined} onClick={() => setTense(t.id)} data-testid={`tense-${t.id}`}>
-                {t.label}{tenseLocked(t) ? <span className="text-xs opacity-70"> · locked</span> : !tenseAllowed(t) && <span className="text-xs opacity-70">· from {t.minLevel}</span>}
+            {TENSES.map((tn) => (
+              <button key={tn.id} className="chip" aria-pressed={tense === tn.id} disabled={tenseLocked(tn)} title={tenseLocked(tn) ? `Locked by your teacher (from ${tn.minLevel})` : undefined} onClick={() => setTense(tn.id)} data-testid={`tense-${tn.id}`}>
+                {stage >= 2 ? tn.es : tn.label}{tenseLocked(tn) ? <span className="text-xs opacity-70"> · locked</span> : !tenseAllowed(tn) && <span className="text-xs opacity-70">· from {tn.minLevel}</span>}
               </button>
             ))}
           </div>
           {released && <p className="mt-2 text-sm text-ink-mute" data-testid="release-note">Your teacher releases verbs in blocks: you have {myVerbs.length} so far, and more arrive as you progress.</p>}
           {ceiling && <p className="mt-2 text-sm text-ink-mute" data-testid="level-note">Your teacher has set your level to {ceiling}: tenses above it are locked until they raise it.</p>}
           {!tenseAllowed(TENSES.find((t) => t.id === tense)!) && <p className="mt-2 text-sm text-ink-mute">Recommended from {TENSES.find((t) => t.id === tense)!.minLevel}. You can still try it — your verbs level is {level}.</p>}
-          <p className="eyebrow mb-2 mt-5">Focus</p>
+          <p className="eyebrow mb-2 mt-5">{t('Focus')}</p>
           {focus.length ? (
             <div className="flex flex-wrap items-center gap-2">
               {focus.map((f) => <button key={f} className="chip" aria-pressed onClick={() => setFocus(focus.filter((x) => x !== f))}>{f} <Icon name="x" size={14} /></button>)}
@@ -710,10 +717,10 @@ export function Verbs({ params }: { params: URLSearchParams }) {
             <p className="text-sm text-ink-soft">The app picks for you: forms due for review, then weak verbs, then up to two new verbs. Tap verbs below to choose your own.</p>
           )}
           <div className="mt-5 flex flex-wrap gap-2">
-            <button className="btn-primary" onClick={() => start()}><Icon name="play" size={18} filled /> Start 12-exercise session</button>
-            <button className="btn-ghost" onClick={() => setGrid(true)} data-testid="open-grid"><Icon name="edit" size={18} /> Grid drill: fill in the table</button>
+            <button className="btn-primary" onClick={() => start()}><Icon name="play" size={18} filled /> {t('Start 12-exercise session')}</button>
+            <button className="btn-ghost" onClick={() => setGrid(true)} data-testid="open-grid"><Icon name="edit" size={18} /> {t('Grid drill: fill in the table')}</button>
           </div>
-          <p className="eyebrow mb-2 mt-5">Grammar drills</p>
+          <p className="eyebrow mb-2 mt-5">{t('Grammar drills')}</p>
           <div className="flex flex-wrap gap-2">
             {GRAMMAR_MODES.map((m) => {
               const locked = !!ceiling && levelIndex(m.minLevel) > levelIndex(ceiling);
