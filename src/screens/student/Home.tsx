@@ -1,4 +1,6 @@
 import { NotificationsCard } from '../../components/NotificationsCard';
+import { FocusAreas } from '../../components/FocusAreas';
+import { focusAreas, lessonPrep } from '../../lib/focus';
 import { currentStreak } from '../../lib/analytics';
 import { DailyReminder } from '../../components/DailyReminder';
 import { motion } from 'motion/react';
@@ -235,6 +237,18 @@ function StudentBalance() {
   return <div className="mb-4"><BalanceCard balance={balance} currency={config.data.currency} /></div>;
 }
 
+/** What the student is finding hard, why, and how to fix it: so they walk into the lesson knowing what to ask. */
+function Concentrate({ state }: { state: AppState }) {
+  const areas = focusAreas(state, Date.now(), 3);
+  if (!areas.length) return null;
+  return (
+    <Section eyebrow="Para tu próxima clase · Before your next lesson" title="What to concentrate on" className="mt-4" right={state.onboardingDone ? <button type="button" className="ctrl" onClick={() => navigate('journey')}><Icon name="chart" size={14} /> My journey</button> : undefined}>
+      <p className="mb-4 text-[15px] leading-relaxed text-ink-soft" data-testid="lesson-prep">{lessonPrep(areas)}</p>
+      <FocusAreas areas={areas} />
+    </Section>
+  );
+}
+
 export function Home() {
   const { me } = usePlatform();
   const { state } = useStore();
@@ -260,6 +274,7 @@ export function Home() {
             <NextLesson b={nextLesson(data.bookings, now)} now={now} />
             <ContinueLearning state={state} />
           </div>
+          <Concentrate state={state} />
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
             <HomeworkGlance buckets={homeworkBuckets(data.homework, now)} now={now} />
             <LatestFeedback list={data.feedback.slice(0, 3)} now={now} />

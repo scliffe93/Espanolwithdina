@@ -1,13 +1,16 @@
 import { motion } from 'motion/react';
+import { useState } from 'react';
+import { FocusAreas, FocusDetail } from '../components/FocusAreas';
+import { TENSE_USE, focusAreas, lessonPrep } from '../lib/focus';
 import { DinaArt } from '../components/Dina';
 import { Icon } from '../components/Icon';
-import { Bar, achievementIcon } from '../components/ui';
+import { Bar, Sheet, achievementIcon } from '../components/ui';
 import { CitySkyline } from '../components/CitySkyline';
 import { CITY_ORDER, CITY_THEMES } from '../data/cityThemes';
 import { scenesForCity } from '../data/story';
 import { TENSES } from '../data/verbs';
 import { ACHIEVEMENTS } from '../lib/achievements';
-import { consistency, currentStreak, dailySeries, errorBreakdown, tenseMastery, totalActiveSeconds, weeklyHistory } from '../lib/analytics';
+import { allVerbMastery, consistency, currentStreak, dailySeries, errorBreakdown, tenseMastery, totalActiveSeconds, weeklyHistory, type TenseStat, type WeekPoint } from '../lib/analytics';
 import { Heatmap, Sparkline } from '../components/Charts';
 import { levelIndex } from '../lib/assessmentScore';
 import { rulesCoach } from '../lib/coach';
@@ -27,6 +30,83 @@ function Tile({ label, value, sub, delay = 0 }: { label: string; value: string; 
       <p className="mt-1 font-display text-3xl font-semibold tabular-nums">{value}</p>
       {sub && <p className="text-xs text-ink-mute">{sub}</p>}
     </motion.div>
+  );
+}
+
+type TrendKind = 'minutes' | 'accuracy' | 'words';
+const TREND_INFO: Record<TrendKind, { title: string; color: string }> = {
+  minutes: { title: 'Minutes per week', color: '#C45536' },
+  accuracy: { title: 'Accuracy per week', color: '#5B7F3A' },
+  words: { title: 'Words learned', color: '#2E5C8A' },
+};
+
+/** A trend opened up: every week as a bar with its number, and what the numbers mean in plain sentences. */
+function TrendDetail({ kind, weeks, goalMinutes }: { kind: TrendKind; weeks: WeekPoint[]; goalMinutes: number }) {
+  const value = (w: WeekPoint): number | null => (kind === 'minutes' ? w.minutes : kind === 'accuracy' ? w.accuracy : w.newVocab);
+  const show = (v: number | null) => (v === null ? 'no practice' : kind === 'minutes' ? `${v} min` : kind === 'accuracy' ? `${Math.round(v * 100)}%` : `${v} new`);
+  const vals = weeks.map(value);
+  const max = kind === 'accuracy' ? 1 : Math.max(1, ...vals.map((v) => v ?? 0));
+  const cur = vals[vals.length - 1], prev = vals[vals.length - 2];
+  const real = vals.filter((v): v is number => v !== null && (kind !== 'minutes' || v > 0));
+  const best = real.length ? Math.max(...real) : null;
+  const bestWeek = best === null ? null : weeks[vals.indexOf(best)];
+  const avg = real.length ? real.reduce((a, b) => a + b, 0) / real.length : null;
+  const lines: string[] = [];
+  if (kind === 'minutes') {
+    const goal = goalMinutes * 7;
+    lines.push(cur ? `This week you have studied ${cur} minutes${prev ? `, ${cur > prev ? `${cur - prev} more than` : cur < prev ? `${prev - cur} fewer than` : 'the same as'} last week` : ''}.` : 'You have not studied yet this week.');
+    lines.push(`Your goal of ${goalMinutes} minutes a day is ${goal} minutes a week. ${cur !== null && cur >= goal ? 'You have reached it this week.' : cur ? `You are ${goal - cur} minutes short so far, which is ${Math.ceil((goal - cur) / goalMinutes)} more day${Math.ceil((goal - cur) / goalMinutes) === 1 ? '' : 's'} at your usual pace.` : 'One short session today gets it started.'}`);
+    if (bestWeek && best) lines.push(`Your best week in the last eight was ${bestWeek.label === 'This wk' ? 'this week' : `the week of ${bestWeek.label}`}, with ${best} minutes. Your average in weeks you studied is ${Math.round(avg!)} minutes.`);
+    const empty = vals.filter((v) => !v).length;
+    if (empty >= 2) lines.push(`${empty} of the eight weeks had no practice. Regular short sessions matter more than the total: a gap of a week means part of the next session goes on relearning.`);
+  } else if (kind === 'accuracy') {
+    lines.push(cur === null || cur === undefined ? 'There are no answers yet this week.' : `This week ${Math.round(cur * 100)}% of your answers were right${prev !== null && prev !== undefined ? `, ${cur > prev + 0.02 ? 'up from' : cur < prev - 0.02 ? 'down from' : 'about the same as'} ${Math.round(prev * 100)}% last week` : ''}.`);
+    if (avg !== null) lines.push(`Your average over the weeks you practised is ${Math.round(avg * 100)}%.`);
+    lines.push(cur !== null && cur !== undefined && cur >= 0.9 ? 'Above 90% usually means the material is comfortable. It is a good moment to try a new tense or more typed and spoken answers.' : cur !== null && cur !== undefined && cur < 0.65 ? 'Below about 65% the material is a stretch. Slow down, stay on fewer verbs, and use the section "What to concentrate on" below.' : 'Between 70% and 90% is the range where you learn fastest: hard enough to stretch you, easy enough to keep going.');
+    lines.push('A dip is normal in a week when you start something new. What matters is that it climbs back over the following two or three weeks.');
+  } else {
+    const total = weeks[weeks.length - 1]?.cumulativeVocab ?? 0;
+    lines.push(`You have met ${total} words in all. ${cur ? `${cur} of them are new this week${prev ? `, compared with ${prev} last week` : ''}.` : 'None are new this week yet.'}`);
+    if (avg !== null && avg > 0) lines.push(`In weeks when you learn new words you add about ${Math.round(avg)}.`);
+    lines.push('New words only count once you can recall them, so keep up the Memory reviews: a steady five to ten new words a week that you still know a month later beats thirty that fade.');
+  }
+  return (
+    <div className="grid gap-4" data-testid="trend-detail">
+      <ul className="grid gap-1.5">
+        {weeks.map((w, i) => { const v = vals[i]; return (
+          <li key={w.label} className="grid grid-cols-[4.5rem_1fr_5rem] items-center gap-2 text-sm">
+            <span className={`text-ink-mute ${i === weeks.length - 1 ? 'font-semibold text-ink' : ''}`}>{w.label === 'This wk' ? 'This week' : w.label}</span>
+            <span className="h-3.5 overflow-hidden rounded-full bg-ink/5"><span className="block h-full rounded-full" style={{ width: `${v ? Math.max(3, (v / max) * 100) : 0}%`, background: TREND_INFO[kind].color }} /></span>
+            <span className="text-right tabular-nums text-ink-soft">{show(v)}</span>
+          </li>
+        ); })}
+      </ul>
+      {kind === 'words' && <p className="text-xs text-ink-mute">Bars show new words each week. Total so far: {weeks[weeks.length - 1]?.cumulativeVocab ?? 0}.</p>}
+      <div className="grid gap-2 text-[15px] leading-relaxed text-ink-soft">{lines.map((l) => <p key={l}>{l}</p>)}</div>
+    </div>
+  );
+}
+
+/** A tense opened up: what it is for, how you are doing, and which verbs to work on. */
+function TenseDetail({ t, onPractise }: { t: TenseStat; onPractise: (href: string) => void }) {
+  const { state } = useStore();
+  const ms = allVerbMastery(state, t.id, state.profile?.region ?? 'spain').filter((m) => m.attempts > 0 && m.accuracy !== null);
+  const weak = [...ms].sort((a, b) => a.accuracy! - b.accuracy!).filter((m) => m.accuracy! < 0.8).slice(0, 5);
+  const strong = [...ms].sort((a, b) => b.accuracy! - a.accuracy!).filter((m) => m.accuracy! >= 0.8 && m.attempts >= 2).slice(0, 5);
+  const pct = t.accuracy === null ? null : Math.round(t.accuracy * 100);
+  return (
+    <div className="grid gap-4 text-[15px] leading-relaxed" data-testid="tense-detail">
+      <p className="text-ink-soft"><b className="text-ink" lang="es">{t.es}.</b> {TENSE_USE[t.id]}</p>
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="rounded-xl bg-cream-100 p-2.5"><p className="font-display text-2xl font-semibold">{t.verbs}</p><p className="text-[10px] uppercase tracking-wider text-ink-mute">verbs tried</p></div>
+        <div className="rounded-xl bg-cream-100 p-2.5"><p className="font-display text-2xl font-semibold">{pct === null ? '–' : `${pct}%`}</p><p className="text-[10px] uppercase tracking-wider text-ink-mute">correct of {t.attempts}</p></div>
+        <div className="rounded-xl bg-cream-100 p-2.5"><p className="font-display text-2xl font-semibold">{t.mastered}</p><p className="text-[10px] uppercase tracking-wider text-ink-mute">mastered</p></div>
+      </div>
+      <p className="text-ink-soft">{pct === null ? 'You have not answered enough in this tense to say yet.' : pct >= 85 ? `You are solid here: ${pct}% right. Keep it alive with an occasional session and move your effort to a weaker tense.` : pct >= 70 ? `You are getting there: ${pct}% right. The forms are mostly in place and the verbs below are what is holding the number down.` : `This tense needs work: ${pct}% right. Stay on a few verbs until they feel easy before you add more.`}</p>
+      {weak.length > 0 && <div><p className="font-semibold">Verbs to work on</p><ul className="mt-1.5 grid gap-1">{weak.map((m) => <li key={m.inf} className="flex items-center justify-between rounded-xl bg-white px-3 py-2 ring-1 ring-ink/5"><span><b lang="es">{m.inf}</b></span><span className="tabular-nums text-ink-soft">{Math.round(m.accuracy! * 100)}% of {m.attempts}</span></li>)}</ul></div>}
+      {strong.length > 0 && <p className="text-ink-soft"><b className="text-ink">Going well:</b> {strong.map((m) => m.inf).join(', ')}.</p>}
+      <button type="button" className="btn-primary w-full justify-center sm:w-auto sm:justify-self-start" onClick={() => onPractise(`verbs?${weak.length >= 2 ? `focus=${weak.map((m) => m.inf).join(',')}&` : ''}tense=${t.id}&start=1`)}><Icon name="play" size={18} filled /> Practise {weak.length >= 2 ? 'these verbs' : `the ${t.label.toLowerCase()}`}</button>
+    </div>
   );
 }
 
@@ -50,6 +130,11 @@ export function Journey() {
   const report = buildTeacherReport(state);
   const analytics = { days: dailySeries(state, 28), c: consistency(state, 28), weekly: weeklyHistory(state, 8), errors: errorBreakdown(state, 28), tenses: tenseMastery(state, p.region) };
   const recs = rulesCoach.recommend(state, Date.now()).slice(0, 3);
+  const focus = focusAreas(state);
+  const allFocus = focusAreas(state, Date.now(), 99, 1);
+  const [open, setOpen] = useState<{ kind: 'trend'; which: TrendKind } | { kind: 'slip'; id: string } | { kind: 'tense'; id: string } | null>(null);
+  const openSlip = open?.kind === 'slip' ? allFocus.find((a) => a.id === open.id) : undefined;
+  const openTense = open?.kind === 'tense' ? analytics.tenses.find((t) => t.id === open.id) : undefined;
   const resume = resumeTarget(state);
   const startedCities = CITY_ORDER.filter((c) => c === p.city || scenesForCity(c).some((s) => state.story.completedScenes.includes(s.id)));
   const fmtHours = hours < 1 ? `${Math.round(seconds / 60)} min` : `${hours.toFixed(1)} h`;
@@ -104,9 +189,12 @@ export function Journey() {
       <section className="card mt-5 p-5" data-testid="journey-trends">
         <p className="eyebrow">Últimas 8 semanas · Trends</p>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl bg-cream-100 p-4"><Sparkline label="Minutes per week" points={analytics.weekly.map((w) => ({ label: w.label, value: w.minutes }))} unit=" min" title="Minutes per week" /></div>
-          <div className="rounded-2xl bg-cream-100 p-4"><Sparkline label="Accuracy" points={analytics.weekly.map((w) => ({ label: w.label, value: w.accuracy }))} unit="" percent title="Accuracy per week" color="#5B7F3A" /></div>
-          <div className="rounded-2xl bg-cream-100 p-4"><Sparkline label="Words learned" points={analytics.weekly.map((w) => ({ label: w.label, value: w.cumulativeVocab }))} unit="" title="Cumulative vocabulary" color="#2E5C8A" /></div>
+          {([['minutes', analytics.weekly.map((w) => ({ label: w.label, value: w.minutes })), ' min', false], ['accuracy', analytics.weekly.map((w) => ({ label: w.label, value: w.accuracy })), '', true], ['words', analytics.weekly.map((w) => ({ label: w.label, value: w.cumulativeVocab })), '', false]] as const).map(([kind, points, unit, percent]) => (
+            <button key={kind} type="button" className="rounded-2xl bg-cream-100 p-4 text-left transition hover:bg-cream-200 focus-visible:ring-2 focus-visible:ring-terracotta" onClick={() => setOpen({ kind: 'trend', which: kind })} data-testid={`trend-${kind}`}>
+              <Sparkline label={kind === 'minutes' ? 'Minutes per week' : kind === 'accuracy' ? 'Accuracy' : 'Words learned'} points={[...points]} unit={unit} percent={percent} title={TREND_INFO[kind].title} color={TREND_INFO[kind].color} />
+              <span className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-terracotta">Week by week <Icon name="arrowRight" size={14} /></span>
+            </button>
+          ))}
         </div>
       </section>
 
@@ -123,10 +211,11 @@ export function Journey() {
               <p className="eyebrow">Your most common slips</p>
               <ul className="mt-3 grid gap-2.5">
                 {analytics.errors.slice(0, 4).map((e) => (
-                  <li key={e.category}>
+                  <li key={e.category}><button type="button" className="-m-1.5 block w-[calc(100%+0.75rem)] rounded-xl p-1.5 text-left transition hover:bg-cream-100" onClick={() => setOpen({ kind: 'slip', id: `err-${e.category}` })} data-testid={`slip-${e.category}`}>
                     <div className="flex items-baseline justify-between gap-3 text-sm"><span className="font-medium">{e.label}</span><span className="shrink-0 tabular-nums text-ink-soft">{e.count}×{e.previous ? (e.count < e.previous ? ' ↓' : e.count > e.previous ? ' ↑' : '') : ''}</span></div>
                     <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-ink/5"><div className="h-full rounded-full bg-terracotta/70" style={{ width: `${Math.max(6, (e.count / Math.max(1, analytics.errors[0].count)) * 100)}%` }} /></div>
-                  </li>
+                    <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-terracotta">Why, and how to fix it <Icon name="arrowRight" size={12} /></span>
+                  </button></li>
                 ))}
               </ul>
             </div>
@@ -136,14 +225,14 @@ export function Journey() {
               <p className="eyebrow">Tenses</p>
               <ul className="mt-3 grid gap-2">
                 {analytics.tenses.map((t) => (
-                  <li key={t.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-2xl bg-cream-100 px-3 py-2 text-sm">
-                    <span className="font-medium">{t.label}</span>
+                  <li key={t.id}><button type="button" className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-2xl bg-cream-100 px-3 py-2 text-left text-sm transition hover:bg-cream-200" onClick={() => setOpen({ kind: 'tense', id: t.id })} data-testid={`tense-row-${t.id}`}>
+                    <span className="font-medium">{t.label} <Icon name="arrowRight" size={12} className="inline text-terracotta" /></span>
                     <span className="flex flex-wrap gap-1.5 text-xs text-ink-soft">
                       <span className="rounded-full bg-white px-2 py-0.5 tabular-nums">{t.verbs} verbs</span>
                       <span className="rounded-full bg-white px-2 py-0.5 tabular-nums">{t.accuracy !== null ? `${Math.round(t.accuracy * 100)}%` : '—'} correct</span>
                       <span className="rounded-full bg-white px-2 py-0.5 tabular-nums">{t.mastered} mastered</span>
                     </span>
-                  </li>
+                  </button></li>
                 ))}
               </ul>
             </div>
@@ -199,16 +288,21 @@ export function Journey() {
         </section>
       </div>
 
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <section className="card p-5">
-          <h2 className="text-xl font-semibold">Strengths</h2>
-          <ul className="mt-2 grid gap-1.5 text-sm text-ink-soft">{report.strengths.map((s) => <li key={s} className="flex gap-2"><Icon name="check" size={16} className="mt-0.5 shrink-0 text-olive" /> {s}</li>)}</ul>
-        </section>
-        <section className="card p-5">
-          <h2 className="text-xl font-semibold">To work on</h2>
-          <ul className="mt-2 grid gap-1.5 text-sm text-ink-soft">{report.weaknesses.map((s) => <li key={s} className="flex gap-2"><Icon name="info" size={16} className="mt-0.5 shrink-0 text-terracotta" /> {s}</li>)}</ul>
-        </section>
-      </div>
+      <section className="card mt-4 p-5" data-testid="journey-concentrate">
+        <p className="eyebrow">Para tu próxima clase · Before your next lesson</p>
+        <h2 className="mt-1 text-xl font-semibold">What to concentrate on</h2>
+        {focus.length ? (
+          <>
+            <p className="mb-4 mt-1 text-[15px] leading-relaxed text-ink-soft">{lessonPrep(focus)}</p>
+            <FocusAreas areas={focus} />
+          </>
+        ) : <p className="mt-2 text-sm text-ink-soft">Nothing stands out yet. Once you have practised a little more, this section explains exactly what you are finding hard, why, and how to fix it before your next lesson.</p>}
+      </section>
+
+      <section className="card mt-4 p-5">
+        <h2 className="text-xl font-semibold">Strengths</h2>
+        <ul className="mt-2 grid gap-1.5 text-sm text-ink-soft">{report.strengths.map((s) => <li key={s} className="flex gap-2"><Icon name="check" size={16} className="mt-0.5 shrink-0 text-olive" /> {s}</li>)}</ul>
+      </section>
 
       <section className="card mt-4 p-5">
         <h2 className="text-xl font-semibold">Recommended next</h2>
@@ -222,6 +316,16 @@ export function Journey() {
           ))}
         </div>
       </section>
+
+      <Sheet open={open?.kind === 'trend'} onClose={() => setOpen(null)} title={open?.kind === 'trend' ? TREND_INFO[open.which].title : ''}>
+        {open?.kind === 'trend' && <TrendDetail kind={open.which} weeks={analytics.weekly} goalMinutes={p.dailyMinutes} />}
+      </Sheet>
+      <Sheet open={!!openSlip} onClose={() => setOpen(null)} title={openSlip?.title ?? ''}>
+        {openSlip && <FocusDetail area={openSlip} />}
+      </Sheet>
+      <Sheet open={!!openTense} onClose={() => setOpen(null)} title={openTense?.label ?? ''}>
+        {openTense && <TenseDetail t={openTense} onPractise={(href) => { setOpen(null); navigate(href); }} />}
+      </Sheet>
 
       <div className="mt-4 flex flex-wrap gap-2">
         <button className="btn-ghost" onClick={() => navigate('progress')}><Icon name="chart" size={18} /> Detailed statistics</button>
