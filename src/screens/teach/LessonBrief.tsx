@@ -14,7 +14,7 @@ export function lastLessonBefore(bookings: Booking[], studentId: string, before:
 
 /**
  * The brief before a lesson: what the student did since the last one, what keeps going wrong, the state of their
- * homework and what to do about it. The same summary is sent to the teacher's phone an hour before the lesson.
+ * homework and what to do about it. The same summary is sent to the teacher's phone 24 hours before the lesson.
  */
 export function LessonBrief({ name, state, homework, since, now = Date.now(), startOpen = false, title = 'Before this lesson' }: { name: string; state: AppState | null; homework: Homework[]; since: number; now?: number; startOpen?: boolean; title?: string }) {
   const [open, setOpen] = useState(startOpen);

@@ -222,7 +222,7 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
     } catch { return null; }
   }
   const REMINDER_WINDOW = 90; // minutes after the chosen time in which the reminder may still go out
-  const BRIEF_AHEAD = 60; // minutes before a lesson that the teacher gets her brief
+  const BRIEF_AHEAD = 24 * 60; // minutes before a lesson that the teacher gets her brief (a lesson booked later than that gets it straight away)
   const asObj = (v: unknown) => (typeof v === 'string' ? JSON.parse(v) : v) as Record<string, unknown> | null;
 
   /** Called every few minutes by the scheduler. Safe to call as often as you like: everything is sent once. */
@@ -249,7 +249,7 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
       const start = Date.parse(str(b.startsAt));
       if (b.status !== 'scheduled' || !(start > now()) || start > now() + BRIEF_AHEAD * MIN) continue;
       const bucket = `push:brief:${str(b.id)}:${str(b.startsAt)}`; // a lesson that is moved gets a fresh brief
-      if ((await failures(bucket, DAY)) > 0) continue;
+      if ((await failures(bucket, 2 * DAY)) > 0) continue;
       await db.query('insert into public.lwd_attempts (bucket, at) values ($1, $2)', [bucket, iso(now())]);
       const sid = str(b.studentId);
       const who = await db.query<{ first_name: string }>('select first_name from public.lwd_users where id = $1', [sid]);
@@ -259,7 +259,9 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
       const hw = (await db.query<{ data: unknown }>("select data from public.lwd_platform where kind = 'homework' and student_id = $1", [sid])).map((x) => asObj(x.data) as BriefHomework);
       const brief = lessonBrief(((prog[0] ? asObj(prog[0].data) : null)?.days ?? {}) as Record<string, BriefDay>, hw, previous ?? now() - 7 * DAY, now());
       const mins = Math.max(1, Math.round((start - now()) / MIN));
-      await notify([str(b.teacherId)], { title: `${who[0].first_name} in ${mins} min`, body: brief.line, url: `#/teach/student/${sid}`, tag: `brief-${str(b.id)}` });
+      const hours = Math.round(mins / 60);
+      const when = mins >= 23 * 60 ? 'tomorrow' : mins >= 90 ? `in ${hours} hours` : `in ${mins} min`;
+      await notify([str(b.teacherId)], { title: `Lesson with ${who[0].first_name} ${when}`, body: brief.line, url: `#/teach/student/${sid}`, tag: `brief-${str(b.id)}` });
       briefs++;
     }
     return { reminders, briefs };

@@ -99,7 +99,7 @@ describe('the daily reminder', () => {
 });
 
 describe('the brief before each lesson', () => {
-  it('reaches the teacher once, within the hour before, with what the student did', async () => {
+  it('reaches the teacher once, a day before, with what the student did', async () => {
     const dina = await register('dina', 'Dina');
     const sam = await register('sam', 'Sam');
     const phone = await phoneFor(dina.token);
@@ -113,14 +113,16 @@ describe('the brief before each lesson', () => {
       '2026-11-13': day(600, { exercisesAttempted: 10, exercisesCorrect: 9 }),
       '2026-11-01': day(5000, { exercisesAttempted: 100, exercisesCorrect: 100 }), // before the last lesson: not counted
     } } } });
-    clock = Date.UTC(2026, 10, 16, 16, 30); // 90 minutes before: too early
+    clock = Date.UTC(2026, 10, 15, 17, 30); // more than a day before: too early
     expect((await tick()).json.briefs).toBe(0);
-    clock = Date.UTC(2026, 10, 16, 17, 15); // 45 minutes before
+    clock = Date.UTC(2026, 10, 15, 18, 5); // just inside 24 hours before
     expect((await tick()).json.briefs).toBe(1);
+    expect((await tick()).json.briefs).toBe(0);
+    clock = Date.UTC(2026, 10, 16, 17, 55); // five minutes before: still only the one
     expect((await tick()).json.briefs).toBe(0);
     const briefs = (await phone.inbox()).filter((m) => m.tag.startsWith('brief-'));
     expect(briefs).toHaveLength(1);
-    expect(briefs[0].title).toBe('Sam in 45 min');
+    expect(briefs[0].title).toBe('Lesson with Sam tomorrow');
     expect(briefs[0].body).toBe('Practised 2 days, 25 min, 77% correct. Keeps slipping on stem changes (querer, poder). 1 homework overdue.');
     expect(briefs[0].url).toBe(`#/teach/student/${sam.id}`);
   });
@@ -135,9 +137,9 @@ describe('the brief before each lesson', () => {
     expect((await tick()).json.briefs).toBe(0);
     await put({ startsAt: '2026-11-16T18:00:00.000Z', durationMin: 60, status: 'scheduled' });
     expect((await tick()).json.briefs).toBe(1);
-    await put({ startsAt: '2026-11-17T18:00:00.000Z', durationMin: 60, status: 'scheduled' });
-    clock = Date.UTC(2026, 10, 17, 17, 30);
-    expect((await tick()).json.briefs).toBe(1);
+    await put({ startsAt: '2026-11-17T17:00:00.000Z', durationMin: 60, status: 'scheduled' });
+    expect((await tick()).json.briefs).toBe(1); // the new time is tomorrow: a fresh brief straight away
+    expect((await tick()).json.briefs).toBe(0);
   });
 
   it('says so plainly when nothing was practised', () => {
