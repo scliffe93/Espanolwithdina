@@ -5,6 +5,7 @@ import { HelpMeRemember, type MemorySource } from '../components/HelpMeRemember'
 import { Bar, PageHeader, ProgressRing, Sheet } from '../components/ui';
 import { personLabel, PERSONS_EN, ROADMAP_TENSES, TENSES, VERBS, VERB_BY_INF, conjugate, groupLabel, parseExample, personsForRegion, type Tense, type Verb } from '../data/verbs';
 import { useSay, stopSpeaking } from '../hooks/useSpeech';
+import { VerbGrid } from './VerbGrid';
 import { recognitionSupported, recognize, regionLang, type RecognitionHandle } from '../lib/speech';
 import { allVerbMastery } from '../lib/analytics';
 import { CATEGORY_LABEL, CATEGORY_TIP, checkAnswer, classifyVerbError, normalize } from '../lib/answer';
@@ -625,6 +626,7 @@ export function Verbs({ params }: { params: URLSearchParams }) {
   const [session, setSession] = useState<{ ex: Exercise[]; tense: Tense; resume?: { i: number; log: LogRow[] }; again?: { focus?: string[]; mode?: GrammarMode } } | null>(null);
   const [saved, setSaved] = useState<SavedSession | null>(() => (params.toString() ? null : loadSaved()));
   const [round, setRound] = useState(0);
+  const [grid, setGrid] = useState(params.get('grid') === '1');
   const [detail, setDetail] = useState<Verb | null>(null);
   const [filter, setFilter] = useState<'all' | 'learning' | 'new' | 'mastered'>('all');
   const mastery = useMemo(() => allVerbMastery(state, tense, region), [state, tense, region]);
@@ -657,6 +659,7 @@ export function Verbs({ params }: { params: URLSearchParams }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.toString()]);
 
+  if (grid && !session) return <VerbGrid tense={tenseLocked(TENSES.find((t) => t.id === tense)!) ? 'present' : tense} focus={focus.length ? focus : undefined} maxLevel={ceiling} allowed={released} onExit={() => { setGrid(false); navigate('verbs'); }} />;
   if (session) return <Session key={round} exercises={session.ex} tense={session.tense} resume={session.resume} onAgain={() => start({ ...session.again, tense: session.tense })} onExit={() => { setSession(null); navigate('verbs'); }} />;
 
   const tenseAllowed = (t: (typeof TENSES)[number]) => levelIndex(level) >= levelIndex(t.minLevel);
@@ -708,6 +711,7 @@ export function Verbs({ params }: { params: URLSearchParams }) {
           )}
           <div className="mt-5 flex flex-wrap gap-2">
             <button className="btn-primary" onClick={() => start()}><Icon name="play" size={18} filled /> Start 12-exercise session</button>
+            <button className="btn-ghost" onClick={() => setGrid(true)} data-testid="open-grid"><Icon name="edit" size={18} /> Grid drill: fill in the table</button>
           </div>
           <p className="eyebrow mb-2 mt-5">Grammar drills</p>
           <div className="flex flex-wrap gap-2">
