@@ -151,6 +151,37 @@ describe('the brief before each lesson', () => {
   });
 });
 
+describe('the Sunday recap and writing sent in by a student', () => {
+  it('turns Sunday’s reminder into the week’s recap, even after practising', async () => {
+    const sam = await register('sam', 'Sam');
+    const phone = await phoneFor(sam.token);
+    clock = Date.UTC(2026, 10, 21, 9, 0);
+    await call('reminder', { method: 'PUT', token: sam.token, body: { enabled: true, time: '18:00', tz: 'Europe/Madrid' } });
+    await call('progress', { method: 'PUT', token: sam.token, body: { baseVersion: 0, deviceId: 'd', data: { days: { '2026-11-20': day(600), '2026-11-22': day(600) } } } });
+    clock = Date.UTC(2026, 10, 22, 17, 5); // Sunday 22 November, 18:05 in Madrid; already practised today
+    expect((await tick()).json.reminders).toBe(1);
+    expect((await phone.inbox())[0]).toMatchObject({ title: 'Your week in Spanish is ready', url: '#/recap', tag: 'recap' });
+  });
+
+  it('lets a student send writing to the teacher as work ready to mark', async () => {
+    const dina = await register('dina', 'Dina');
+    const sam = await register('sam', 'Sam');
+    const phone = await phoneFor(dina.token);
+    const text = 'Hola Marta: te escribo para invitarte a mi fiesta de cumpleaños el sábado. Va a ser en mi casa a las ocho. ¿Puedes venir? Un abrazo, Sam';
+    const sent = await call('platform/writing', { token: sam.token, body: { title: 'DELE A2 · writing', prompt: 'Escribe a una amiga para invitarla a tu fiesta.', text, minWords: 60 } });
+    expect(sent.status).toBe(201);
+    expect(sent.json.record).toMatchObject({ status: 'submitted', selfSet: true, studentId: sam.id, teacherId: dina.id, activity: { kind: 'written', title: 'DELE A2 · writing', minWords: 60 }, result: { text } });
+    const hers = await call('platform/records?kind=homework', { token: dina.token });
+    expect(hers.json.records.map((r: { id: string }) => r.id)).toContain(sent.json.record.id);
+    expect((await phone.inbox())[0]).toMatchObject({ title: 'Sam sent you some writing', url: '#/teach/homework' });
+    // Too short, a teacher, and too many in a day are all refused.
+    expect((await call('platform/writing', { token: sam.token, body: { title: 'x', text: 'Hola.' } })).status).toBe(400);
+    expect((await call('platform/writing', { token: dina.token, body: { title: 'x', text } })).status).toBe(403);
+    for (let i = 0; i < 4; i++) expect((await call('platform/writing', { token: sam.token, body: { title: `n${i}`, text } })).status).toBe(201);
+    expect((await call('platform/writing', { token: sam.token, body: { title: 'six', text } })).status).toBe(429);
+  });
+});
+
 describe('problem reports', () => {
   it('go to the administrator, who alone can read and clear them', async () => {
     const boss = await register('boss', 'Boss');

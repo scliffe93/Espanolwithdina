@@ -215,10 +215,10 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
 
   // ── timed notifications: the daily reminder and the brief before each lesson ──
   /** The date and the minute of the day at `ms` in a time zone, or null for a zone this server does not know. */
-  function localParts(ms: number, tz: string): { date: string; minutes: number } | null {
+  function localParts(ms: number, tz: string): { date: string; minutes: number; sunday: boolean } | null {
     try {
-      const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(ms)).map((x) => [x.type, x.value]));
-      return { date: `${parts.year}-${parts.month}-${parts.day}`, minutes: (Number(parts.hour) % 24) * 60 + Number(parts.minute) };
+      const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', weekday: 'short' }).formatToParts(new Date(ms)).map((x) => [x.type, x.value]));
+      return { date: `${parts.year}-${parts.month}-${parts.day}`, minutes: (Number(parts.hour) % 24) * 60 + Number(parts.minute), sunday: parts.weekday === 'Sun' };
     } catch { return null; }
   }
   const REMINDER_WINDOW = 90; // minutes after the chosen time in which the reminder may still go out
@@ -237,6 +237,12 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
       if (local.minutes < Number(r.minute_of_day) || local.minutes >= Number(r.minute_of_day) + REMINDER_WINDOW) continue;
       const days = ((asObj(r.data) ?? {}).days ?? {}) as Record<string, BriefDay>;
       await db.query('update public.lwd_reminders set last_sent = $2 where user_id = $1', [r.user_id, local.date]);
+      // On Sundays the reminder is the week's recap, whether or not they have practised today.
+      if (local.sunday && Object.keys(days).some((k) => k > new Date(now() - 8 * DAY).toISOString().slice(0, 10) && (days[k]?.activeSeconds ?? 0) >= 60)) {
+        await notify([r.user_id], { title: 'Your week in Spanish is ready', body: `${r.first_name}, see what got better this week and what to take to your next lesson.`, url: '#/recap', tag: 'recap' });
+        reminders++;
+        continue;
+      }
       if ((days[local.date]?.activeSeconds ?? 0) >= 60) continue; // already practised today: no nagging
       const streak = streakOf(days, local.date);
       await notify([r.user_id], streak >= 2
@@ -683,6 +689,26 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
       }
       if (!isTeacher && cur.status !== 'submitted' && cur.status !== 'reviewed') await notify([str(cur.teacherId)], { title: `${user.first_name} handed in homework`, body: clip((cur.activity as Record<string, unknown> | undefined)?.title) || 'Open the app to review it.', url: '#/teach/homework', tag: `sub-${str(b.id)}` });
       return { status: 200, json: { record: next, followUp } };
+    }
+
+    if (path === 'platform/writing' && method === 'POST') {
+      // A student sends the teacher a piece of writing they did on their own (exam practice): it arrives as handed-in
+      // written homework, ready to mark. A student can create nothing else, and only for themselves.
+      if (isTeacher) throw new HttpError(403, 'forbidden', 'Only a student can send writing in.');
+      const b = await body(req);
+      const text = str(b.text).trim().slice(0, 6000), title = str(b.title).trim().slice(0, 120) || 'Writing practice', prompt = str(b.prompt).trim().slice(0, 1200);
+      if (text.split(/\s+/).filter(Boolean).length < 5) throw new HttpError(400, 'invalid', 'Write a little more before sending it.');
+      const bucket = `writing:${user.id}`;
+      if ((await failures(bucket, DAY)) >= 5) throw new HttpError(429, 'too_many_attempts', 'You have sent five pieces today. Send more tomorrow.');
+      const teacher = await db.query<{ id: string }>("select id from public.lwd_users where role = 'teacher' order by created_at limit 1");
+      if (!teacher[0]) throw new HttpError(503, 'no_teacher', 'There is no teacher to send this to yet.');
+      await db.query('insert into public.lwd_attempts (bucket, at) values ($1, $2)', [bucket, iso(now())]);
+      const id = `self-${base64url(randomBytes(9))}`;
+      const minWords = Number(b.minWords) > 0 ? Math.min(600, Math.floor(Number(b.minWords))) : undefined;
+      const rec = { id, studentId: user.id, teacherId: teacher[0].id, activity: { kind: 'written', title, prompt, ...(minWords ? { minWords } : {}) }, instructions: '', assignedAt: iso(now()), dueAt: iso(now()), status: 'submitted', selfSet: true, result: { completedAt: iso(now()), text, summary: `${text.split(/\s+/).filter(Boolean).length} words` } };
+      await db.query("insert into public.lwd_platform (id, kind, teacher_id, student_id, data, updated_at) values ($1, 'homework', $2, $3, $4::jsonb, $5)", [id, teacher[0].id, user.id, JSON.stringify(rec), iso(now())]);
+      await notify([teacher[0].id], { title: `${user.first_name} sent you some writing`, body: clip(title) || 'Open the app to mark it.', url: '#/teach/homework', tag: `sub-${id}` });
+      return { status: 201, json: { record: rec } };
     }
 
     if (path === 'platform/invoices/report-paid' && method === 'POST') {
