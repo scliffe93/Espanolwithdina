@@ -34,6 +34,9 @@ import { Recap } from './screens/Recap';
 import { Privacy } from './screens/Privacy';
 import { Arcade } from './screens/games/Arcade';
 import { MetroRush } from './screens/games/MetroRush';
+import { Pairs } from './screens/games/Pairs';
+import { QuickKeys } from './screens/games/QuickKeys';
+import { SayIt } from './screens/games/SayIt';
 import { OrderUp } from './screens/games/OrderUp';
 import { SwipeCheck } from './screens/games/SwipeCheck';
 import { SerEstarDrop } from './screens/games/SerEstarDrop';
@@ -257,7 +260,7 @@ export default function App() {
     case 'account': screen = <Account />; break;
     case 'journey': screen = <Journey />; break;
     case 'game':
-      screen = route.id === 'order' ? <OrderUp key="order" /> : route.id === 'swipe' ? <SwipeCheck key="swipe" /> : route.id === 'serestar' ? <SerEstarDrop key="serestar" /> : route.id === 'penalty' ? <Penalty key="penalty" /> : route.id === 'derbi' ? <Derbi key="derbi" /> : route.id === 'lineup' ? <LineUp key="lineup" /> : <MetroRush key="metro" />;
+      screen = route.id === 'order' ? <OrderUp key="order" /> : route.id === 'swipe' ? <SwipeCheck key="swipe" /> : route.id === 'serestar' ? <SerEstarDrop key="serestar" /> : route.id === 'penalty' ? <Penalty key="penalty" /> : route.id === 'derbi' ? <Derbi key="derbi" /> : route.id === 'lineup' ? <LineUp key="lineup" /> : route.id === 'pairs' ? <Pairs key="pairs" /> : route.id === 'type' ? <QuickKeys key="type" /> : route.id === 'say' ? <SayIt key="say" /> : <MetroRush key="metro" />;
       break;
     default: screen = <World />;
   }

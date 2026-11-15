@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getActiveVariety, verbKey } from '../../data/verbs';
 import { SER_ESTAR, shuffle, type SerEstarItem } from '../../lib/exercises';
 import { useSay } from '../../hooks/useSpeech';
@@ -17,6 +17,10 @@ function Field({ api }: { api: GameApi }) {
   const [round, setRound] = useState(() => ({ id: 0, it: items[0] }));
   const [res, setRes] = useState<{ pick: 'ser' | 'estar' | null; ok: boolean } | null>(null);
   const fall = Math.max(3.2, 7.5 - (api.hud.level - 1) * 0.7) * (reduced ? 1.5 : 1);
+  // The card falls with a transform, which stays smooth on a phone; the height of the field tells it how far.
+  const field = useRef<HTMLDivElement>(null);
+  const [fieldH, setFieldH] = useState(340);
+  useLayoutEffect(() => { if (field.current) setFieldH(field.current.clientHeight); }, []);
 
   const next = () => { setRes(null); idx.current++; setRound({ id: idx.current, it: items[idx.current % items.length] }); };
 
@@ -46,7 +50,7 @@ function Field({ api }: { api: GameApi }) {
   const it = round.it;
   return (
     <div className="overflow-hidden rounded-4xl bg-gradient-to-b from-saffron-50 via-saffron-light to-saffron shadow-lift">
-      <div className="relative h-[340px] overflow-hidden sm:h-[380px]">
+      <div ref={field} className="relative h-[340px] overflow-hidden sm:h-[380px]">
         {/* drifting background shapes */}
         {!reduced && [0, 1, 2, 3].map((i) => (
           <motion.span key={i} className="absolute h-16 w-16 rounded-full bg-white/30" style={{ left: `${10 + i * 24}%` }} animate={{ y: [400, -80] }} transition={{ duration: 9 + i * 2, repeat: Infinity, ease: 'linear', delay: i * 1.7 }} />
@@ -54,9 +58,10 @@ function Field({ api }: { api: GameApi }) {
         <AnimatePresence>
           <motion.div
             key={round.id}
-            className="absolute inset-x-4 mx-auto max-w-md rounded-3xl bg-white p-5 text-center shadow-lift"
-            initial={{ top: -140, rotate: -2 }}
-            animate={res ? { top: 110, rotate: 0, x: res.pick === 'ser' ? -40 : res.pick === 'estar' ? 40 : 0, scale: 1.04 } : { top: '72%', rotate: 2 }}
+            className="absolute inset-x-4 top-0 mx-auto max-w-md rounded-3xl bg-white p-5 text-center shadow-lift"
+            style={{ willChange: 'transform' }}
+            initial={{ y: -160, rotate: -2 }}
+            animate={res ? { y: 100, rotate: 0, x: res.pick === 'ser' ? -40 : res.pick === 'estar' ? 40 : 0, scale: 1.04 } : { y: fieldH * 0.72, rotate: 2 }}
             exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.2 } }}
             transition={res ? { type: 'spring', stiffness: 260, damping: 20 } : { duration: fall, ease: 'linear' }}
             onAnimationComplete={() => { if (!res) answer(null); }}

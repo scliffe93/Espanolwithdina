@@ -5,7 +5,7 @@ import { confetti, haptic, sfx } from '../../lib/fx';
 import { navigate } from '../../lib/router';
 import { completeLesson, recordAttempt, updateDay, type AttemptInput } from '../../lib/state';
 import { useStore } from '../../lib/store';
-import type { ErrorCategory } from '../../types';
+import type { AppState, ErrorCategory } from '../../types';
 import { GAMES, type GameInfo } from './registry';
 import { useHomeworkCompletion } from '../../lib/platform/homework';
 
@@ -64,6 +64,20 @@ export function GameShell({ id, duration = 60, lives: startLives = 3, onExit, ch
   const logRef = useRef(log);
   logRef.current = log;
 
+  // Saving after every tap made the games stutter (each save redraws the app and writes to storage). Answers are
+  // collected and saved together a moment later, and always when the game pauses, ends or is left.
+  const pending = useRef<((s: AppState) => AppState)[]>([]);
+  const flushTimer = useRef<number>();
+  const flush = useCallback(() => {
+    window.clearTimeout(flushTimer.current); flushTimer.current = undefined;
+    const q = pending.current;
+    if (!q.length) return;
+    pending.current = [];
+    update((s) => q.reduce((acc, f) => f(acc), s));
+  }, [update]);
+  const queue = (f: (s: AppState) => AppState) => { pending.current.push(f); flushTimer.current ??= window.setTimeout(flush, 1800); };
+  useEffect(() => () => flush(), [flush]);
+
   // countdown
   useEffect(() => {
     if (phase !== 'countdown') return;
@@ -81,6 +95,7 @@ export function GameShell({ id, duration = 60, lives: startLives = 3, onExit, ch
   }, [phase]);
 
   const finish = useCallback(() => {
+    flush();
     setPhase('over');
     const h = hudRef.current;
     const prev = state.games[id];
@@ -95,7 +110,7 @@ export function GameShell({ id, duration = 60, lives: startLives = 3, onExit, ch
       const correct = l.filter((x) => x.correct).length;
       hw.submit({ score: l.length ? correct / l.length : 0, attempts: l.length, correct, summary: `${info.title}: ${h.score} points · ${correct}/${l.length} correct · best streak ${bestCombo}`, items: l.slice(0, 60).map((x) => ({ prompt: info.title, expected: x.label, given: x.detail ?? x.label, correct: x.correct, ...(x.category ? { category: x.category } : {}) })) });
     }
-  }, [id, update, state.games, bestCombo, hw, info.title]);
+  }, [id, update, state.games, bestCombo, hw, info.title, flush]);
 
   useEffect(() => {
     if (phase === 'play' && (hud.timeLeft <= 0 || hud.lives <= 0)) finish();
@@ -103,10 +118,10 @@ export function GameShell({ id, duration = 60, lives: startLives = 3, onExit, ch
 
   // Pause when tab hidden
   useEffect(() => {
-    const on = () => document.visibilityState === 'hidden' && setPhase((p) => (p === 'play' ? 'paused' : p));
+    const on = () => { if (document.visibilityState === 'hidden') { flush(); setPhase((p) => (p === 'play' ? 'paused' : p)); } };
     document.addEventListener('visibilitychange', on);
     return () => document.removeEventListener('visibilitychange', on);
-  }, []);
+  }, [flush]);
 
   const pop = (text: string, at?: { x: number; y: number }) => {
     const id2 = ++popId.current;
@@ -126,8 +141,9 @@ export function GameShell({ id, duration = 60, lives: startLives = 3, onExit, ch
     setBestCombo((b) => Math.max(b, combo));
     setH({ ...h, score: h.score + pts, combo, level: 1 + Math.floor(combo / 4) });
     haptic(10);
-    if (attempt) update((s) => recordAttempt(s, { ...attempt, grade: 2 }));
-    else update((s) => updateDay(s, (d) => ({ ...d, exercisesAttempted: d.exercisesAttempted + 1, exercisesCorrect: d.exercisesCorrect + 1 })));
+    const when = Date.now();
+    if (attempt) queue((s) => recordAttempt(s, { ...attempt, grade: 2 }, when));
+    else queue((s) => updateDay(s, (d) => ({ ...d, exercisesAttempted: d.exercisesAttempted + 1, exercisesCorrect: d.exercisesCorrect + 1 }), when));
     if (item) setLog((l) => [...l, item]);
   };
 
@@ -137,8 +153,9 @@ export function GameShell({ id, duration = 60, lives: startLives = 3, onExit, ch
     sfx.wrong();
     haptic([40, 30, 40]);
     void shake.start({ x: [0, -10, 10, -6, 6, 0], transition: { duration: 0.35 } });
-    if (attempt) update((s) => recordAttempt(s, { ...attempt, grade: 0 }));
-    else update((s) => updateDay(s, (d) => ({ ...d, exercisesAttempted: d.exercisesAttempted + 1 })));
+    const at = Date.now();
+    if (attempt) queue((s) => recordAttempt(s, { ...attempt, grade: 0 }, at));
+    else queue((s) => updateDay(s, (d) => ({ ...d, exercisesAttempted: d.exercisesAttempted + 1 }), at));
     if (item) setLog((l) => [...l, item]);
   };
 
@@ -175,7 +192,7 @@ export function GameShell({ id, duration = 60, lives: startLives = 3, onExit, ch
       </div>
       {(phase === 'play' || phase === 'paused') && (
         <div className="mb-3 h-2 overflow-hidden rounded-full bg-ink/10" role="progressbar" aria-valuenow={hud.timeLeft} aria-valuemax={duration} aria-label="Time left">
-          <motion.div className={`h-full ${hud.timeLeft <= 10 ? 'bg-terracotta' : 'bg-olive'}`} animate={{ width: `${(hud.timeLeft / duration) * 100}%` }} transition={{ duration: 1, ease: 'linear' }} />
+          <motion.div className={`h-full w-full origin-left ${hud.timeLeft <= 10 ? 'bg-terracotta' : 'bg-olive'}`} style={{ willChange: 'transform' }} initial={false} animate={{ scaleX: hud.timeLeft / duration }} transition={{ duration: 1, ease: 'linear' }} />
         </div>
       )}
 

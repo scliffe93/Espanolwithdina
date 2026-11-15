@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from 'motion/react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CITY_THEMES } from '../../data/cityThemes';
 import { VERBS, conjugate, personsForRegion, verbKey, type Verb } from '../../data/verbs';
 import { classifyVerbError } from '../../lib/answer';
@@ -11,7 +11,7 @@ import { GameShell, type GameApi } from './GameShell';
 
 interface Round { id: number; verb: Verb; person: number; pronoun: string; options: string[]; answer: string }
 
-function useVerbPool(): Verb[] {
+export function useVerbPool(): Verb[] {
   const { state } = useStore();
   const { verbs: released } = useLevelAccess();
   const focus = (new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('focus') ?? '').split(',').filter(Boolean);
@@ -45,6 +45,16 @@ function Track({ api }: { api: GameApi }) {
   const [result, setResult] = useState<{ picked: string; ok: boolean } | null>(null);
   const speed = 9 - Math.min(5, api.hud.level - 1) * 0.9; // seconds to cross
   const colors = city.transit.colors;
+  // The train moves with a transform (which the phone's graphics chip handles) and not by changing its position,
+  // which made it judder. For that the track's width has to be known.
+  const track = useRef<HTMLDivElement>(null);
+  const [trackW, setTrackW] = useState(() => (typeof window !== 'undefined' ? Math.min(768, window.innerWidth - 32) : 720));
+  useLayoutEffect(() => {
+    const measure = () => { if (track.current) setTrackW(track.current.clientWidth); };
+    measure(); window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, []);
+  const trainW = round.options.length * 150 + 20;
 
   const next = () => { setResult(null); setRound(make()); };
 
@@ -90,7 +100,7 @@ function Track({ api }: { api: GameApi }) {
         <p className="mt-1 text-sm text-white/75">{round.verb.en.split(' (')[0]}</p>
       </div>
       {/* track */}
-      <div className="relative h-44 overflow-hidden bg-gradient-to-b from-azul to-[#0d1a2c] sm:h-48">
+      <div ref={track} className="relative h-44 overflow-hidden bg-gradient-to-b from-azul to-[#0d1a2c] sm:h-48">
         {cable ? (
           <div className="absolute inset-x-0 top-6 h-0.5 bg-white/50" />
         ) : (
@@ -102,12 +112,12 @@ function Track({ api }: { api: GameApi }) {
         )}
         <motion.div
           key={round.id}
-          className={`absolute flex gap-2 ${cable ? 'top-6' : 'bottom-9'}`}
-          initial={{ left: '100%' }}
-          animate={result ? undefined : { left: '-110%' }}
+          className={`absolute left-0 flex gap-2 ${cable ? 'top-6' : 'bottom-9'}`}
+          initial={{ x: trackW }}
+          animate={result ? undefined : { x: -trainW }}
           transition={{ duration: reduced ? speed * 1.6 : speed, ease: 'linear' }}
           onAnimationComplete={departed}
-          style={{ width: 'max-content' }}
+          style={{ width: 'max-content', willChange: 'transform' }}
         >
           {round.options.map((o, i) => {
             const isAns = o === round.answer;
