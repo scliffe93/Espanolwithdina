@@ -24,12 +24,9 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
   // Sam at A1: English buttons, higher games locked, a card showing the way to A2.
   await as('sam');
   await p.goto(BASE + '#/games'); await p.waitForTimeout(1200);
-  const locked = await p.locator('[data-locked="true"]').count();
-  ok(locked >= 4, `${locked} games are locked above A1`);
-  ok(/Unlocks at A2/.test(await p.getByTestId('game-porpara').innerText()), 'Por o Para says it unlocks at A2');
-  ok(/working at A1/.test(await p.getByTestId('arcade-level').innerText()), 'the arcade says which level Sam is working at');
-  await p.getByTestId('game-porpara').click({ force: true }); await p.waitForTimeout(500);
-  ok(/#\/games/.test(p.url()), 'a locked game does not open');
+  const a1 = await p.getByTestId('arcade-all').locator('button').count();
+  ok(await p.getByTestId('game-porpara').count() === 0 && await p.getByTestId('game-pasado').count() === 0, `games above A1 are not shown at all (${a1} listed)`);
+  ok(!/Unlocks at|🔒/.test(await p.locator('main').innerText()), 'nothing on the page mentions locked games');
   await p.goto(BASE + '#/student'); await p.waitForTimeout(1500);
   const mv = p.getByTestId('moving-up'); await mv.scrollIntoViewIfNeeded();
   ok(/A2/.test(await mv.innerText()) && (await mv.locator('li').count()) === 5, 'Sam sees the five signs for moving up to A2');
@@ -51,7 +48,9 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
   await p.goto(BASE + '#/student'); await p.waitForTimeout(1500);
   ok(/Dina has moved you up to A2/.test(await p.getByTestId('moving-up').innerText()), 'Sam is told Dina has moved him up');
   await p.goto(BASE + '#/games'); await p.waitForTimeout(1200);
-  ok(!(await p.getByTestId('game-porpara').getAttribute('data-locked')) && !!(await p.getByTestId('game-pasado').getAttribute('data-locked')), 'the A2 game is open and the B1 games are still locked');
+  ok(await p.getByTestId('game-porpara').count() === 1 && await p.getByTestId('game-pasado').count() === 0, 'the A2 game has appeared and the B1 games are still hidden');
+  ok((await p.getByTestId('game-porpara').getAttribute('data-fresh')) === 'true' && /unlocked|abierto/i.test(await p.getByTestId('game-porpara').innerText()), 'it is marked as just unlocked');
+  await p.screenshot({ path: OUT + '/levels-unlocked.png' });
   await p.getByTestId('game-porpara').click(); await p.waitForTimeout(900);
   await p.getByRole('button', { name: /Vamos/ }).click(); await p.waitForTimeout(3300);
   await p.locator('button[data-right="true"]').click(); await p.waitForTimeout(500);

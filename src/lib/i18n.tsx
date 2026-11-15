@@ -54,7 +54,7 @@ const ES: Record<string, [1 | 2 | 3, string]> = {
   'Keep going: 12 more': [2, 'Seguir: 12 más'], 'Practise my mistakes': [2, 'Practicar mis errores'], 'Other verbs': [2, 'Otros verbos'],
   'How to play': [2, 'Cómo se juega'], 'End game': [2, 'Terminar'], 'Learn from these': [2, 'Aprende de estos'], 'Out of lives': [2, 'Sin vidas'],
   correct: [2, 'aciertos'], accuracy: [2, 'precisión'], 'best streak': [2, 'mejor racha'], 'The arcade': [2, 'Los juegos'], 'All games': [2, 'Todos los juegos'],
-  'Unlocks at': [2, 'Se abre en'], filled: [2, 'rellenos'], 'follows the pattern': [2, 'sigue el patrón'], 'has its own forms': [2, 'tiene formas propias'],
+  'Just unlocked': [2, 'Recién abierto'], filled: [2, 'rellenos'], 'follows the pattern': [2, 'sigue el patrón'], 'has its own forms': [2, 'tiene formas propias'],
   // stage 3: short instructions
   'Which form do you hear?': [3, '¿Qué forma oyes?'], 'Tap the words in order.': [3, 'Toca las palabras en orden.'], 'Type the form': [3, 'Escribe la forma'],
   'Fill the gap': [3, 'Rellena el hueco'], 'Choose the correct Spanish.': [3, 'Elige la frase correcta.'], 'Which form should replace the mistake?': [3, '¿Qué forma corrige el error?'],
