@@ -14,6 +14,7 @@ import { navigate } from '../lib/router';
 import { addSpeakingAttempt, completeLesson, recordAttempt } from '../lib/state';
 import { useStore } from '../lib/store';
 import { confetti, haptic, sfx } from '../lib/fx';
+import { logIssue } from '../lib/diagnostics';
 import { useHomeworkCompletion } from '../lib/platform/homework';
 import { useLevelAccess } from '../lib/platform/useLevelAccess';
 import { GRAMMAR_MODES, type GrammarMode } from '../data/grammar';
@@ -264,7 +265,12 @@ function TypeInput({ onSubmit, locked, placeholder, verb, answer, cardKey, onHin
   const [listening, setListening] = useState(false);
   const [heard, setHeard] = useState<string | null>(null);
   const mic = useRef<RecognitionHandle | null>(null);
-  useEffect(() => () => mic.current?.stop(), []);
+  const micTimer = useRef<number>();
+  // Some phones offer speech recognition and then refuse to run it (an iPhone app on the Home Screen, a blocked
+  // microphone). After one refusal the button is put away for this visit, so nobody keeps tapping a dead button.
+  const [micOk, setMicOk] = useState(() => { try { return sessionStorage.getItem('lwd-mic-off') !== '1'; } catch { return true; } });
+  const micOff = () => { setMicOk(false); try { sessionStorage.setItem('lwd-mic-off', '1'); } catch { /* ignore */ } };
+  useEffect(() => () => { window.clearTimeout(micTimer.current); mic.current?.stop(); }, []);
   const listen = () => {
     if (listening) { mic.current?.stop(); return; }
     stopSpeaking();
@@ -275,12 +281,16 @@ function TypeInput({ onSubmit, locked, placeholder, verb, answer, cardKey, onHin
       setV(best);
       if (isFinal) mic.current?.stop();
     }, (err) => {
-      setListening(false); mic.current = null;
+      setListening(false); mic.current = null; window.clearTimeout(micTimer.current);
+      const refused = err === 'not-allowed' || err === 'service-not-allowed' || err === 'audio-capture' || err === 'language-not-supported';
+      if (refused && !best) { micOff(); logIssue('note', `Speaking answers is not available here (${err})`); }
       if (best) { update((x) => addSpeakingAttempt(x)); onSubmit(best); }
-      else setHeard(err === 'not-allowed' || err === 'service-not-allowed' ? 'The microphone is blocked. Allow it for this site in your browser settings, or type your answer.' : 'I did not catch that. Tap the microphone and try again, or type it.');
+      else setHeard(refused ? 'Speaking is not available on this device right now, so type your answer. If the microphone is blocked, allow it for this site in your phone’s settings.' : 'I did not catch that. Tap the microphone and try again, or type it.');
     });
-    if (!h) { setHeard('Speaking is not available in this browser. Type your answer.'); return; }
+    if (!h) { micOff(); setHeard('Speaking is not available in this browser. Type your answer.'); return; }
     mic.current = h; setListening(true);
+    // Never leave it listening for ever: some phones do not end the turn by themselves.
+    micTimer.current = window.setTimeout(() => mic.current?.stop(), 9000);
   };
   const { update } = useStore();
   const insert = (c: string) => {
@@ -295,7 +305,7 @@ function TypeInput({ onSubmit, locked, placeholder, verb, answer, cardKey, onHin
     <form onSubmit={(e) => { e.preventDefault(); if (v.trim()) onSubmit(v); }} className="mt-5">
       <div className="flex gap-2">
         <input ref={ref} autoFocus disabled={locked} className="input text-xl" value={v} onChange={(e) => setV(e.target.value)} placeholder={placeholder} autoCapitalize="off" autoComplete="off" autoCorrect="off" spellCheck={false} lang="es" aria-label="Your answer" />
-        {recognitionSupported && <button type="button" className={`btn-ghost shrink-0 !px-3.5 ${listening ? '!bg-terracotta !text-white' : ''}`} disabled={locked} onClick={listen} aria-label={listening ? 'Stop listening' : 'Say your answer'} aria-pressed={listening} data-testid="say-answer"><Icon name="mic" size={20} /></button>}
+        {recognitionSupported && micOk && <button type="button" className={`btn-ghost shrink-0 !px-3.5 ${listening ? '!bg-terracotta !text-white' : ''}`} disabled={locked} onClick={listen} aria-label={listening ? 'Stop listening' : 'Say your answer'} aria-pressed={listening} data-testid="say-answer"><Icon name="mic" size={20} /></button>}
         <button className="btn-primary shrink-0" disabled={locked || !v.trim()}>Check</button>
       </div>
       {listening && <p className="mt-2 text-sm font-medium text-terracotta" role="status">Listening… say it in Spanish.</p>}
