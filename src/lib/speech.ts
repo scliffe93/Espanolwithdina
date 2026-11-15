@@ -193,7 +193,7 @@ function speakOne(text: string, opts: SpeakOptions, voice: SpeechSynthesisVoice 
     // started after a moment, clear the queue and say it once more instead of leaving a silence.
     watchdog = window.setTimeout(() => {
       if (started || finished || gen !== generation) return;
-      if (synth.speaking && !synth.paused) return; // it is playing; this engine just does not report the start
+      if (synth.speaking || synth.pending) return; // it is playing or queued; never interrupt a line that may be sounding
       finished = true;
       window.clearInterval(keepAlive);
       window.clearTimeout(safety);

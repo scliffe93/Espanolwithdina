@@ -218,6 +218,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('pagehide', on);
   }, []);
 
+  // One function for the life of the app: anything that reacts to it changing must not fire on every save.
+  const setLearning = useCallback((on: boolean) => { learning.current = on; }, []);
   const value = useMemo<StoreValue>(
     () => ({
       state,
@@ -235,9 +237,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       dismissToast: (id) => setToasts((ts) => ts.filter((t) => t.id !== id)),
       notify: (title, body) => pushToast({ kind: 'info', title, body }),
       timer,
-      setLearning: (on) => (learning.current = on),
+      setLearning,
     }),
-    [state, ready, update, replace, switchStorage, toasts, pushToast, timer],
+    [state, ready, update, replace, switchStorage, toasts, pushToast, timer, setLearning],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

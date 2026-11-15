@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Icon, type IconName } from './components/Icon';
 import { Toasts } from './components/ui';
 import { BrandLogo } from './components/BrandLogo';
@@ -147,10 +147,15 @@ export default function App() {
   const { ready, state, setLearning, update } = useStore();
   const route = useRoute();
 
+  useEffect(() => { setLearning(LEARNING.includes(route.name)); }, [route.name, setLearning]);
+  // Stop the voice only when the learner really moves to another page. (It used to stop on every save, which cut
+  // words off half-way.) The first run is skipped so a line started by the opening tap is not cut either.
+  const lastPage = useRef<string | null>(null);
   useEffect(() => {
-    setLearning(LEARNING.includes(route.name));
-    stopSpeaking();
-  }, [route.name, route.id, setLearning]);
+    const page = route.name + '/' + (route.id ?? '');
+    if (lastPage.current !== null && lastPage.current !== page) stopSpeaking();
+    lastPage.current = page;
+  }, [route.name, route.id]);
 
   // Remember the last learning activity for "Continue learning" on any device.
   useEffect(() => {

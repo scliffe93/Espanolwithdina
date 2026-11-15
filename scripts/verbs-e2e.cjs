@@ -81,6 +81,18 @@ async function playThrough(p, label) {
   await playThrough(p, 'resumed session');
   await p.screenshot({ path: OUT + '/verbs-done.png' });
 
+  // The voice is never cut off by the app saving progress: nothing may cancel a line while the learner stays on the page.
+  await p.goto(BASE + '#/world'); await p.waitForTimeout(400); await p.goto(BASE + '#/verbs'); await p.waitForTimeout(1200);
+  await p.evaluate(() => { window.__cancels = 0; window.__spoken = 0; const s = window.speechSynthesis; const c = s.cancel.bind(s), k = s.speak.bind(s); s.cancel = () => { window.__cancels++; c(); }; s.speak = (u) => { window.__spoken++; k(u); }; });
+  await p.getByRole('button', { name: /details$/ }).first().click(); await p.waitForTimeout(600);
+  await p.locator('[role="dialog"] button:has(svg)').filter({ hasText: /\S/ }).nth(3).click();
+  await p.waitForTimeout(400);
+  await p.evaluate(() => { window.__cancels = 0; });
+  await p.waitForTimeout(6000); // long enough for the practice timer to save several times
+  const v = await p.evaluate(() => ({ c: window.__cancels, s: window.__spoken }));
+  ok(v.s >= 1 && v.c === 0, `a spoken line is left to finish (spoken ${v.s}, interrupted ${v.c} times)`);
+  await p.keyboard.press('Escape');
+
   // A page that fails shows the recovery screen, and the problem is listed in Settings.
   await p.evaluate(() => sessionStorage.setItem('lwd-verb-session', JSON.stringify({ queue: [{ kind: 'fix', verb: 'ser' }], i: 0, log: [], tense: 'present', at: Date.now() })));
   await p.goto(BASE + '#/world'); await p.waitForTimeout(400); await p.reload(); await p.waitForTimeout(1200); await p.goto(BASE + '#/verbs'); await p.waitForTimeout(1000);
