@@ -4,7 +4,10 @@ import App from './App';
 import { StoreProvider } from './lib/store';
 import { AccountProvider } from './lib/account';
 import { PlatformProvider } from './lib/platform/context';
+import { installDiagnostics } from './lib/diagnostics';
 import './index.css';
+
+installDiagnostics();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

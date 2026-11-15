@@ -1,4 +1,5 @@
 import type { Region } from '../types';
+import { logIssue } from './diagnostics';
 
 // Browser speech synthesis (free, on-device or OS-provided voices).
 // Voice quality and availability vary by browser and operating system.
@@ -151,7 +152,7 @@ export function chunkText(text: string, max = 180): string[] {
   return out;
 }
 
-function speakOne(text: string, opts: SpeakOptions, voice: SpeechSynthesisVoice | undefined, gen: number): Promise<void> {
+function speakOne(text: string, opts: SpeakOptions, voice: SpeechSynthesisVoice | undefined, gen: number, attempt = 0): Promise<void> {
   const synth = window.speechSynthesis;
   return new Promise((resolve) => {
     if (gen !== generation) return resolve();
@@ -162,28 +163,50 @@ function speakOne(text: string, opts: SpeakOptions, voice: SpeechSynthesisVoice 
     u.pitch = 1;
     live.add(u);
     let finished = false;
+    let started = false;
     let keepAlive: number | undefined;
     let safety: number | undefined; // declared first: some engines fire onerror synchronously
+    let watchdog: number | undefined;
     const done = () => {
       if (finished) return;
       finished = true;
       window.clearInterval(keepAlive);
       window.clearTimeout(safety);
+      window.clearTimeout(watchdog);
       live.delete(u);
       resolve();
     };
-    u.onstart = () => setSpeaking(true);
+    u.onstart = () => { started = true; setSpeaking(true); };
     u.onend = done;
-    u.onerror = done;
+    u.onerror = (e) => {
+      const why = (e as SpeechSynthesisErrorEvent).error;
+      // "interrupted" and "canceled" are us moving on to the next line, not a fault.
+      if (why && why !== 'interrupted' && why !== 'canceled' && gen === generation) logIssue('voice', `The voice could not play (${why})`, `voice: ${voice?.name ?? 'default'} · ${u.lang}`);
+      done();
+    };
     if (opts.onBoundary) u.onboundary = (e) => opts.onBoundary!(e.charIndex);
     if (synth.paused) synth.resume(); // Safari can be left paused after interruptions
-    synth.speak(u);
+    try { synth.speak(u); } catch { return done(); }
     // Desktop Chrome stops long utterances after ~15 s unless nudged.
     if (isChromeDesktop) keepAlive = window.setInterval(() => { if (synth.speaking && !synth.paused) { synth.pause(); synth.resume(); } }, 10_000);
+    // Some engines silently drop a line (often the one queued straight after another was stopped). If nothing has
+    // started after a moment, clear the queue and say it once more instead of leaving a silence.
+    watchdog = window.setTimeout(() => {
+      if (started || finished || gen !== generation) return;
+      if (synth.speaking && !synth.paused) return; // it is playing; this engine just does not report the start
+      finished = true;
+      window.clearInterval(keepAlive);
+      window.clearTimeout(safety);
+      live.delete(u);
+      u.onend = null; u.onerror = null;
+      try { synth.cancel(); if (synth.paused) synth.resume(); } catch { /* ignore */ }
+      if (attempt === 0) window.setTimeout(() => { void speakOne(text, opts, voice, gen, 1).then(resolve); }, 120);
+      else { logIssue('voice', 'The voice did not start', `voice: ${voice?.name ?? 'default'} · ${u.lang} · Spanish voices on this device: ${spanishVoices(opts.region).length}`); resolve(); }
+    }, 1400);
     // Safety net: resolve even if the engine never fires onstart/onend (estimated duration + margin).
     const est = Math.max(3500, (text.length * 85) / (u.rate || 1) + 2500);
     safety = window.setTimeout(function check() {
-      if (synth.speaking && gen === generation) { window.setTimeout(check, 1500); return; }
+      if (synth.speaking && gen === generation) { safety = window.setTimeout(check, 1500); return; }
       done();
     }, est);
   });
@@ -201,13 +224,15 @@ export function speak(text: string, opts: SpeakOptions): Promise<void> {
   }
   pendingAuto = null;
   const wasBusy = synth.speaking || synth.pending;
-  synth.cancel();
+  // Only clear the queue when something is in it: on some phones a cancel() right before speak() swallows the new line.
+  if (wasBusy) synth.cancel();
   const voicesLoaded = loadVoices().length > 0;
   const isApple = /iphone|ipad|ipod|macintosh/i.test(navigator.userAgent);
   // Start synchronously whenever we can: iOS only honours speak() inside the tap that triggered it.
-  const needDelay = wasBusy && isChromeDesktop && !isApple;
+  // Chrome (desktop and Android) drops a line queued in the same instant as a cancel(), so it gets a short pause.
+  const needDelay = wasBusy && (isChromeDesktop || isAndroid) && !isApple;
   const run = async () => {
-    if (needDelay) await new Promise((r) => setTimeout(r, 60)); // Chrome drops an utterance queued right after cancel()
+    if (needDelay) await new Promise((r) => setTimeout(r, 90));
     if (!voicesLoaded) await voicesReady();
     if (gen !== generation) return;
     const voice = opts.lang ? undefined : pickVoice(opts.region);

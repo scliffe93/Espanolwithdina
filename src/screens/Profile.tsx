@@ -1,4 +1,5 @@
 import { NotificationsCard } from '../components/NotificationsCard';
+import { Troubleshooting } from '../components/Troubleshooting';
 import { motion } from 'motion/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Character } from '../components/Character';
@@ -319,6 +320,10 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
                   <li className="flex justify-between"><span>Speech recognition (transcripts)</span><b>{recognitionSupported ? 'Supported' : 'Not supported — type instead'}</b></li>
                 </ul>
                 {recognitionSupported && <p className="mt-2 text-xs text-ink-mute">Note: in Chrome and Edge, speech recognition audio is processed by the browser vendor’s online service. Recordings themselves are stored only on this device.</p>}
+              </Section>
+
+              <Section title="Troubleshooting" hint="If something stops, sounds wrong or looks stuck, start here.">
+                <Troubleshooting />
               </Section>
 
               <Section title="Notifications" hint="Hear on this phone or computer when there is something new for you.">

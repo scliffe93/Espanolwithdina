@@ -154,3 +154,11 @@ The 9-step demonstration (Dina → Sam → book → assign → as Sam see both �
 ## Costs
 
 Nothing in this prototype costs anything to run (static site + browser storage). Real accounts use the Supabase free tier as documented in `docs/ACCOUNTS.md`.
+
+## When something goes wrong (troubleshooting)
+
+- **A page that fails** no longer goes blank. It shows "This page hit a problem" with three buttons: try again, go to the start, or refresh the app. Progress is not lost.
+- **Settings → Troubleshooting** has "Test the voice", "Refresh the app" (fetches a clean copy of the app and keeps all progress; the first thing to try when something looks stuck or out of date), and a list of recent problems with "Copy report" and "Send to Dina". The report holds the problems and the device type only: no name, password or answers. It stays on the device unless the learner sends it. The code is `src/lib/diagnostics.ts`, `src/components/ErrorBoundary.tsx` and `src/components/Troubleshooting.tsx`.
+- **Verb gym.** A session is always a full 12 questions (it used to stop at 8 to 11), "Keep going: 12 more" starts the next one from the results screen, and a session left half-way (the phone reloading the app, switching tabs) is offered again with "Carry on". `tests/verb-sessions.test.ts` builds thousands of sessions and fails if any exercise could not be answered; `scripts/verbs-e2e.cjs` plays whole sessions in a phone-sized browser.
+- **The voice.** A line the phone silently drops is said again once; a line is no longer spoken on top of the "correct" chime; and a voice that will not start is recorded in the troubleshooting list.
+

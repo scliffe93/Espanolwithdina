@@ -1,6 +1,6 @@
 import type { Activity, AppState, Cefr, Region } from '../types';
 import { withinLevel } from './platform/level';
-import { HABER_FORMS, VERBS, VERB_BY_INF, conjugate, getActiveVariety, isCompound, parseExample, personsForRegion, personsForTense, verbKey, type Tense, type Verb, type VerbExample } from '../data/verbs';
+import { HABER_FORMS, VERBS, VERB_BY_INF, conjugate, getActiveVariety, isCompound, parseExample, personsForTense, verbKey, type Tense, type Verb, type VerbExample } from '../data/verbs';
 import { conjugateSimple } from '../data/conjugation';
 import { GRAMMAR_DRILLS, type GrammarItem, type GrammarMode } from '../data/grammar';
 import { regularPresent } from './answer';
@@ -129,7 +129,27 @@ export function formOptions(verb: Verb, tense: Tense, person: number, region: Re
     pool.add(`no ${verb.present[person]}`);
   }
   if (tense === 'perfect' && !verb.pronominal) pool.add(`${['estoy', 'estás', 'está', 'estamos', 'estáis', 'están'][person]} ${verb.participle}`);
-  return shuffle([answer, ...[...pool].slice(0, n - 1)], rng);
+  // Never offer a blank, the answer twice, or two options that read the same.
+  const seen = new Set([answer.toLowerCase()]);
+  const wrong = [...pool].filter((f) => { const k = f.trim().toLowerCase(); if (!k || seen.has(k)) return false; seen.add(k); return true; });
+  return shuffle([answer, ...wrong.slice(0, n - 1)], rng);
+}
+
+/** The persons this verb really has a form for in this tense (gustar has no imperative, nobody has a "yo" command). */
+export function personsWithForm(verb: Verb, tense: Tense, region: Region): number[] {
+  return personsForTense(tense, region).filter((p) => !!conjugate(verb, tense, p));
+}
+
+/** Up to n persons whose forms all differ, so a matching exercise never has two identical tiles (yo hablaba / él hablaba). */
+export function distinctPersons(verb: Verb, tense: Tense, region: Region, rng: Rng = Math.random, n = 4): number[] {
+  const seen = new Set<string>(); const out: number[] = [];
+  for (const p of shuffle(personsWithForm(verb, tense, region), rng)) {
+    const f = conjugate(verb, tense, p).toLowerCase();
+    if (seen.has(f)) continue;
+    seen.add(f); out.push(p);
+    if (out.length === n) break;
+  }
+  return out;
 }
 
 export function tokenize(sentence: string): string[] {
@@ -189,8 +209,8 @@ export function buildSession({ state, focus, tense, length = 12, now = Date.now(
     const items = shuffle(SER_ESTAR, rng).slice(0, Math.min(length, SER_ESTAR.length));
     const mixed: Exercise[] = items.map((item) => ({ kind: 'serEstar', item }));
     // Interleave a couple of conjugation items for ser/estar themselves.
-    mixed.splice(3, 0, { kind: 'match', verb: 'ser', tense: 'present', persons: shuffle(personsForRegion(region), rng).slice(0, 4), pronouns: [] });
-    mixed.splice(7, 0, { kind: 'match', verb: 'estar', tense: 'present', persons: shuffle(personsForRegion(region), rng).slice(0, 4), pronouns: [] });
+    mixed.splice(3, 0, { kind: 'match', verb: 'ser', tense: 'present', persons: distinctPersons(VERB_BY_INF.ser, 'present', region, rng), pronouns: [] });
+    mixed.splice(7, 0, { kind: 'match', verb: 'estar', tense: 'present', persons: distinctPersons(VERB_BY_INF.estar, 'present', region, rng), pronouns: [] });
     return fillPronouns(mixed, rng);
   }
   if (mode) {
@@ -199,8 +219,12 @@ export function buildSession({ state, focus, tense, length = 12, now = Date.now(
     return shuffle(pool, rng).slice(0, Math.min(length, pool.length)).map((x) => ({ kind: 'grammar' as const, mode, index: x.index, item: x.item }));
   }
 
-  const verbs = focus?.length ? focus.filter((v) => VERB_BY_INF[v]) : pickVerbs(state, tense, 5, now, maxLevel, allowed);
-  const persons = personsForTense(tense, region);
+  // Only verbs that have a form in this tense; a focus list that has none falls back to the app's own pick.
+  const usable = (list: string[]) => list.filter((v) => VERB_BY_INF[v] && personsWithForm(VERB_BY_INF[v], tense, region).length > 0);
+  let verbs = focus?.length ? usable(focus) : [];
+  if (!verbs.length) verbs = usable(pickVerbs(state, tense, 5, now, maxLevel, allowed));
+  if (!verbs.length) verbs = usable(pickVerbs(state, tense, 5, now, null, null));
+  if (!verbs.length) return [];
   const prefs = state.profile?.activities ?? [];
   const base: ExKind[] = ['choice', 'type', 'match', 'listen', 'fix', 'type', 'choice', 'build'];
   if (tense === 'present') base.push('context', 'translate', 'context');
@@ -211,29 +235,35 @@ export function buildSession({ state, focus, tense, length = 12, now = Date.now(
   let i = 0;
   // Progression within a session: recognition first, production later.
   const order = (k: ExKind) => ({ match: 0, choice: 1, listen: 2, translate: 3, fix: 4, build: 5, context: 6, type: 7, serEstar: 1, grammar: 1 })[k];
-  const picks = shuffle(kinds, rng).slice(0, length).sort((a, b) => order(a) - order(b));
+  // Always a full session: when one round of kinds is not enough, deal another.
+  let deck = shuffle(kinds, rng);
+  while (deck.length < length) deck = [...deck, ...shuffle(kinds, rng)];
+  const picks = deck.slice(0, length).sort((a, b) => order(a) - order(b));
   for (const kind of picks) {
     const inf = verbs[i++ % verbs.length];
     const verb = VERB_BY_INF[inf];
-    const examples = verb.examples.filter((e) => e.person >= 0 && (region !== 'mexico' || e.person !== 4));
+    const persons = personsWithForm(verb, tense, region);
+    const examples = verb.examples.filter((e) => e.person >= 0 && (region !== 'mexico' || e.person !== 4) && !!parseExample(e).answer && !!verb.present[e.person]);
     const ex = examples.length ? examples[Math.floor(rng() * examples.length)] : undefined;
     const person = persons[Math.floor(rng() * persons.length)];
+    const typed: Exercise = { kind: 'type', verb: inf, tense, person, pronoun: '' };
     const needsExample = ['context', 'build', 'fix', 'translate'].includes(kind);
-    if (needsExample && (!ex || tense !== 'present')) {
-      out.push({ kind: 'type', verb: inf, tense, person, pronoun: '' });
-      continue;
-    }
+    if (needsExample && (!ex || tense !== 'present')) { out.push(typed); continue; }
     switch (kind) {
       case 'type':
-        out.push({ kind, verb: inf, tense, person, pronoun: '' });
+        out.push(typed);
         break;
       case 'choice':
-      case 'listen':
-        out.push({ kind, verb: inf, tense, person, options: formOptions(verb, tense, person, region, rng), pronoun: '' });
+      case 'listen': {
+        const options = formOptions(verb, tense, person, region, rng);
+        out.push(options.length >= 2 ? { kind, verb: inf, tense, person, options, pronoun: '' } : typed);
         break;
-      case 'match':
-        out.push({ kind, verb: inf, tense, persons: shuffle(persons, rng).slice(0, 4), pronouns: [] });
+      }
+      case 'match': {
+        const ps = distinctPersons(verb, tense, region, rng);
+        out.push(ps.length >= 3 ? { kind, verb: inf, tense, persons: ps, pronouns: [] } : typed);
         break;
+      }
       case 'context':
         out.push({ kind, verb: inf, tense: 'present', person: ex!.person, example: ex! });
         break;
@@ -243,18 +273,20 @@ export function buildSession({ state, focus, tense, length = 12, now = Date.now(
       case 'fix': {
         const right = verb.present[ex!.person];
         const wrongs = formOptions(verb, 'present', ex!.person, region, rng).filter((f) => f !== right);
-        const wrong = wrongs[0];
-        out.push({ kind, verb: inf, example: ex!, wrong, options: shuffle([right, ...wrongs.slice(1, 3)], rng) });
+        if (!wrongs.length) { out.push(typed); break; }
+        out.push({ kind, verb: inf, example: ex!, wrong: wrongs[0], options: shuffle([right, ...(wrongs.length > 1 ? wrongs.slice(1, 3) : wrongs)], rng) });
         break;
       }
       case 'translate': {
         const pe = parseExample(ex!);
         const wrongForms = formOptions(verb, 'present', ex!.person, region, rng).filter((f) => f.toLowerCase() !== pe.answer.toLowerCase()).slice(0, 2);
+        if (!wrongForms.length) { out.push(typed); break; }
         const sentences = wrongForms.map((w) => pe.before + (pe.answer[0] === pe.answer[0].toUpperCase() ? w[0].toUpperCase() + w.slice(1) : w) + pe.after);
         out.push({ kind, verb: inf, example: ex!, options: shuffle([pe.plain, ...sentences], rng) });
         break;
       }
       default:
+        out.push(typed);
         break;
     }
   }

@@ -59,20 +59,41 @@ function promptFor(ex: Exercise): string {
   }
 }
 
-function Session({ exercises: initial, tense, onExit }: { exercises: Exercise[]; tense: Tense; onExit: () => void }) {
+type LogRow = { verb: string; correct: boolean; category?: ErrorCategory; focus?: FocusTag; expected: string; given: string; prompt: string };
+
+// A session in progress is kept for this tab, so a reload or the phone putting the app to sleep does not lose it.
+const SAVED = 'lwd-verb-session';
+interface SavedSession { queue: Exercise[]; i: number; log: LogRow[]; tense: Tense; at: number }
+function loadSaved(): SavedSession | null {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(SAVED) ?? 'null') as SavedSession | null;
+    if (!v || !Array.isArray(v.queue) || !v.queue[v.i] || Date.now() - v.at > 6 * 3600_000) return null;
+    // Only resume exercises this copy of the app can still draw.
+    return v.queue.every((e) => e && (e.kind === 'serEstar' || e.kind === 'grammar' ? !!e.item : !!VERB_BY_INF[e.verb])) ? v : null;
+  } catch { return null; }
+}
+function clearSaved() { try { sessionStorage.removeItem(SAVED); } catch { /* ignore */ } }
+
+function Session({ exercises: initial, tense, onExit, onAgain, resume }: { exercises: Exercise[]; tense: Tense; onExit: () => void; onAgain?: () => void; resume?: { i: number; log: LogRow[] } }) {
   const { update } = useStore();
   const say = useSay();
   const [queue, setQueue] = useState<Exercise[]>(initial);
-  const [i, setI] = useState(0);
+  const [i, setI] = useState(resume?.i ?? 0);
+  const sayTimer = useRef<number>();
   const [result, setResult] = useState<Result | null>(null);
   const [hintUsed, setHintUsed] = useState(false);
-  const [log, setLog] = useState<{ verb: string; correct: boolean; category?: ErrorCategory; focus?: FocusTag; expected: string; given: string; prompt: string }[]>([]);
+  const [log, setLog] = useState<LogRow[]>(resume?.log ?? []);
   const [done, setDone] = useState(false);
   const requeued = useRef(new Set<number>());
   const hw = useHomeworkCompletion();
   const ex = queue[i];
 
   useEffect(() => setHintUsed(false), [i]);
+  useEffect(() => {
+    if (hw.isHomework) return; // homework is submitted in one go; it is not resumed half-way
+    try { if (done) sessionStorage.removeItem(SAVED); else sessionStorage.setItem(SAVED, JSON.stringify({ queue, i, log, tense, at: Date.now() } satisfies SavedSession)); } catch { /* ignore */ }
+  }, [queue, i, log, done, tense, hw.isHomework]);
+  useEffect(() => () => window.clearTimeout(sayTimer.current), []);
 
   const grade = (correct: boolean, accent: boolean): Grade => (!correct ? 0 : accent || hintUsed ? 1 : 2);
 
@@ -99,12 +120,14 @@ function Session({ exercises: initial, tense, onExit }: { exercises: Exercise[];
       requeued.current.add(i);
       setQueue((q) => [...q, { kind: 'type', verb: verbInf, tense: card.tense, person: card.person, pronoun: (ex as { pronoun?: string }).pronoun || personLabel(card.person).split(' ')[0], retry: true } as Exercise]);
     }
-    if (r.correct && r.sayText) say(r.sayText);
     if (r.correct) sfx.correct(); else { sfx.wrong(); haptic([30, 30, 30]); }
+    // The answer is read out just after the chime, not on top of it: the two together made the voice cut out.
+    if (r.correct && r.sayText) { const text = r.sayText; window.clearTimeout(sayTimer.current); sayTimer.current = window.setTimeout(() => void say(text), 340); }
     setResult(r);
   };
 
   const next = () => {
+    window.clearTimeout(sayTimer.current);
     setResult(null);
     if (i + 1 < queue.length) setI(i + 1);
     else {
@@ -145,8 +168,9 @@ function Session({ exercises: initial, tense, onExit }: { exercises: Exercise[];
             </div>
           )}
           <p className="mt-4 text-sm text-ink-mute">Missed forms are scheduled to come back in your review deck.</p>
-          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
-            {missedVerbs.length > 0 && <button className="btn-primary" onClick={() => navigate(`verbs?focus=${missedVerbs.join(',')}&tense=${tense}&start=1&t=${Date.now()}`)}><Icon name="refresh" size={18} /> Practise my mistakes</button>}
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-center">
+            {onAgain && !hw.isHomework && <button className="btn-primary" onClick={onAgain} data-testid="session-again"><Icon name="play" size={18} filled /> Keep going: 12 more</button>}
+            {missedVerbs.length > 0 && <button className={onAgain && !hw.isHomework ? 'btn-ghost' : 'btn-primary'} onClick={() => navigate(`verbs?focus=${missedVerbs.join(',')}&tense=${tense}&start=1&t=${Date.now()}`)}><Icon name="refresh" size={18} /> Practise my mistakes</button>}
             {hw.isHomework && <button className="btn-dark" onClick={hw.backToHomework}><Icon name="check" size={18} /> Homework done — back to my homework</button>}
             <button className="btn-ghost" onClick={onExit}>Verb gym</button>
             <button className="btn-ghost" onClick={() => navigate('world')}><Icon name="map" size={18} /> Madrid</button>
@@ -156,12 +180,22 @@ function Session({ exercises: initial, tense, onExit }: { exercises: Exercise[];
     );
   }
 
+  // Nothing to ask (an empty list, or a verb this copy of the app does not know): say so instead of failing.
+  if (!ex || (ex.kind !== 'serEstar' && ex.kind !== 'grammar' && !VERB_BY_INF[ex.verb])) {
+    return (
+      <div className="mx-auto max-w-xl"><div className="card p-6 text-center" data-testid="session-empty">
+        <h2 className="text-2xl font-semibold">Nothing to practise here yet</h2>
+        <p className="mt-2 text-ink-soft">There are no exercises for this choice. Pick another tense or verb.</p>
+        <button className="btn-primary mt-4" onClick={onExit}>Back to the verb gym</button>
+      </div></div>
+    );
+  }
   const verb = ex.kind === 'serEstar' ? VERB_BY_INF[ex.item.verb] : ex.kind === 'grammar' ? null : VERB_BY_INF[ex.verb];
 
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-6 flex items-center gap-3">
-        <button className="ctrl !px-2" onClick={onExit} aria-label="End session"><Icon name="x" size={18} /></button>
+        <button className="ctrl !px-2" onClick={() => { clearSaved(); onExit(); }} aria-label="End session"><Icon name="x" size={18} /></button>
         <Bar value={(i + (result ? 1 : 0)) / queue.length} color="bg-olive" />
         <span className="text-sm tabular-nums text-ink-mute">{i + 1}/{queue.length}</span>
       </div>
@@ -412,7 +446,7 @@ function MatchView({ ex, locked, onSubmit }: { ex: Extract<Exercise, { kind: 'ma
   const pickForm = (p: number) => {
     if (sel === null || locked) return;
     const key = `verb:${ex.verb}|${ex.tense}|${sel}`;
-    if (p === sel) {
+    if (p === sel || conjugate(verb, ex.tense, p) === conjugate(verb, ex.tense, sel)) {
       const firstTry = !misses.includes(sel);
       update((s) => recordAttempt(s, { key, grade: firstTry ? 2 : 1, exerciseType: 'match', verb: ex.verb, tense: ex.tense }));
       say(`${ex.pronouns[ex.persons.indexOf(sel)]} ${conjugate(verb, ex.tense, sel)}`);
@@ -492,7 +526,7 @@ function VerbSheet({ verb, onClose, onPractise }: { verb: Verb | null; onClose: 
   return (
     <Sheet open={!!verb} onClose={onClose} title={`${verb.inf} — ${verb.en}`}>
       <p className="eyebrow -mt-2 mb-3">{groupLabel(verb.group)}</p>
-      <div className="mb-3 flex gap-1.5">
+      <div className="mb-3 flex flex-wrap gap-1.5">
         {TENSES.map((t) => <button key={t.id} className="chip !py-1.5 text-xs" aria-pressed={tense === t.id} onClick={() => setTense(t.id)}>{t.label}</button>)}
       </div>
       <div className="grid gap-1.5">
@@ -538,7 +572,9 @@ export function Verbs({ params }: { params: URLSearchParams }) {
   const mode = GRAMMAR_MODES.some((m) => m.id === modeParam) ? (modeParam as GrammarMode) : undefined;
   const [tense, setTense] = useState<Tense>((params.get('tense') as Tense) || 'present');
   const [focus, setFocus] = useState<string[]>(focusParam);
-  const [session, setSession] = useState<{ ex: Exercise[]; tense: Tense } | null>(null);
+  const [session, setSession] = useState<{ ex: Exercise[]; tense: Tense; resume?: { i: number; log: LogRow[] }; again?: { focus?: string[]; mode?: GrammarMode } } | null>(null);
+  const [saved, setSaved] = useState<SavedSession | null>(() => (params.toString() ? null : loadSaved()));
+  const [round, setRound] = useState(0);
   const [detail, setDetail] = useState<Verb | null>(null);
   const [filter, setFilter] = useState<'all' | 'learning' | 'new' | 'mastered'>('all');
   const mastery = useMemo(() => allVerbMastery(state, tense, region), [state, tense, region]);
@@ -558,7 +594,9 @@ export function Verbs({ params }: { params: URLSearchParams }) {
   const start = (opts: { focus?: string[]; mode?: GrammarMode; tense?: Tense } = {}) => {
     const t = opts.tense ?? tense;
     if (!opts.mode && tenseLocked(TENSES.find((x) => x.id === t)!)) return;
-    setSession({ ex: buildSession({ state, focus: opts.focus ?? (focus.length ? focus : undefined), tense: t, mode: opts.mode, maxLevel: ceiling, allowed: released }), tense: t });
+    const f = opts.focus ?? (focus.length ? focus : undefined);
+    setSaved(null); setRound((r) => r + 1);
+    setSession({ ex: buildSession({ state, focus: f, tense: t, mode: opts.mode, maxLevel: ceiling, allowed: released }), tense: t, again: { focus: f, mode: opts.mode } });
   };
 
   // Deep links (coach, scene completion) start a session immediately.
@@ -569,7 +607,7 @@ export function Verbs({ params }: { params: URLSearchParams }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.toString()]);
 
-  if (session) return <Session key={JSON.stringify(session.ex.slice(0, 2))} exercises={session.ex} tense={session.tense} onExit={() => { setSession(null); navigate('verbs'); }} />;
+  if (session) return <Session key={round} exercises={session.ex} tense={session.tense} resume={session.resume} onAgain={() => start({ ...session.again, tense: session.tense })} onExit={() => { setSession(null); navigate('verbs'); }} />;
 
   const tenseAllowed = (t: (typeof TENSES)[number]) => levelIndex(level) >= levelIndex(t.minLevel);
   const mine = released ? mastery.filter((m) => released.has(m.inf)) : mastery;
@@ -585,6 +623,16 @@ export function Verbs({ params }: { params: URLSearchParams }) {
   return (
     <div>
       <PageHeader eyebrow="Verbos" title="Verb gym" subtitle="Every verb, tense and person is tracked separately. Mistakes come back automatically until they stick." />
+
+      {saved && (
+        <div className="card mb-4 flex flex-wrap items-center justify-between gap-3 p-4 ring-2 ring-olive/30" data-testid="session-resume">
+          <p><b>You were on question {saved.i + 1} of {saved.queue.length}.</b> <span className="text-ink-soft">Pick up where you left off?</span></p>
+          <div className="flex gap-2">
+            <button className="btn-primary" onClick={() => { setRound((r) => r + 1); setSession({ ex: saved.queue, tense: saved.tense, resume: { i: saved.i, log: saved.log } }); setSaved(null); }}><Icon name="play" size={18} filled /> Carry on</button>
+            <button className="btn-ghost" onClick={() => { clearSaved(); setSaved(null); }}>Start fresh</button>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className="card p-5">

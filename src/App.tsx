@@ -16,6 +16,7 @@ import { Admin } from './screens/Admin';
 import { TeacherApp } from './screens/teach/TeacherApp';
 import { HomeworkRunner, StudentApp } from './screens/student/StudentApp';
 import { stopSpeaking } from './lib/speech';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { navigate, useRoute, type RouteName } from './lib/router';
 import { useStore } from './lib/store';
 import { todaySeconds } from './lib/analytics';
@@ -201,7 +202,7 @@ export default function App() {
         return <><Toasts /><WelcomeBack /><Shell route={route.name} routeId={route.id}>{route.name === 'admin' ? <Admin /> : <PlatformScreen route={route.name} id={route.id} params={route.params} />}</Shell></>;
       default: screen = <Welcome />;
     }
-    return <><Toasts /><WelcomeBack />{screen}</>;
+    return <><Toasts /><WelcomeBack /><ErrorBoundary resetKey={route.name + (route.id ?? '')}>{screen}</ErrorBoundary></>;
   }
 
   // The pitch page is a stand-alone page for prospective tutors: no sidebar, no learner navigation.
@@ -238,7 +239,7 @@ export default function App() {
       <Shell route={route.name} routeId={route.id}>
         <AnimatePresence mode="wait">
           <motion.div key={route.name + (route.id ?? '')} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-            {screen}
+            <ErrorBoundary resetKey={route.name + (route.id ?? '') + route.params.toString()}>{screen}</ErrorBoundary>
           </motion.div>
         </AnimatePresence>
       </Shell>

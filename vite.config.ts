@@ -39,6 +39,8 @@ function csp(): Plugin {
 export default defineConfig({
   base: './',
   plugins: [react(), csp()],
+  // Shown in the troubleshooting report, so we can tell which copy of the app a learner is running.
+  define: { __BUILD_ID__: JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ')) },
   build: { target: 'es2020', chunkSizeWarningLimit: 900 },
   test: {
     environment: 'node',
