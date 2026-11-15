@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon, type IconName } from './components/Icon';
-import { Toasts } from './components/ui';
+import { Sheet, Toasts } from './components/ui';
 import { BrandLogo } from './components/BrandLogo';
 import { SyncBadge } from './components/SyncBadge';
 import { WelcomeBack } from './components/WelcomeBack';
@@ -100,6 +100,14 @@ function Shell({ children, route, routeId }: { children: ReactNode; route: Route
     return a === n.name;
   };
   const go = (n: NavItem) => navigate(n.sub ? `${n.name}/${n.sub}` : n.name);
+  // On a phone: the four places used most, in this order, then "More". With five or fewer items they all fit.
+  const order: string[] = teacher ? ['teach/', 'teach/calendar', 'teach/students', 'teach/homework'] : ['student/', 'home/', 'world/', 'verbs/', 'review/', 'games/', 'journey/'];
+  const idOf = (n: NavItem) => `${n.name}/${n.sub ?? ''}`;
+  const ranked = [...items].sort((x, y) => ((order.indexOf(idOf(x)) + 1) || 99) - ((order.indexOf(idOf(y)) + 1) || 99));
+  const tabs = items.length <= 5 ? ranked : ranked.slice(0, 4);
+  const rest = items.length <= 5 ? [] : ranked.slice(4);
+  const inRest = rest.some(isActive);
+  const [more, setMore] = useState(false);
   return (
     <div className="min-h-[100dvh] bg-cream">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-full focus:bg-ink focus:px-4 focus:py-2 focus:text-cream">Skip to content</a>
@@ -127,18 +135,35 @@ function Shell({ children, route, routeId }: { children: ReactNode; route: Route
         <div className="mx-auto max-w-6xl">{children}</div>
       </main>
 
-      {/* Mobile tab bar */}
+      {/* Mobile tab bar: four main places and "More" for everything else, so it never wraps onto two rows */}
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-ink/5 bg-cream/90 pb-safe backdrop-blur lg:hidden" aria-label="Main">
-        <div className={`mx-auto grid max-w-lg ${items.filter((n) => n.mobile).length <= 5 ? 'grid-cols-5' : items.filter((n) => n.mobile).length === 6 ? 'grid-cols-6' : 'grid-cols-7'}`}>
-          {items.filter((n) => n.mobile).map((n) => (
-            <button key={`${n.name}/${n.sub ?? ''}`} onClick={() => go(n)} aria-current={isActive(n) ? 'page' : undefined} className={`relative flex flex-col items-center gap-0.5 pt-2 text-[10.5px] font-semibold ${isActive(n) ? 'text-terracotta' : 'text-ink-mute'}`}>
+        <div className="mx-auto grid max-w-lg grid-cols-5">
+          {tabs.map((n) => (
+            <button key={`${n.name}/${n.sub ?? ''}`} onClick={() => go(n)} aria-current={isActive(n) ? 'page' : undefined} className={`relative flex flex-col items-center gap-0.5 pb-1.5 pt-2 text-[10.5px] font-semibold ${isActive(n) ? 'text-terracotta' : 'text-ink-mute'}`}>
               {isActive(n) && <motion.span layoutId="tab-pill" className="absolute inset-x-2 top-1 h-9 rounded-2xl bg-terracotta-50" transition={{ type: 'spring', stiffness: 400, damping: 30 }} />}
               <span className="relative"><Icon name={n.icon} size={22} /></span>
               <span className="relative">{n.es}</span>
             </button>
           ))}
+          {rest.length > 0 && (
+            <button onClick={() => setMore(true)} aria-haspopup="dialog" aria-expanded={more} aria-current={inRest ? 'page' : undefined} className={`relative flex flex-col items-center gap-0.5 pb-1.5 pt-2 text-[10.5px] font-semibold ${inRest ? 'text-terracotta' : 'text-ink-mute'}`} data-testid="tab-more">
+              {inRest && <motion.span layoutId="tab-pill" className="absolute inset-x-2 top-1 h-9 rounded-2xl bg-terracotta-50" transition={{ type: 'spring', stiffness: 400, damping: 30 }} />}
+              <span className="relative"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden><circle cx="5" cy="12" r="1.9" /><circle cx="12" cy="12" r="1.9" /><circle cx="19" cy="12" r="1.9" /></svg></span>
+              <span className="relative">Más</span>
+            </button>
+          )}
         </div>
       </nav>
+      <Sheet open={more} onClose={() => setMore(false)} title="More">
+        <div className="grid grid-cols-2 gap-2" data-testid="more-menu">
+          {rest.map((n) => (
+            <button key={`${n.name}/${n.sub ?? ''}`} onClick={() => { setMore(false); go(n); }} aria-current={isActive(n) ? 'page' : undefined} className={`flex items-center gap-3 rounded-2xl p-3.5 text-left ring-1 ${isActive(n) ? 'bg-terracotta-50 ring-terracotta/40' : 'bg-white ring-ink/10'}`}>
+              <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${isActive(n) ? 'bg-terracotta text-white' : 'bg-cream-100 text-ink-soft'}`}><Icon name={n.icon} size={20} /></span>
+              <span className="min-w-0"><span className="block font-semibold leading-tight">{n.label}</span><span className="block text-xs text-ink-mute">{n.es}</span></span>
+            </button>
+          ))}
+        </div>
+      </Sheet>
     </div>
   );
 }
@@ -169,7 +194,7 @@ export default function App() {
   // Route guards
   useEffect(() => {
     if (!ready) return;
-    const pre: RouteName[] = ['home', 'guide', 'admin', 'welcome', 'onboarding', 'level', 'assessment', 'dna', 'privacy', 'account', 'demo', 'teach', 'student', 'homework', 'pitch'];
+    const pre: RouteName[] = ['home', 'guide', 'admin', 'welcome', 'onboarding', 'level', 'assessment', 'dna', 'privacy', 'account', 'settings', 'demo', 'teach', 'student', 'homework', 'pitch'];
     if (!state.onboardingDone && !pre.includes(route.name)) navigate('welcome');
     if (state.onboardingDone && ['welcome', 'onboarding', 'level', 'dna'].includes(route.name)) navigate('world');
   }, [ready, state.onboardingDone, route.name]);
@@ -197,7 +222,7 @@ export default function App() {
       case 'assessment': screen = <Assessment />; break;
       case 'dna': screen = <ProfileScreen onboarding />; break;
       case 'privacy': screen = <Privacy />; break;
-      case 'account': screen = <Account />; break;
+      case 'account': case 'settings': screen = <Account />; break; // someone who has not set up the storyline has no learner settings yet: their account page has notifications and troubleshooting
       case 'demo': screen = <Demo showDemo />; break;
       case 'home': screen = <Demo />; break;
       case 'guide': screen = <Guide />; break;

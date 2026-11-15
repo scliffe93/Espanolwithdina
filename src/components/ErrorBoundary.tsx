@@ -42,7 +42,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode; resetKey?: s
             <summary className="cursor-pointer">What happened</summary>
             <p className="mt-2 break-words font-mono text-xs">{this.state.error.message || String(this.state.error)}</p>
             <button className="ctrl mt-3" onClick={() => void copy()}>{this.state.copied ? 'Copied' : 'Copy a report for Dina'}</button>
-            <p className="mt-2">The report lists the problem and your device type. It has no name, password or answers in it. You can also find it later in Settings, under Troubleshooting.</p>
+            <p className="mt-2">If you are logged in, this has already been sent to the app’s administrator. It lists the problem and your device type, never your password or answers. You can find it later in Settings, under Troubleshooting.</p>
           </details>
         </div>
       </div>

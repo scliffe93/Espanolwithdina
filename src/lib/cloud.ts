@@ -106,6 +106,19 @@ export const pushApi = {
   unsubscribe: (token: string, endpoint: string) => request<void>('push/unsubscribe', { token, body: { endpoint } }),
 };
 
+/** The daily practice reminder: a time of day this person chose. `available` is false until the server can send timed notifications. */
+export interface Reminder { enabled: boolean; time: string; tz: string | null; available?: boolean }
+export const reminderApi = {
+  get: (token: string) => request<Reminder>('reminder', { token }),
+  put: (token: string, r: { enabled: boolean; time: string; tz: string }) => request<Reminder>('reminder', { method: 'PUT', token, body: r }),
+};
+
+/** Problems the app ran into on this device, sent to the administrator so they can be fixed. */
+export interface ProblemReport { id: number; at: string; kind: string; message: string; where: string; detail: string; device: string; build: string; username: string; firstName: string; role: string }
+export const reportApi = {
+  send: (token: string, r: { kind: string; message: string; where: string; detail?: string; device: string; build: string }) => request<{ ok: true }>('report', { token, body: r }),
+};
+
 export interface PlatformPerson { id: string; username: string; firstName: string; role: 'student' | 'teacher' | 'admin' }
 export type PlatformKind = 'booking' | 'homework' | 'feedback' | 'activity' | 'invoice' | 'config' | 'credit' | 'student';
 
@@ -130,6 +143,8 @@ export const adminApi = {
   setRole: (token: string, userId: string, role: 'student' | 'teacher') => request<{ user: PlatformPerson }>('admin/users/role', { token, body: { userId, role } }),
   resetPassword: (token: string, userId: string, password?: string) => request<{ user: PlatformPerson; recoveryCode: string; password?: string }>('admin/users/reset-password', { token, body: { userId, password } }),
   remove: (token: string, userId: string) => request<void>('admin/users/delete', { token, body: { userId } }),
+  reports: (token: string) => request<{ reports: ProblemReport[] }>('admin/reports', { token }),
+  clearReports: (token: string, id?: number) => request<void>('admin/reports/clear', { token, body: id === undefined ? {} : { id } }),
 };
 
 const KNOWN_KEY = 'lwd-known-accounts';

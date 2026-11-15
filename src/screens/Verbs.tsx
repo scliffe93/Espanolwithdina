@@ -4,13 +4,14 @@ import { Icon } from '../components/Icon';
 import { HelpMeRemember, type MemorySource } from '../components/HelpMeRemember';
 import { Bar, PageHeader, ProgressRing, Sheet } from '../components/ui';
 import { personLabel, PERSONS_EN, ROADMAP_TENSES, TENSES, VERBS, VERB_BY_INF, conjugate, groupLabel, parseExample, personsForRegion, type Tense, type Verb } from '../data/verbs';
-import { useSay } from '../hooks/useSpeech';
+import { useSay, stopSpeaking } from '../hooks/useSpeech';
+import { recognitionSupported, recognize, regionLang, type RecognitionHandle } from '../lib/speech';
 import { allVerbMastery } from '../lib/analytics';
 import { CATEGORY_LABEL, CATEGORY_TIP, checkAnswer, classifyVerbError, normalize } from '../lib/answer';
 import { levelIndex } from '../lib/assessmentScore';
 import { EX_LABEL, buildSession, cardKeyFor, shuffle, type Exercise } from '../lib/exercises';
 import { navigate } from '../lib/router';
-import { completeLesson, recordAttempt } from '../lib/state';
+import { addSpeakingAttempt, completeLesson, recordAttempt } from '../lib/state';
 import { useStore } from '../lib/store';
 import { confetti, haptic, sfx } from '../lib/fx';
 import { useHomeworkCompletion } from '../lib/platform/homework';
@@ -232,6 +233,18 @@ function Session({ exercises: initial, tense, onExit, onAgain, resume }: { exerc
 
 // ─────────────────────────── Exercise views ───────────────────────────
 
+/**
+ * What the phone heard, tidied for checking. People say the pronoun too ("yo hablo"), and speech recognition adds
+ * capitals and full stops, so those are dropped; if any of its guesses is the right answer, that guess is used.
+ */
+export function bestHeard(alternatives: string[], answer: string): string {
+  const clean = (t: string) => t.trim().replace(/[.,;:!?¡¿]+/g, '').replace(/\s+/g, ' ').toLowerCase();
+  const pron = /^(yo|tú|tu|él|el|ella|usted|nosotros|nosotras|vosotros|vosotras|ellos|ellas|ustedes|vos)\s+/;
+  const want = clean(answer);
+  const tries = alternatives.flatMap((a) => { const c = clean(a); return [c, c.replace(pron, '')]; }).filter(Boolean);
+  return tries.find((t) => t === want) ?? tries.find((t) => normalize(t) === normalize(want)) ?? tries[1] ?? tries[0] ?? '';
+}
+
 function AccentBar({ onInsert }: { onInsert: (c: string) => void }) {
   return (
     <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Insert accented letter">
@@ -246,6 +259,30 @@ function TypeInput({ onSubmit, locked, placeholder, verb, answer, cardKey, onHin
   const [v, setV] = useState('');
   const ref = useRef<HTMLInputElement>(null);
   const [showHelp, setShowHelp] = useState(false);
+  // Saying the answer: the phone listens once, and what it heard is checked like a typed answer.
+  const { state } = useStore();
+  const [listening, setListening] = useState(false);
+  const [heard, setHeard] = useState<string | null>(null);
+  const mic = useRef<RecognitionHandle | null>(null);
+  useEffect(() => () => mic.current?.stop(), []);
+  const listen = () => {
+    if (listening) { mic.current?.stop(); return; }
+    stopSpeaking();
+    setHeard(null);
+    let best = '';
+    const h = recognize(regionLang(state.profile?.region ?? 'spain'), (alts, isFinal) => {
+      best = bestHeard(alts, answer);
+      setV(best);
+      if (isFinal) mic.current?.stop();
+    }, (err) => {
+      setListening(false); mic.current = null;
+      if (best) { update((x) => addSpeakingAttempt(x)); onSubmit(best); }
+      else setHeard(err === 'not-allowed' || err === 'service-not-allowed' ? 'The microphone is blocked. Allow it for this site in your browser settings, or type your answer.' : 'I did not catch that. Tap the microphone and try again, or type it.');
+    });
+    if (!h) { setHeard('Speaking is not available in this browser. Type your answer.'); return; }
+    mic.current = h; setListening(true);
+  };
+  const { update } = useStore();
   const insert = (c: string) => {
     const el = ref.current;
     if (!el) return setV((x) => x + c);
@@ -258,8 +295,11 @@ function TypeInput({ onSubmit, locked, placeholder, verb, answer, cardKey, onHin
     <form onSubmit={(e) => { e.preventDefault(); if (v.trim()) onSubmit(v); }} className="mt-5">
       <div className="flex gap-2">
         <input ref={ref} autoFocus disabled={locked} className="input text-xl" value={v} onChange={(e) => setV(e.target.value)} placeholder={placeholder} autoCapitalize="off" autoComplete="off" autoCorrect="off" spellCheck={false} lang="es" aria-label="Your answer" />
+        {recognitionSupported && <button type="button" className={`btn-ghost shrink-0 !px-3.5 ${listening ? '!bg-terracotta !text-white' : ''}`} disabled={locked} onClick={listen} aria-label={listening ? 'Stop listening' : 'Say your answer'} aria-pressed={listening} data-testid="say-answer"><Icon name="mic" size={20} /></button>}
         <button className="btn-primary shrink-0" disabled={locked || !v.trim()}>Check</button>
       </div>
+      {listening && <p className="mt-2 text-sm font-medium text-terracotta" role="status">Listening… say it in Spanish.</p>}
+      {heard && !locked && <p className="mt-2 text-sm text-ink-soft" role="status">{heard}</p>}
       {!locked && <AccentBar onInsert={insert} />}
       {!locked && (
         <div className="mt-3">

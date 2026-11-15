@@ -19,6 +19,7 @@
 
 import { followUpFor, type AdaptHomework } from './adapt.ts';
 import { PUSH_HOSTS, sendPush, validEndpoint, type VapidKeys } from './webpush.ts';
+import { lessonBrief, streakOf, type BriefDay, type BriefHomework } from './brief.ts';
 
 export interface Db {
   query<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]>;
@@ -40,6 +41,8 @@ export interface Config {
   adminUsernames?: string[];
   /** Phone notifications: the VAPID keys (absent = notifications are off). `hosts` and `fetch` are overridden in tests only. */
   push?: VapidKeys & { hosts?: string[]; fetch?: typeof fetch };
+  /** The shared secret the scheduler sends with `cron/tick` (absent = timed notifications are off). */
+  cronSecret?: string;
 }
 
 const MIN = 60_000;
@@ -151,6 +154,7 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
   const dummy = () => (dummyHash ??= hasher.hash(base64url(randomBytes(16))));
 
   const iso = (ms: number) => new Date(ms).toISOString();
+  const str = (v: unknown) => (typeof v === 'string' ? v : '');
 
   async function failures(bucket: string, windowMs: number): Promise<number> {
     const rows = await db.query<{ n: string | number }>('select count(*)::int as n from public.lwd_attempts where bucket = $1 and at > $2', [bucket, iso(now() - windowMs)]);
@@ -209,6 +213,58 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
   }
   const clip = (v: unknown, n = 90) => { const t = (typeof v === 'string' ? v : '').replace(/\s+/g, ' ').trim(); return t.length > n ? `${t.slice(0, n - 1)}…` : t; };
 
+  // ── timed notifications: the daily reminder and the brief before each lesson ──
+  /** The date and the minute of the day at `ms` in a time zone, or null for a zone this server does not know. */
+  function localParts(ms: number, tz: string): { date: string; minutes: number } | null {
+    try {
+      const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(ms)).map((x) => [x.type, x.value]));
+      return { date: `${parts.year}-${parts.month}-${parts.day}`, minutes: (Number(parts.hour) % 24) * 60 + Number(parts.minute) };
+    } catch { return null; }
+  }
+  const REMINDER_WINDOW = 90; // minutes after the chosen time in which the reminder may still go out
+  const BRIEF_AHEAD = 60; // minutes before a lesson that the teacher gets her brief
+  const asObj = (v: unknown) => (typeof v === 'string' ? JSON.parse(v) : v) as Record<string, unknown> | null;
+
+  /** Called every few minutes by the scheduler. Safe to call as often as you like: everything is sent once. */
+  async function tick(): Promise<{ reminders: number; briefs: number }> {
+    let reminders = 0, briefs = 0;
+    if (!config.push) return { reminders, briefs };
+    const due = await db.query<{ user_id: string; minute_of_day: number; tz: string; last_sent: string | null; first_name: string; data: unknown }>(
+      'select r.user_id, r.minute_of_day, r.tz, r.last_sent, u.first_name, p.data from public.lwd_reminders r join public.lwd_users u on u.id = r.user_id left join public.lwd_progress p on p.user_id = r.user_id where r.enabled and exists (select 1 from public.lwd_push x where x.user_id = r.user_id)');
+    for (const r of due) {
+      const local = localParts(now(), r.tz);
+      if (!local || r.last_sent === local.date) continue;
+      if (local.minutes < Number(r.minute_of_day) || local.minutes >= Number(r.minute_of_day) + REMINDER_WINDOW) continue;
+      const days = ((asObj(r.data) ?? {}).days ?? {}) as Record<string, BriefDay>;
+      await db.query('update public.lwd_reminders set last_sent = $2 where user_id = $1', [r.user_id, local.date]);
+      if ((days[local.date]?.activeSeconds ?? 0) >= 60) continue; // already practised today: no nagging
+      const streak = streakOf(days, local.date);
+      await notify([r.user_id], streak >= 2
+        ? { title: `Keep your ${streak}-day streak going`, body: `${r.first_name}, a few minutes of Spanish today keeps it alive.`, url: '#/verbs?start=1', tag: 'daily' }
+        : { title: 'Five minutes of Spanish?', body: `${r.first_name}, a short practice today ${streak === 1 ? 'makes it two days in a row' : 'starts a streak'}.`, url: '#/verbs?start=1', tag: 'daily' });
+      reminders++;
+    }
+    const lessons = (await db.query<{ data: unknown }>("select data from public.lwd_platform where kind = 'booking' order by updated_at desc limit 5000")).map((x) => asObj(x.data)!).filter(Boolean);
+    for (const b of lessons) {
+      const start = Date.parse(str(b.startsAt));
+      if (b.status !== 'scheduled' || !(start > now()) || start > now() + BRIEF_AHEAD * MIN) continue;
+      const bucket = `push:brief:${str(b.id)}:${str(b.startsAt)}`; // a lesson that is moved gets a fresh brief
+      if ((await failures(bucket, DAY)) > 0) continue;
+      await db.query('insert into public.lwd_attempts (bucket, at) values ($1, $2)', [bucket, iso(now())]);
+      const sid = str(b.studentId);
+      const who = await db.query<{ first_name: string }>('select first_name from public.lwd_users where id = $1', [sid]);
+      if (!who[0]) continue;
+      const previous = lessons.filter((o) => o.studentId === sid && o.status !== 'cancelled' && Date.parse(str(o.startsAt)) < start).map((o) => Date.parse(str(o.startsAt))).sort((x, y) => y - x)[0];
+      const prog = await db.query<{ data: unknown }>('select data from public.lwd_progress where user_id = $1', [sid]);
+      const hw = (await db.query<{ data: unknown }>("select data from public.lwd_platform where kind = 'homework' and student_id = $1", [sid])).map((x) => asObj(x.data) as BriefHomework);
+      const brief = lessonBrief(((prog[0] ? asObj(prog[0].data) : null)?.days ?? {}) as Record<string, BriefDay>, hw, previous ?? now() - 7 * DAY, now());
+      const mins = Math.max(1, Math.round((start - now()) / MIN));
+      await notify([str(b.teacherId)], { title: `${who[0].first_name} in ${mins} min`, body: brief.line, url: `#/teach/student/${sid}`, tag: `brief-${str(b.id)}` });
+      briefs++;
+    }
+    return { reminders, briefs };
+  }
+
   const publicUser = (u: UserRow) => ({ id: u.id, username: u.username, firstName: u.first_name, role: u.role });
 
   /** The configured teacher username(s) get the teacher role the first time they are seen. */
@@ -236,7 +292,6 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
     }
   }
 
-  const str = (v: unknown) => (typeof v === 'string' ? v : '');
 
   // ── routes ──
   async function route(req: Request, path: string, ip: string): Promise<{ status: number; json?: unknown }> {
@@ -315,6 +370,13 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
       return { status: 200, json: { ...session, user: publicUser(user), recoveryCode: nextCode } };
     }
 
+    // The scheduler (the database's own cron) calls this with the shared secret; it is not a browser route.
+    if (path === 'cron/tick' && method === 'POST') {
+      const given = req.headers.get('x-cron-secret') ?? '';
+      if (!config.cronSecret || given.length !== config.cronSecret.length || (await sha256Hex(given)) !== (await sha256Hex(config.cronSecret))) throw new HttpError(403, 'forbidden', 'Not allowed.');
+      return { status: 200, json: await tick() };
+    }
+
     // ── authenticated routes ──
     const { user, tokenHash } = await auth(req);
 
@@ -344,6 +406,47 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
     if (path === 'push/status' && method === 'GET') {
       const rows = await db.query<{ n: number }>('select count(*)::int as n from public.lwd_push where user_id = $1', [user.id]);
       return { status: 200, json: { enabled: !!config.push, devices: Number(rows[0]?.n ?? 0) } };
+    }
+
+    // ── the daily reminder: a time of day this person chose, in their own time zone ──
+    if (path === 'reminder' && method === 'GET') {
+      const rows = await db.query<{ enabled: boolean; minute_of_day: number; tz: string }>('select enabled, minute_of_day, tz from public.lwd_reminders where user_id = $1', [user.id]);
+      const r = rows[0];
+      const m = r ? Number(r.minute_of_day) : 18 * 60;
+      return { status: 200, json: { enabled: !!r?.enabled, time: `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`, tz: r?.tz ?? null, available: !!config.push && !!config.cronSecret } };
+    }
+    if (path === 'reminder' && method === 'PUT') {
+      const b = await body(req);
+      const t = str(b.time).match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+      const tz = str(b.tz).slice(0, 64);
+      if (!t || !localParts(now(), tz)) throw new HttpError(400, 'invalid', 'Choose a time of day.');
+      const minute = Number(t[1]) * 60 + Number(t[2]);
+      // Changing the time clears "already sent today", unless the new time has already passed today.
+      const local = localParts(now(), tz)!;
+      await db.query('insert into public.lwd_reminders (user_id, enabled, minute_of_day, tz, last_sent, updated_at) values ($1, $2, $3, $4, $5, $6) on conflict (user_id) do update set enabled = excluded.enabled, minute_of_day = excluded.minute_of_day, tz = excluded.tz, last_sent = excluded.last_sent, updated_at = excluded.updated_at',
+        [user.id, b.enabled === true, minute, tz, local.minutes >= minute ? local.date : null, iso(now())]);
+      return { status: 200, json: { enabled: b.enabled === true, time: t[0], tz } };
+    }
+
+    // ── problem reports: the app tells the administrator when something broke on this person's device ──
+    if (path === 'report' && method === 'POST') {
+      const b = await body(req);
+      const kind = ['crash', 'error', 'voice', 'note'].includes(str(b.kind)) ? str(b.kind) : 'note';
+      const message = str(b.message).trim().slice(0, 300);
+      if (!message) throw new HttpError(400, 'invalid', 'Nothing to report.');
+      const bucket = `report:${user.id}`;
+      if ((await failures(bucket, DAY)) >= 30) return { status: 200, json: { ok: true, stored: false } }; // a looping fault must not fill the table
+      const same = await db.query('select 1 from public.lwd_reports where user_id = $1 and message = $2 and at > $3 limit 1', [user.id, message, iso(now() - 10 * MIN)]);
+      if (same.length) return { status: 200, json: { ok: true, stored: false } };
+      await db.query('insert into public.lwd_attempts (bucket, at) values ($1, $2)', [bucket, iso(now())]);
+      await db.query('insert into public.lwd_reports (user_id, at, kind, message, page, detail, device, build) values ($1, $2, $3, $4, $5, $6, $7, $8)', [user.id, iso(now()), kind, message, str(b.where).slice(0, 80), str(b.detail).slice(0, 1500), str(b.device).slice(0, 300), str(b.build).slice(0, 40)]);
+      // The administrator's phone hears about pages that stopped, at most once an hour.
+      if (kind === 'crash' && (await failures('push:report', 60 * MIN)) === 0) {
+        await db.query('insert into public.lwd_attempts (bucket, at) values ($1, $2)', ['push:report', iso(now())]);
+        const adminIds = (await db.query<{ id: string }>("select id from public.lwd_users where role = 'admin'")).map((x) => x.id);
+        await notify(adminIds, { title: `A page stopped for ${user.first_name}`, body: clip(message, 110), url: '#/admin', tag: 'report' });
+      }
+      return { status: 200, json: { ok: true, stored: true } };
     }
 
     if (path === 'logout' && method === 'POST') {
@@ -634,6 +737,18 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
                   (select count(*)::int from public.lwd_platform r where r.student_id = u.id and r.kind = 'booking') as bookings
              from public.lwd_users u order by case u.role when 'admin' then 0 when 'teacher' then 1 else 2 end, lower(u.first_name), u.username_norm`);
         return { status: 200, json: { users: rows.map((r) => ({ id: r.id, username: r.username, firstName: r.first_name, role: r.role, createdAt: new Date(r.created_at).toISOString(), lastSeenAt: r.last_seen ? new Date(r.last_seen).toISOString() : null, progressAt: r.progress_at ? new Date(r.progress_at).toISOString() : null, homework: Number(r.homework), bookings: Number(r.bookings) })) } };
+      }
+
+      if (path === 'admin/reports' && method === 'GET') {
+        const rows = await db.query<{ id: number | string; at: string | Date; kind: string; message: string; page: string; detail: string; device: string; build: string; username: string; first_name: string; role: string }>(
+          'select r.id, r.at, r.kind, r.message, r.page, r.detail, r.device, r.build, u.username, u.first_name, u.role from public.lwd_reports r join public.lwd_users u on u.id = r.user_id order by r.at desc limit 200');
+        return { status: 200, json: { reports: rows.map((r) => ({ id: Number(r.id), at: new Date(r.at).toISOString(), kind: r.kind, message: r.message, where: r.page, detail: r.detail, device: r.device, build: r.build, username: r.username, firstName: r.first_name, role: r.role })) } };
+      }
+      if (path === 'admin/reports/clear' && method === 'POST') {
+        const b = await body(req);
+        if (b.id === undefined) await db.query('delete from public.lwd_reports');
+        else await db.query('delete from public.lwd_reports where id = $1', [Number(b.id) || 0]);
+        return { status: 204 };
       }
 
       const target = async (b: Record<string, unknown>) => {

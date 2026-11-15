@@ -1,3 +1,5 @@
+import { DailyReminder } from '../components/DailyReminder';
+import { Troubleshooting } from '../components/Troubleshooting';
 import { NotificationsCard } from '../components/NotificationsCard';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState, type FormEvent, type ReactNode } from 'react';
@@ -192,6 +194,13 @@ function SignedIn() {
       <section className="card p-5" data-testid="account-notifications">
         <h3 className="mb-2 text-lg font-semibold">Notifications</h3>
         <NotificationsCard />
+        <DailyReminder />
+      </section>
+
+      <section className="card p-5">
+        <h3 className="text-lg font-semibold">Troubleshooting</h3>
+        <p className="mb-3 text-sm text-ink-mute">If something stops, sounds wrong or looks stuck, start here.</p>
+        <Troubleshooting />
       </section>
 
       <div className="grid gap-4 md:grid-cols-2">

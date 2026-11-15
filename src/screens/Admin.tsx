@@ -4,7 +4,7 @@ import { Icon, type IconName } from '../components/Icon';
 import { PageHeader, Segmented, Sheet } from '../components/ui';
 import { useAccount } from '../lib/account';
 import { dailySeries, errorBreakdown, todaySeconds } from '../lib/analytics';
-import { adminApi, platformApi, type AdminOverview, type AdminUser, type ApiError } from '../lib/cloud';
+import { adminApi, platformApi, type AdminOverview, type AdminUser, type ApiError, type ProblemReport } from '../lib/cloud';
 import { fmtDateTime, relative } from '../lib/platform/time';
 import type { ActivityEvent, Booking, Feedback, Homework, Person } from '../lib/platform/types';
 import { navigate } from '../lib/router';
@@ -12,8 +12,8 @@ import { migrate } from '../lib/state';
 import { pct, studentInsight } from './teach/insights';
 import type { AppState } from '../types';
 
-type Tab = 'overview' | 'activity' | 'accounts';
-const TABS: { value: Tab; label: string }[] = [{ value: 'overview', label: 'Overview' }, { value: 'activity', label: 'Activity' }, { value: 'accounts', label: 'Accounts' }];
+type Tab = 'overview' | 'activity' | 'accounts' | 'problems';
+const TABS: { value: Tab; label: string }[] = [{ value: 'overview', label: 'Overview' }, { value: 'activity', label: 'Activity' }, { value: 'accounts', label: 'Accounts' }, { value: 'problems', label: 'Problems' }];
 const ACTIVITY_ICON: Record<ActivityEvent['type'], IconName> = { chapter: 'map', practice: 'dumbbell', game: 'sparkle', review: 'brain', homework: 'book', lesson: 'calendar', login: 'user' };
 const TYPE_LABEL: Record<ActivityEvent['type'], string> = { chapter: 'Chapters', practice: 'Practice', game: 'Games', review: 'Reviews', homework: 'Homework', lesson: 'Lessons', login: 'Logins' };
 
@@ -68,6 +68,7 @@ export function Admin() {
       {!data && !error && <p className="text-sm text-ink-mute">Loading everything…</p>}
       {data && tab === 'overview' && <OverviewTab data={data} />}
       {data && tab === 'activity' && <ActivityTab data={data} />}
+      {tab === 'problems' && token && <ProblemsTab token={token} />}
       {tab === 'accounts' && overview && (
         <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4" data-testid="admin-overview">
           <Tile label="Accounts" value={String(Object.values(overview.users).reduce((a, b) => a + b, 0))} sub={`${overview.users.student ?? 0} students · ${overview.users.teacher ?? 0} teacher${(overview.users.teacher ?? 0) === 1 ? '' : 's'} · ${overview.users.admin ?? 0} admin`} />
@@ -278,6 +279,61 @@ function ActivityTab({ data }: { data: Everything }) {
         </ul>
       )}
       <p className="mt-3 text-xs text-ink-mute">Showing up to 200 most recent items. Students’ learning events (chapters, games, practice, reviews) are recorded when they are signed in.</p>
+    </section>
+  );
+}
+
+const PROBLEM_KIND: Record<string, string> = { crash: 'A page stopped', error: 'Something failed', voice: 'Voice', note: 'Note' };
+/** A short, human name for the device from its user-agent string. */
+function deviceName(ua: string): string {
+  const os = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android' : /Macintosh/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : /CrOS/.test(ua) ? 'Chromebook' : 'Other device';
+  const browser = /Edg\//.test(ua) ? 'Edge' : /CriOS|Chrome\//.test(ua) ? 'Chrome' : /FxiOS|Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : '';
+  const v = ua.match(/(?:iPhone OS|CPU OS|Android) ([\d_.]+)/)?.[1]?.replace(/_/g, '.');
+  return [os, v, browser].filter(Boolean).join(' · ');
+}
+
+/** Problems the app ran into on people's devices, newest first. They arrive by themselves when someone is logged in. */
+function ProblemsTab({ token }: { token: string }) {
+  const [rows, setRows] = useState<ProblemReport[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState<number | null>(null);
+  const load = useCallback(() => adminApi.reports(token).then((r) => { setRows(r.reports); setError(null); }).catch((e) => setError((e as ApiError).message)), [token]);
+  useEffect(() => { void load(); }, [load]);
+  const clear = async (id?: number) => { await adminApi.clearReports(token, id).catch((e) => setError((e as ApiError).message)); await load(); };
+  // The same fault from several people is one line with a count.
+  const groups = new Map<string, ProblemReport[]>();
+  for (const r of rows ?? []) groups.set(`${r.kind}|${r.message}`, [...(groups.get(`${r.kind}|${r.message}`) ?? []), r]);
+  return (
+    <section className="card p-5" data-testid="admin-problems">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div><p className="eyebrow">Sent by the app</p><h2 className="font-display text-2xl font-semibold">Problems</h2></div>
+        {!!rows?.length && <button type="button" className="ctrl" onClick={() => void clear()}>Clear all</button>}
+      </div>
+      {error && <p role="alert" className="mb-3 rounded-xl bg-terracotta-50 px-3 py-2 text-sm text-terracotta-dark">{error}</p>}
+      {!rows ? <p className="text-sm text-ink-mute">Loading…</p> : rows.length === 0 ? <p className="text-sm text-ink-mute" data-testid="no-problems">Nothing has gone wrong. When a page stops or the voice will not play on someone’s device, it appears here.</p> : (
+        <ul className="grid gap-2">
+          {[...groups.values()].map((g) => {
+            const r = g[0]; const people = [...new Set(g.map((x) => x.firstName))];
+            return (
+              <li key={r.id} className="rounded-2xl bg-cream-100 p-3 text-sm">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p><b>{PROBLEM_KIND[r.kind] ?? r.kind}</b> <span className="text-ink-mute">· on “{r.where || 'home'}” · {people.slice(0, 4).join(', ')}{g.length > 1 ? ` · ${g.length} times` : ''} · latest {relative(r.at)}</span></p>
+                    <p className="mt-0.5 break-words text-ink-soft">{r.message}</p>
+                    <p className="mt-0.5 text-xs text-ink-mute">{deviceName(r.device)} · app version {r.build || 'unknown'}</p>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button type="button" className="ctrl" onClick={() => setOpen(open === r.id ? null : r.id)}>{open === r.id ? 'Hide details' : 'Details'}</button>
+                    <button type="button" className="ctrl" onClick={() => void Promise.all(g.map((x) => adminApi.clearReports(token, x.id))).then(load)}>Done</button>
+                  </div>
+                </div>
+                {open === r.id && <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-white p-3 text-xs">{`${r.detail || 'No further detail.'}\n\n${r.device}`}</pre>}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <p className="mt-3 text-xs text-ink-mute">Each report holds the problem, the page, the device type and who was logged in. It never holds a password or anyone’s answers. A page that stops also sends a notification to your phone, at most once an hour.</p>
     </section>
   );
 }

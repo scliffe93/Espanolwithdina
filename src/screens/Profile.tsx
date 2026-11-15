@@ -1,5 +1,6 @@
 import { NotificationsCard } from '../components/NotificationsCard';
 import { Troubleshooting } from '../components/Troubleshooting';
+import { DailyReminder } from '../components/DailyReminder';
 import { motion } from 'motion/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Character } from '../components/Character';
@@ -328,6 +329,7 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
 
               <Section title="Notifications" hint="Hear on this phone or computer when there is something new for you.">
                 <NotificationsCard />
+                <DailyReminder />
               </Section>
 
               <Section title="Account & cloud sync" hint="Log in with a username and password to save progress online and continue on any device.">

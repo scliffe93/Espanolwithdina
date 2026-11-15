@@ -9,7 +9,7 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
 
 async function answer(p) {
   // One exercise, answered any old way; returns its kind.
-  const input = p.getByLabel('Your answer');
+  const input = p.getByLabel('Your answer', { exact: true });
   if (await input.count()) { await input.fill('x'); await p.getByRole('button', { name: 'Check' }).click(); return 'type'; }
   if (await p.getByText('Tap the words in order.').count()) {
     for (let k = 0; k < 20; k++) { const t = p.locator('.mt-3.flex.flex-wrap button:not(.invisible):not([disabled])'); if (!(await t.count())) break; await t.first().click(); }

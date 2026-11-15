@@ -10,6 +10,7 @@ import { ACHIEVEMENTS } from '../../lib/achievements';
 import { allVerbMastery, currentStreak, totalActiveSeconds, weekSummary } from '../../lib/analytics';
 import { addDays, dayKey, formatMinutes, weekStart } from '../../lib/dates';
 import { usePlatform, usePlatformQuery, type AppState } from '../../lib/platform/context';
+import { LessonBrief, lastLessonBefore } from './LessonBrief';
 import { fmtDateTime, relative } from '../../lib/platform/time';
 import type { Booking, Feedback, FeedbackKind, Homework, Role } from '../../lib/platform/types';
 import { buildTeacherReport } from '../../lib/report';
@@ -115,6 +116,12 @@ export function StudentProfile({ id, params }: { id: string; params: URLSearchPa
             ))}
           </div>
         )}
+        {bookings.data && homework.data && (() => {
+          // The next lesson, or failing that "now": the brief covers the time since the lesson before it.
+          const next = bookings.data.filter((b) => b.status === 'scheduled' && Date.parse(b.startsAt) > Date.now()).sort((x, y) => x.startsAt.localeCompare(y.startsAt))[0];
+          const at = next ? Date.parse(next.startsAt) : Date.now();
+          return <div className="mx-4 mb-4"><LessonBrief name={person.firstName} state={state} homework={homework.data} since={lastLessonBefore(bookings.data, id, Math.min(at, Date.now()))} startOpen title={next ? 'Before the next lesson' : 'Since the last lesson'} /></div>;
+        })()}
         <LevelAccess studentId={id} name={person.firstName} />
         {insight.support.length > 0 && (
           <ul className="mx-4 mb-4 grid gap-1 rounded-2xl bg-terracotta-50 p-3 text-sm text-ink-soft" aria-label="Needs support">

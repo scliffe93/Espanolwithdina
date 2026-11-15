@@ -2,7 +2,7 @@
 // One-command Supabase setup for Learning with Dina (free tier), using the Management API.
 //   SUPABASE_ACCESS_TOKEN=sbp_... node scripts/supabase-setup.mjs [--project learning-with-dina] [--region eu-west-2] [--origins https://scliffe93.github.io] [--teachers dina]
 // Steps (all idempotent): find/create the project → wait until healthy → apply supabase/migrations/*.sql →
-// set ALLOWED_ORIGINS + TEACHER_USERNAMES → create the notification (VAPID) keys once → bundle and deploy the `account` Edge Function (JWT check off) →
+// set ALLOWED_ORIGINS + TEACHER_USERNAMES → create the notification (VAPID) keys once → schedule the ten-minute tick (pg_cron) → bundle and deploy the `account` Edge Function (JWT check off) →
 // health-check it → print the API URL to put in .env.production / the LWD_API_URL repository variable.
 // Re-running is safe: existing project, tables (IF NOT EXISTS), secrets and function are updated in place.
 import { readFileSync, readdirSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -91,6 +91,22 @@ async function main() {
     const publicKey = b64u(await crypto.subtle.exportKey('raw', pair.publicKey));
     await api(`/projects/${ref}/secrets`, { method: 'POST', body: JSON.stringify([{ name: 'VAPID_PUBLIC_KEY', value: publicKey }, { name: 'VAPID_PRIVATE_KEY', value: jwk.d }, { name: 'VAPID_SUBJECT', value: SUBJECT }]) });
     log(`notification keys created (public key ${publicKey.slice(0, 12)}…)`);
+  }
+
+  // 4c. Timed notifications (the daily reminder and the brief before each lesson): the database's own scheduler
+  // calls the function every ten minutes with a shared secret. The secret is generated once and lives only as a
+  // server secret and inside the scheduled job; it is never printed and never in the repository.
+  const sqlq = (query) => api(`/projects/${ref}/database/query`, { method: 'POST', body: JSON.stringify({ query }) });
+  await sqlq('create extension if not exists pg_cron; create extension if not exists pg_net;');
+  const job = await sqlq("select 1 from cron.job where jobname = 'lwd-tick'");
+  if (names.includes('CRON_SECRET') && job.length) log('scheduler already set (kept): every 10 minutes');
+  else {
+    const secret = randomBytes(32).toString('base64url');
+    await api(`/projects/${ref}/secrets`, { method: 'POST', body: JSON.stringify([{ name: 'CRON_SECRET', value: secret }]) });
+    const tickUrl = `https://${ref}.supabase.co/functions/v1/account/cron/tick`;
+    if (job.length) await sqlq("select cron.unschedule('lwd-tick')");
+    await sqlq(`select cron.schedule('lwd-tick', '*/10 * * * *', $job$select net.http_post(url := '${tickUrl}', headers := '{"content-type":"application/json","x-cron-secret":"${secret}"}'::jsonb, body := '{}'::jsonb)$job$)`);
+    log('scheduler created: the function is called every 10 minutes for reminders and lesson briefs');
   }
 
   // 5. Deploy the function

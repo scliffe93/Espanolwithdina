@@ -1,6 +1,7 @@
 import { NotificationsCard } from '../../components/NotificationsCard';
 import { motion } from 'motion/react';
 import { InvoiceNudge } from './InvoiceNudge';
+import { LessonBrief, lastLessonBefore } from './LessonBrief';
 import { useMemo, useState } from 'react';
 import { DinaArt } from '../../components/Dina';
 import { Icon } from '../../components/Icon';
@@ -34,6 +35,11 @@ export function Today() {
   const students = useStudents();
   const bookings = usePlatformQuery((b) => b.bookings({ from: range.from, to: range.to }), [range.from, range.to]);
   const homework = usePlatformQuery((b) => b.homework());
+  // Lessons of the last month, to know when each student's previous lesson was (the brief covers the time since).
+  const past = usePlatformQuery((b) => b.bookings({ from: new Date(Date.parse(range.from) - 35 * 86_400_000).toISOString(), to: range.from }), [range.from]);
+  const briefFor = (b: Booking, open: boolean) => (b.status === 'scheduled' && students.data && homework.data
+    ? <LessonBrief name={people.find((p) => p.id === b.studentId)?.firstName ?? 'them'} state={progress[b.studentId] ?? null} homework={homework.data.filter((h) => h.studentId === b.studentId)} since={lastLessonBefore([...(past.data ?? []), ...(bookings.data ?? [])], b.studentId, Date.parse(b.startsAt))} startOpen={open} />
+    : null);
   const activity = usePlatformQuery((b) => b.activity({ limit: 12 }));
   const { run, busy, error } = useAction();
   const [booking, setBooking] = useState<{ open: boolean; edit?: Booking; prefill?: BookingPrefill }>({ open: false });
@@ -94,7 +100,7 @@ export function Today() {
           <Section title="Today’s lessons" eyebrow="Hoy" right={<button type="button" className="ctrl" onClick={() => navigate('teach/calendar')}><Icon name="calendar" size={14} /> Calendar</button>}>
             {!bookings.data ? <Loading /> : todays.length ? (
               <div className="grid gap-2">
-                {todays.map((b) => <LessonCard key={b.id} b={b} people={people} zone={zone} onEdit={(x) => setBooking({ open: true, edit: x })} actions={lessonActions(b)} />)}
+                {todays.map((b, i) => <div key={b.id}><LessonCard b={b} people={people} zone={zone} onEdit={(x) => setBooking({ open: true, edit: x })} actions={lessonActions(b)} />{briefFor(b, i === todays.findIndex((x) => x.status === 'scheduled' && Date.parse(x.startsAt) + x.durationMin * 60_000 > Date.now()))}</div>)}
               </div>
             ) : (
               <p className="text-sm text-ink-mute">No lessons today. <button type="button" className="font-semibold text-terracotta underline-offset-2 hover:underline" onClick={() => setBooking({ open: true })}>Book one</button> or enjoy the quiet.</p>
@@ -104,7 +110,7 @@ export function Today() {
           <Section title="Next 7 days" eyebrow="Upcoming">
             {!bookings.data ? <Loading /> : upcoming.length ? (
               <div className="grid gap-2">
-                {upcoming.map((b) => <LessonCard key={b.id} b={b} people={people} zone={zone} compact onEdit={(x) => setBooking({ open: true, edit: x })} />)}
+                {upcoming.map((b) => <div key={b.id}><LessonCard b={b} people={people} zone={zone} compact onEdit={(x) => setBooking({ open: true, edit: x })} />{briefFor(b, false)}</div>)}
               </div>
             ) : <p className="text-sm text-ink-mute">Nothing booked for the coming week yet.</p>}
           </Section>

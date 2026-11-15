@@ -1,5 +1,5 @@
-// Troubleshooting: a short list of the last things that went wrong, kept on this device only.
-// Nothing is sent anywhere. The learner can read it in Settings and copy or share it with their teacher.
+// Troubleshooting: a short list of the last things that went wrong on this device. The learner can read it in
+// Settings. When they are logged in, each problem is also sent to the administrator (see setReporter) so it can be fixed.
 
 export interface Issue {
   at: number;
@@ -14,6 +14,11 @@ export interface Issue {
 const KEY = 'lwd-diagnostics';
 const MAX = 30;
 const listeners = new Set<() => void>();
+
+/** When someone is logged in, problems are also sent to the administrator. Set by the account provider; null when logged out. */
+let reporter: ((issue: Issue & { device: string; build: string }) => void) | null = null;
+export function setReporter(fn: typeof reporter): void { reporter = fn; }
+export const buildId = () => (typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : 'dev');
 
 function read(): Issue[] {
   try { const v = JSON.parse(localStorage.getItem(KEY) ?? '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
@@ -37,8 +42,10 @@ export function logIssue(kind: Issue['kind'], message: string, detail?: string):
     const last = list[list.length - 1];
     if (last && last.message === msg && Date.now() - last.at < 5000) return;
     list.push({ at: Date.now(), kind, message: msg, where, ...(detail ? { detail: String(detail).slice(0, 600) } : {}) });
+    const issue: Issue = list[list.length - 1];
     localStorage.setItem(KEY, JSON.stringify(list.slice(-MAX)));
     listeners.forEach((l) => l());
+    if (kind !== 'note') try { reporter?.({ ...issue, device: typeof navigator !== 'undefined' ? navigator.userAgent : '', build: buildId() }); } catch { /* never let reporting cause another problem */ }
   } catch { /* storage full or blocked: nothing to do */ }
 }
 
@@ -53,7 +60,7 @@ export function buildReport(extra: string[] = []): string {
   const lines = [
     'Learning with Dina: troubleshooting report',
     `When: ${new Date().toISOString()}`,
-    `App version: ${typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : 'dev'}`,
+    `App version: ${buildId()}`,
     `Device: ${nav?.userAgent ?? 'unknown'}`,
     `Online: ${nav?.onLine ?? 'unknown'} · Installed app: ${typeof window !== 'undefined' && (window.matchMedia?.('(display-mode: standalone)').matches || (nav as unknown as { standalone?: boolean })?.standalone === true)}`,
     ...extra,

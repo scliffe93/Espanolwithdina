@@ -1,7 +1,8 @@
 import { disablePush } from './push';
+import { setReporter } from './diagnostics';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AppState } from '../types';
-import { ApiError, api, cloudConfigured, loadSession, rememberAccount, saveSession, type Session } from './cloud';
+import { ApiError, api, cloudConfigured, loadSession, rememberAccount, reportApi, saveSession, type Session } from './cloud';
 import { GUEST_KEY, accountKey, deleteKey, deleteSyncMeta, hasKey, loadState, loadSyncMeta, saveState, saveSyncMeta, type SyncMeta } from './db';
 import { hasProgress, mergeStates } from './merge';
 import { defaultState, migrate } from './state';
@@ -50,6 +51,12 @@ const DEBOUNCE = 3_000;
 export function AccountProvider({ children }: { children: ReactNode }) {
   const store = useStore();
   const [session, setSession] = useState<Session | null>(() => (cloudConfigured ? loadSession() : null));
+  // While someone is logged in, problems the app runs into are sent to the administrator (never when logged out).
+  useEffect(() => {
+    const token = session?.token;
+    setReporter(token ? (issue) => { void reportApi.send(token, { kind: issue.kind, message: issue.message, where: issue.where, detail: issue.detail, device: issue.device, build: issue.build }).catch(() => undefined); } : null);
+    return () => setReporter(null);
+  }, [session?.token]);
   const [status, setStatus] = useState<SyncStatus>(cloudConfigured && loadSession() ? 'pending' : 'local-only');
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { buildReport, clearIssues, getIssues, onIssuesChange, refreshApp, type Issue } from '../lib/diagnostics';
 import { hasSpanishVoice, spanishVoices, speak, ttsSupported } from '../lib/speech';
+import { useAccount } from '../lib/account';
 import { useStore } from '../lib/store';
 import { Icon } from './Icon';
 
@@ -9,6 +10,7 @@ const KIND: Record<Issue['kind'], string> = { crash: 'A page stopped', error: 'S
 /** Settings → Troubleshooting: test the voice, refresh the app, and see or share what went wrong recently. */
 export function Troubleshooting() {
   const { state } = useStore();
+  const { session } = useAccount();
   const region = state.profile?.region ?? 'spain';
   const [issues, setIssues] = useState(getIssues);
   const [voice, setVoice] = useState<'idle' | 'playing' | 'ok' | 'silent'>('idle');
@@ -53,7 +55,7 @@ export function Troubleshooting() {
           {typeof navigator !== 'undefined' && 'share' in navigator && <button className="ctrl" onClick={() => void share()}>Send to Dina…</button>}
           {issues.length > 0 && <button className="ctrl" onClick={clearIssues}>Clear the list</button>}
         </div>
-        <p className="mt-2 text-xs text-ink-mute">The report lists the problems above and your device type. It contains no name, password or answers, and it is only sent if you send it.</p>
+        <p className="mt-2 text-xs text-ink-mute">{session ? 'While you are logged in, these problems are sent to the app’s administrator automatically so they can be fixed.' : 'Log in and problems are sent to the app’s administrator automatically.'} A report holds the problem, the page and your device type. It never holds your password or your answers.</p>
       </div>
     </div>
   );
