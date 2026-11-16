@@ -47,3 +47,16 @@ export function draftLesson(state: AppState | null, name: string, now = Date.now
 }
 
 export const BLOCK_LABEL: Record<LessonBlock['type'], string> = { text: 'Explanation', question: 'Open question', choice: 'Multiple choice', gap: 'Fill the gap', vocab: 'Word list' };
+
+/** A finished example lesson, so the room can be tried before a real one has been planned. */
+export function exampleLesson(name: string): LessonBlock[] {
+  return [
+    { id: bid(), type: 'question', title: 'Para empezar', body: `¿Qué hiciste el fin de semana, ${name}? Cuéntame dos cosas.` },
+    { id: bid(), type: 'text', title: 'Hoy: el pretérito de ir y ser', body: 'Ir and ser share the same forms in the preterite:\n\nyo fui · tú fuiste · él / ella fue\nnosotros fuimos · vosotros fuisteis · ellos / ellas fueron\n\nThe rest of the sentence tells you which verb it is: "Fui al mercado" (I went), "Fue un día genial" (it was).' },
+    { id: bid(), type: 'gap', title: 'ir · pretérito', body: 'Ayer yo ___ (ir) al mercado.', answer: 'fui' },
+    { id: bid(), type: 'gap', title: 'ser · pretérito', body: 'La película ___ (ser) muy buena.', answer: 'fue' },
+    { id: bid(), type: 'choice', title: '¿Ir o ser?', body: 'El sábado fuimos a la playa.', options: ['ir: we went', 'ser: we were'], answer: 'ir: we went' },
+    { id: bid(), type: 'vocab', title: 'Palabras de hoy', body: '', pairs: [{ es: 'ayer', en: 'yesterday' }, { es: 'el fin de semana', en: 'the weekend' }, { es: 'la semana pasada', en: 'last week' }, { es: 'anoche', en: 'last night' }] },
+    { id: bid(), type: 'question', title: 'Para terminar', body: 'Escribe tres frases sobre tus últimas vacaciones. Usa fui, fue y fuimos.' },
+  ];
+}

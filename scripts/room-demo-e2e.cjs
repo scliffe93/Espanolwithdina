@@ -30,6 +30,10 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
   await as('dina');
   await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1200); await p.getByTestId('room-open').first().click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(2500);
   ok(/answered ✗/.test(await p.getByTestId('block-list').innerText()), 'and Dina sees it on her side');
+  // The ready-made example lesson.
+  await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1200);
+  await p.getByTestId('room-student').selectOption({ label: 'Sam' }); await p.getByTestId('room-example').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(600);
+  ok((await p.getByTestId('block-editor').count()) === 7 && /Example lesson/.test(await p.getByTestId('room-title').inputValue()), '“Open an example lesson” makes a finished seven-part lesson to try');
   ok(errors.length === 0, `no page errors${errors.length ? ': ' + errors[0] : ''}`);
   await b.close();
 })();

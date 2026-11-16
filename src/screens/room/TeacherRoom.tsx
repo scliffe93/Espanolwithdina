@@ -3,7 +3,7 @@ import { Icon } from '../../components/Icon';
 import { PageHeader, Segmented } from '../../components/ui';
 import { isPresent } from '../../../supabase/functions/_shared/lesson';
 import { usePlatform, usePlatformQuery } from '../../lib/platform/context';
-import { BLOCK_LABEL, draftLesson, newBlock } from '../../lib/platform/lessonDraft';
+import { BLOCK_LABEL, draftLesson, exampleLesson, newBlock } from '../../lib/platform/lessonDraft';
 import type { LessonBlock, LessonPlan } from '../../lib/platform/types';
 import { navigate } from '../../lib/router';
 import { useStore } from '../../lib/store';
@@ -26,13 +26,13 @@ export function RoomList() {
   const nameOf = (id: string) => people.find((p) => p.id === id)?.firstName ?? 'Student';
   useEffect(() => { if (!studentId && people[0]) setStudentId(people[0].id); }, [people, studentId]);
 
-  const create = async (draft: boolean) => {
+  const create = async (kind: 'draft' | 'blank' | 'example') => {
     if (!backend || !studentId) return;
     setBusy(true); setError(null);
     try {
       const name = nameOf(studentId);
-      const blocks = draft ? draftLesson(students.data?.progress[studentId] ?? null, name) : [newBlock('question')];
-      const plan = await backend.saveLesson({ studentId, title: `Lesson with ${name}`, date: today(), notes: '', blocks, live: { on: false, current: null } });
+      const blocks = kind === 'draft' ? draftLesson(students.data?.progress[studentId] ?? null, name) : kind === 'example' ? exampleLesson(name) : [newBlock('question')];
+      const plan = await backend.saveLesson({ studentId, title: kind === 'example' ? 'Example lesson: el pretérito de ir y ser' : `Lesson with ${name}`, date: today(), notes: '', blocks, live: { on: false, current: null } });
       navigate(`teach/room/${plan.id}`);
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not create the lesson.'); }
     setBusy(false);
@@ -47,10 +47,13 @@ export function RoomList() {
           <label className="grid gap-1 text-sm font-medium">For
             <select className="input !w-48" value={studentId} onChange={(e) => setStudentId(e.target.value)} data-testid="room-student">{people.map((p) => <option key={p.id} value={p.id}>{p.firstName}</option>)}</select>
           </label>
-          <button type="button" className="btn-primary" disabled={busy || !studentId} onClick={() => void create(true)} data-testid="room-draft"><Icon name="sparkle" size={18} /> Draft it from their week</button>
-          <button type="button" className="btn-ghost" disabled={busy || !studentId} onClick={() => void create(false)} data-testid="room-blank">Start blank</button>
+          <button type="button" className="btn-primary" disabled={busy || !studentId} onClick={() => void create('draft')} data-testid="room-draft"><Icon name="sparkle" size={18} /> Draft it from their week</button>
+          <button type="button" className="btn-ghost" disabled={busy || !studentId} onClick={() => void create('blank')} data-testid="room-blank">Start blank</button>
+          <button type="button" className="btn-ghost" disabled={busy || !studentId} onClick={() => void create('example')} data-testid="room-example"><Icon name="eye" size={16} /> Open an example lesson</button>
         </div>
         <p className="mt-2 text-sm text-ink-mute">A draft uses what the student has actually been getting wrong: a warm-up, their hardest point explained with their own mistakes, the exact forms they missed, and a wrap-up. You edit it from there.</p>
+        {students.data && people.length === 0 && <p className="mt-2 rounded-xl bg-saffron-50 px-3 py-2 text-sm">Add a student first (Students, Add a student). A lesson is always planned for one student, even a practice one.</p>}
+        <p className="mt-1 text-sm text-ink-mute"><b>Open an example lesson</b> makes a finished seven-part lesson for the student you chose, to try the room with. They see nothing until you start it and open a part, and you can delete it afterwards.</p>
         <ErrorText error={error} />
       </section>
 
