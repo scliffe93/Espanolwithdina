@@ -65,6 +65,15 @@ Ahora vivo en un piso pequeño cerca del metro. Me gusta mucho el barrio.
   const answers = await p.locator('[data-testid^="rv-answer-"]').count();
   ok(answers === answered, `review sheet lists ${answers} answers (expected ${answered})`);
   ok(/Q: ¿Qué compró el lunes\?/.test(await p.getByTestId('rv-answers').innerText()), 'the teacher’s question is there for marking');
+  // Every answer has a clear Right and Wrong button; the open question waits for the teacher's call.
+  ok((await p.locator('[data-testid^="rv-right-"]').count()) === answers && (await p.locator('[data-testid^="rv-wrong-"]').count()) === answers, 'each answer has a Right and a Wrong button');
+  const q = p.locator('[data-testid^="rv-answer-"]').filter({ hasText: 'Q: ' }).first();
+  ok(/for you to mark/.test(await q.innerText()) && (await q.locator('[aria-pressed="true"]').count()) === 0, 'the open question is waiting for her mark');
+  await q.getByRole('button', { name: /Right/ }).click();
+  ok((await q.getByRole('button', { name: /Right/ }).getAttribute('aria-pressed')) === 'true' && !/for you to mark/.test(await q.innerText()), 'she marks it right');
+  await p.locator('[data-testid="rv-wrong-0"]').click();
+  ok((await p.locator('[data-testid="rv-wrong-0"]').getAttribute('aria-pressed')) === 'true', 'and can mark any other answer wrong');
+  await p.getByTestId('rv-answers').screenshot({ path: OUT + '/rv-buttons.png' });
   await p.screenshot({ path: OUT + '/material-review.png', fullPage: true });
   // The debrief can add a document too.
   await p.keyboard.press('Escape'); await p.waitForTimeout(400);

@@ -221,18 +221,24 @@ export function HomeworkReview({ homework, people, viewZone, onClose }: { homewo
                     {items.map((it, i) => {
                       const m = marked[i];
                       const ok = m?.ok ?? it.correct;
+                      // An open question has no verdict from the app: it waits for the teacher's Right or Wrong.
+                      const open = it.prompt.startsWith('Q: ') && it.expected === undefined;
                       return (
-                        <li key={i} className={`rounded-xl px-3 py-2 ring-1 ${ok ? 'bg-white ring-ink/5' : 'bg-terracotta-50 ring-terracotta/20'}`} data-testid={`rv-answer-${i}`}>
+                        <li key={i} className={`rounded-xl px-3 py-2 ring-1 ${open && m?.ok === undefined ? 'bg-azul-50 ring-azul/20' : ok ? 'bg-white ring-ink/5' : 'bg-terracotta-50 ring-terracotta/20'}`} data-testid={`rv-answer-${i}`}>
                           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                             <span className="w-5 shrink-0 text-xs text-ink-mute">{i + 1}.</span>
                             <span className="text-ink-soft">{it.prompt}</span>
                             <span lang="es" className={`font-semibold ${ok ? 'text-olive' : 'text-terracotta-dark'}`}>{it.given || '—'}</span>
                             {!ok && it.expected && <span lang="es" className="text-ink-soft">→ <b className="text-ink">{it.expected}</b></span>}
                             {!ok && it.category && <span className="text-xs text-ink-mute">{categoryLabel(it.category)}</span>}
-                            {m?.ok !== undefined && <span className="text-xs text-azul">your call: {m.ok ? 'correct' : 'wrong'}</span>}
+                            {open && m?.ok === undefined && <span className="text-xs font-semibold text-azul">for you to mark</span>}
+                            {!open && m?.ok !== undefined && <span className="text-xs text-azul">you changed this</span>}
                             <span className="ml-auto flex shrink-0 gap-1">
-                              <button type="button" className="rounded-md px-1.5 py-0.5 text-xs text-ink-mute hover:bg-cream-100 hover:text-ink" onClick={() => setItem(i, { ok: m?.ok === undefined ? !it.correct : undefined })} title={m?.ok === undefined ? (it.correct ? 'Count as wrong' : 'Accept this answer') : 'Back to the app’s verdict'}>{m?.ok === undefined ? (it.correct ? 'mark wrong' : 'accept') : 'undo'}</button>
-                              <button type="button" className="rounded-md px-1.5 py-0.5 text-xs text-ink-mute hover:bg-cream-100 hover:text-ink" onClick={() => setOpenNote(openNote === i ? null : i)} data-testid={`rv-note-${i}`}>{m?.comment ? 'edit note' : 'note'}</button>
+                              {([true, false] as const).map((v) => {
+                                const on = open ? m?.ok === v : ok === v;
+                                return <button key={String(v)} type="button" aria-pressed={on} className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 transition ${on ? (v ? 'bg-olive text-white ring-olive' : 'bg-terracotta text-white ring-terracotta') : 'bg-white text-ink-soft ring-ink/15 hover:ring-ink/40'}`} onClick={() => setItem(i, { ok: !open && v === it.correct ? undefined : v })} data-testid={`rv-${v ? 'right' : 'wrong'}-${i}`}>{v ? '✓ Right' : '✗ Wrong'}</button>;
+                              })}
+                              <button type="button" className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-ink-soft ring-1 ring-ink/15 hover:ring-ink/40" onClick={() => setOpenNote(openNote === i ? null : i)} data-testid={`rv-note-${i}`}>{m?.comment ? 'Edit note' : 'Note'}</button>
                             </span>
                           </div>
                           {(openNote === i || m?.comment) && (
