@@ -52,7 +52,9 @@ export interface ImportedPlan { title: string; blocks: LessonBlock[]; /** What w
 
 /** Turns the text of a lesson plan into the parts of a lesson. */
 export function planFromText(raw: string, fallbackTitle = 'Lesson'): ImportedPlan {
-  const lines = raw.replace(/\r\n?/g, '\n').replace(/ /g, ' ').split('\n').map((l) => l.replace(/\s+$/, ''));
+  // Anything after a line saying END OF LESSON (or FIN DE LA CLASE) is the teacher's own and is not read.
+  const cut = raw.replace(/\r\n?/g, '\n').split(/^[ \t#=*-]*(?:end of (?:the )?lesson|fin de (?:la )?clase)[ \t=*-]*$/im)[0];
+  const lines = cut.replace(/\r\n?/g, '\n').replace(/ /g, ' ').split('\n').map((l) => l.replace(/\s+$/, ''));
   const blocks: LessonBlock[] = [];
   let title = '';
   let section = '';

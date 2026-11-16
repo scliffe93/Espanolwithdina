@@ -9,6 +9,7 @@ import { useSay } from '../../hooks/useSpeech';
 import { classifyVerbError, normalize, stripAccents } from '../../lib/answer';
 import { confetti, haptic, sfx } from '../../lib/fx';
 import { MATERIAL_KIND_LABEL, dictationScore, promptFor, type MaterialItem } from '../../lib/material';
+import { checkBlock } from '../../../supabase/functions/_shared/lesson';
 import { usePlatform } from '../../lib/platform/context';
 import { relative } from '../../lib/platform/time';
 import type { Homework, ResultItem } from '../../lib/platform/types';
@@ -185,6 +186,24 @@ export function MaterialRunner({ h, now, readOnly }: { h: Homework; now: number;
             <button type="button" className="btn-primary mt-3" disabled={!!answer || !typed.trim()} onClick={() => { const r = dictationScore(typed, item.sentence); check(r.ok, typed.trim(), item.sentence); }} data-testid="material-check">Check</button>
           </div>
         )}
+        {item.kind === 'gap' && (
+          <div>
+            <p className="text-sm text-ink-mute">Type the missing word or words.</p>
+            <p lang="es" className="mt-1 font-display text-2xl font-semibold leading-snug">{item.sentence}</p>
+            <form className="mt-3 flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); if (answer || !typed.trim()) return; check(checkBlock({ id: 'hw', type: 'gap', title: '', body: item.sentence, answer: item.answer, open: true }, typed) === true, typed.trim(), item.answer.split('|')[0].trim()); }}>
+              <input lang="es" className="input min-w-0 flex-1 text-lg" value={typed} onChange={(e) => setTyped(e.target.value)} disabled={!!answer} autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="Tu respuesta…" data-testid="material-typed" />
+              <button type="submit" className="btn-primary" disabled={!!answer || !typed.trim()} data-testid="material-check">Check</button>
+            </form>
+          </div>
+        )}
+        {item.kind === 'choice' && (
+          <div>
+            <p lang="es" className="font-display text-2xl font-semibold leading-snug">{item.prompt}</p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2" role="group" aria-label="Choose the answer">
+              {item.options.map((o) => <button key={o} type="button" lang="es" className={`rounded-2xl px-4 py-3 text-left text-lg font-medium ring-1 transition ${answer ? (o === item.answer ? 'bg-olive-50 ring-olive' : o === answer.given ? 'bg-terracotta-50 ring-terracotta' : 'ring-ink/10 opacity-60') : 'bg-white ring-ink/10 hover:ring-ink/40'}`} disabled={!!answer} onClick={() => check(o === item.answer, o, item.answer)} data-testid="material-option">{o}</button>)}
+            </div>
+          </div>
+        )}
         {item.kind === 'question' && (
           <div>
             <p className="eyebrow">Dina asks</p>
@@ -197,7 +216,7 @@ export function MaterialRunner({ h, now, readOnly }: { h: Homework; now: number;
       </div>
       {answer && (
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={`mt-4 rounded-2xl p-4 ${answer.ok === null ? 'bg-azul-50' : answer.ok ? 'bg-olive-50' : 'bg-terracotta-50'}`} role="status" data-testid="material-feedback">
-          <p className="font-semibold">{answer.ok === null ? 'Saved for Dina.' : answer.ok ? '¡Eso es!' : 'Not quite.'}{answer.ok === false && answer.expected && <> The text says: <span lang="es" className="font-display text-lg">{answer.expected}</span></>}</p>
+          <p className="font-semibold">{answer.ok === null ? 'Saved for Dina.' : answer.ok ? '¡Eso es!' : 'Not quite.'}{answer.ok === false && answer.expected && <> The answer is: <span lang="es" className="font-display text-lg">{answer.expected}</span></>}</p>
           <button className="btn-dark mt-3" onClick={next} disabled={busy} autoFocus data-testid="material-next">{busy ? 'Submitting…' : i + 1 < items.length ? 'Next' : 'Finish and send to Dina'} <Icon name="arrowRight" size={16} /></button>
           {error && <p role="alert" className="mt-2 text-sm text-terracotta-dark">{error}</p>}
         </motion.div>

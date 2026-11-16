@@ -90,6 +90,55 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
   await p.getByTestId('review-create').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(600);
   ok((await p.getByTestId('block-editor').count()) === 6, 'and the lesson is created from the reviewed PDF');
   await p.screenshot({ path: OUT + '/room-plan.png', fullPage: true });
+  // The Word template: uploaded exactly as it is downloaded, it gives a finished lesson and leaves the guide page out.
+  ok((await p.request.get(BASE + 'guides/lesson-plan-template.docx')).status() === 200, 'the template can be downloaded');
+  {
+    await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1200);
+    ok(await p.getByTestId('room-template').count() === 1, 'the lesson room offers the Word template');
+    await p.getByTestId('room-student').selectOption({ label: 'Sam' });
+    await p.getByTestId('room-file').setInputFiles('public/guides/lesson-plan-template.docx');
+    await p.getByTestId('import-review').waitFor({ timeout: 20000 });
+    const kinds = await p.getByTestId('block-editor').evaluateAll((els) => els.map((e) => e.dataset.type).join(','));
+    ok(kinds === 'question,text,gap,gap,gap,choice,vocab,question', `the template gives eight parts as written (${kinds})`);
+    ok((await p.getByTestId('review-title').inputValue()) === 'El pretérito de ir y ser' && /Every gap and choice has its answer/.test(await p.getByTestId('review-missing').innerText()), 'with its title and every answer');
+    ok(!/How to use this template|Good to know/.test(await p.getByTestId('import-review').locator('ol').innerText()), 'the guide page after END OF LESSON is not put in the lesson');
+    await p.screenshot({ path: OUT + '/room-review-template.png', fullPage: true });
+    await p.getByTestId('review-create').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(600);
+    // The tasks of the lesson, sent as homework.
+    ok(/10 tasks for Sam to do alone: 8 marked by the app, 2 for you to mark/.test(await p.getByTestId('lesson-homework-count').innerText()), `the lesson offers its tasks as homework (${await p.getByTestId('lesson-homework-count').innerText()})`);
+    await p.getByTestId('lesson-homework-open').click(); await p.getByTestId('lesson-homework-send').click();
+    await p.getByTestId('lesson-homework-sent').waitFor({ timeout: 10000 });
+    await p.screenshot({ path: OUT + '/room-homework.png', fullPage: true });
+    await as('sam');
+    await p.goto(BASE + '#/student/homework'); await p.waitForTimeout(1500);
+    const card = p.locator('[data-testid^="hw-card-"]').filter({ hasText: 'From our lesson: El pretérito de ir y ser' }).first();
+    ok(await card.count() === 1, 'Sam finds it in his homework');
+    await card.getByRole('button').first().click(); await p.waitForTimeout(1000);
+    const start = p.locator('[data-testid^="hw-start-"]'); if (await start.count()) await start.first().click();
+    await p.getByTestId('material-runner').waitFor({ timeout: 10000 });
+    const want = { 'Ayer yo': 'fui', 'La película': 'FUE', 'Mis amigos': 'zzz' }; let right = 0, wrong = 0;
+    for (let k = 0; k < 10; k++) {
+      const text = await p.getByTestId('material-runner').innerText();
+      if (await p.getByTestId('material-typed').count()) {
+        const key = Object.keys(want).find((w) => text.includes(w));
+        await p.getByTestId('material-typed').fill(key ? want[key] : 'Fui a Valencia.'); await p.getByTestId('material-check').click();
+      } else {
+        const opts = p.getByTestId('material-option'); const labels = await opts.allInnerTexts();
+        const good = ['ir', 'yesterday', 'last night', 'last week', 'the weekend'];
+        const pick = /fuimos a la playa/.test(text) ? 'ir' : /“ayer”/.test(text) ? 'yesterday' : /“anoche”/.test(text) ? 'last night' : /“la semana pasada”/.test(text) ? 'last week' : 'the weekend';
+        await opts.nth(Math.max(0, labels.indexOf(pick))).click(); void good;
+      }
+      const fb = await p.getByTestId('material-feedback').innerText();
+      if (/Eso es/.test(fb)) right++; else if (/Not quite/.test(fb)) wrong++;
+      if (k === 2) await p.screenshot({ path: OUT + '/room-homework-student.png' });
+      await p.getByTestId('material-next').click(); await p.waitForTimeout(400);
+    }
+    ok(right === 7 && wrong === 1, `he does all ten tasks: gaps and choices are marked (${right} right, ${wrong} wrong), the open questions go to Dina`);
+    await p.waitForTimeout(1500);
+    await as('dina');
+    await p.goto(BASE + '#/teach/homework'); await p.waitForTimeout(1500);
+    ok(/From our lesson: El pretérito de ir y ser/.test(await p.locator('main').innerText()) && /7\/8 correct/.test(await p.locator('main').innerText()), 'and Dina sees it handed in: 7/8 correct, 2 answers for her to mark');
+  }
   ok(errors.length === 0, `no page errors${errors.length ? ': ' + errors[0] : ''}`);
   await b.close();
 })();

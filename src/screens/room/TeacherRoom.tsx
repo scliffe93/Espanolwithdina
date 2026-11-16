@@ -5,6 +5,7 @@ import { Segmented } from '../../components/ui';
 import { isPresent } from '../../../supabase/functions/_shared/lesson';
 import { usePlatform, usePlatformQuery } from '../../lib/platform/context';
 import { BLOCK_LABEL, draftLesson, exampleLesson, newBlock } from '../../lib/platform/lessonDraft';
+import { homeworkFromLesson, homeworkItems } from '../../lib/platform/lessonHomework';
 import { describeImport, planFromText, type ImportedPlan } from '../../lib/platform/lessonImport';
 import { extractText, sourceKindOf } from '../../lib/extractText';
 import type { LessonBlock, LessonPlan } from '../../lib/platform/types';
@@ -227,6 +228,10 @@ export function RoomList() {
             <button type="button" className="btn-primary mt-2" disabled={busy || !pasted.trim() || !studentId} onClick={() => read(pasted, 'your pasted plan', 'Lesson')} data-testid="room-paste-go"><Icon name="eye" size={16} /> Review it</button>
           </div>
         )}
+        <a href={`${import.meta.env.BASE_URL}guides/lesson-plan-template.docx`} download className="mt-3 flex items-center gap-3 rounded-2xl bg-azul-50 px-4 py-3 text-sm ring-1 ring-azul/20 transition hover:ring-azul/50" data-testid="room-template">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-azul"><Icon name="download" size={17} /></span>
+          <span className="min-w-0 flex-1"><b className="block text-ink">Download the Word template</b><span className="text-ink-soft">A lesson plan laid out the right way, with a page explaining everything you can write. Replace the example with your own lesson and upload it.</span></span>
+        </a>
         <details className="mt-3 rounded-2xl bg-white px-4 py-3 text-sm text-ink-soft ring-1 ring-ink/5">
           <summary className="cursor-pointer font-semibold text-ink">How a plan is read</summary>
           <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
@@ -235,6 +240,7 @@ export function RoomList() {
             <li><b className="text-ink">A question followed by a) b) c)</b> becomes multiple choice. Put a star after the right one.</li>
             <li><b className="text-ink">A line ending in a question mark</b> becomes an open question.</li>
             <li><b className="text-ink">Lines like</b> <span lang="es">la playa = the beach</span> become a word list.</li>
+            <li><b className="text-ink">END OF LESSON</b> on a line of its own ends the lesson. Anything below it is your own notes and is not read.</li>
             <li><b className="text-ink">Everything else</b> becomes an explanation. Nothing is invented and nothing is left out.</li>
           </ul>
           <p className="mt-2">The file is read on this device. A scanned page or a photo has no text to read: paste the text instead.</p>
@@ -298,6 +304,49 @@ function BlockEditor({ b, i, n, onChange, onMove, onDelete, onDuplicate, flag }:
         {preview && <div className="mt-3 rounded-3xl bg-cream-100 p-3"><p className="eyebrow mb-2">As your student sees it</p><BlockView block={b} mode="present" /></div>}
       </div>
     </li>
+  );
+}
+
+/** Send the tasks of a lesson to the student as homework, to do on their own afterwards. */
+function SendHomework({ plan, name }: { plan: LessonPlan; name: string }) {
+  const { backend, bump } = usePlatform();
+  const { notify } = useStore();
+  const [open, setOpen] = useState(false);
+  const [due, setDue] = useState(() => new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10));
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const items = homeworkItems(plan.blocks);
+  const marked = items.filter((i) => i.kind !== 'question').length;
+  const send = async () => {
+    if (!backend) return;
+    setBusy(true); setError(null);
+    try {
+      await backend.assignHomework({ studentIds: [plan.studentId], activity: { kind: 'material', title: `From our lesson: ${plan.title}`, material: homeworkFromLesson(plan.title, plan.blocks) }, instructions: note.trim() || 'The tasks from our lesson, to do again on your own.', dueAt: new Date(`${due}T20:00:00`).toISOString() });
+      bump(); setSent(true); setOpen(false); notify(`Homework sent to ${name}`);
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not send the homework.'); }
+    setBusy(false);
+  };
+  return (
+    <section className="card p-4" data-testid="lesson-homework">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-saffron-50 text-ink"><Icon name="book" size={18} /></span>
+        <div className="min-w-0 flex-1 basis-56">
+          <b className="block">Send the tasks as homework</b>
+          <span className="text-sm text-ink-soft" data-testid="lesson-homework-count">{items.length === 0 ? 'This lesson has no tasks yet. Add a gap, a multiple choice or a question with its answer.' : `${items.length} task${items.length === 1 ? '' : 's'} for ${name} to do alone: ${marked} marked by the app${items.length - marked ? `, ${items.length - marked} for you to mark` : ''}. Explanations are left out.`}</span>
+        </div>
+        {sent ? <span className="rounded-full bg-olive-50 px-4 py-2 text-sm font-semibold text-olive" data-testid="lesson-homework-sent">Sent. It is in Homework.</span> : <button type="button" className="btn-soft" disabled={items.length === 0} onClick={() => setOpen(!open)} data-testid="lesson-homework-open">Send as homework</button>}
+      </div>
+      {open && !sent && (
+        <div className="mt-3 grid gap-3 border-t border-ink/5 pt-3 sm:grid-cols-[auto_1fr_auto] sm:items-end">
+          <label className="grid gap-1 text-sm font-medium">Due<input type="date" className="input" value={due} min={today()} onChange={(e) => setDue(e.target.value)} data-testid="lesson-homework-due" /></label>
+          <label className="grid gap-1 text-sm font-medium">A note for {name} <span className="font-normal text-ink-mute">(optional)</span><input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="The tasks from our lesson, to do again on your own." /></label>
+          <button type="button" className="btn-primary" disabled={busy || !due} onClick={() => void send()} data-testid="lesson-homework-send">{busy ? 'Sending…' : `Send ${items.length} task${items.length === 1 ? '' : 's'}`}</button>
+        </div>
+      )}
+      <ErrorText error={error} />
+    </section>
   );
 }
 
@@ -373,6 +422,7 @@ export function TeacherRoom({ id }: { id: string }) {
             <span className="mr-1 text-sm font-semibold">Add a part:</span>
             {TYPES.map((t) => <button key={t} type="button" className="ctrl" onClick={() => change((p) => ({ ...p, blocks: [...p.blocks, newBlock(t)] }))} data-testid={`add-${t}`}><Icon name="plus" size={14} /> {BLOCK_LABEL[t]}</button>)}
           </div>
+          <SendHomework plan={plan} name={name} />
           <div className="flex flex-wrap gap-2">
             <button type="button" className="btn-primary" onClick={() => setTab('present')} data-testid="to-present"><Icon name="video" size={18} /> Go to the Present screen</button>
             <button type="button" className="btn-ghost" onClick={async () => { if (!backend || !window.confirm('Delete this lesson and the answers given in it?')) return; await backend.deleteLesson(plan.id); notify('Lesson deleted'); navigate('teach/room'); }}><Icon name="trash" size={16} /> Delete this lesson</button>

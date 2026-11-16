@@ -33,9 +33,13 @@ export type MaterialItem =
   | { kind: 'build'; sentence: string; tiles: string[] }
   | { kind: 'dictation'; sentence: string }
   | { kind: 'vocab'; es: string; en: string; options: string[]; id: string }
-  | { kind: 'question'; prompt: string };
+  | { kind: 'question'; prompt: string }
+  /** From a lesson: a sentence with ___ and the answer to type (alternatives separated by |). */
+  | { kind: 'gap'; sentence: string; answer: string }
+  /** From a lesson: a question with options to choose from. */
+  | { kind: 'choice'; prompt: string; options: string[]; answer: string };
 export type MaterialKind = MaterialItem['kind'];
-export const MATERIAL_KIND_LABEL: Record<MaterialKind, string> = { cloze: 'Fill the gap (verbs)', build: 'Build the sentence', dictation: 'Dictation', vocab: 'Vocabulary meaning', question: 'Teacher’s question' };
+export const MATERIAL_KIND_LABEL: Record<MaterialKind, string> = { cloze: 'Fill the gap (verbs)', build: 'Build the sentence', dictation: 'Dictation', vocab: 'Vocabulary meaning', question: 'Teacher’s question', gap: 'Fill the gap', choice: 'Choose the answer' };
 
 export interface MaterialSet {
   /** The document's name or the teacher's title. */
@@ -279,5 +283,7 @@ export function promptFor(item: MaterialItem): string {
     case 'dictation': return `Dictation: ${item.sentence}`;
     case 'vocab': return `Meaning of “${item.es}”`;
     case 'question': return `Q: ${item.prompt}`;
+    case 'gap': return item.sentence;
+    case 'choice': return item.prompt;
   }
 }

@@ -225,3 +225,9 @@ A place to run a lesson: the teacher plans it beforehand, shares her screen on Z
 ### Reviewing an uploaded plan
 
 A plan that is uploaded (Word, PDF or text) or pasted is not saved straight away. The teacher first sees a review page: her own document on one side, the parts made from it on the other. She can change the title, change what a part is, edit, reorder or remove parts, and fill in any answer that was not found (those parts are marked). The lesson is created only when she presses Create the lesson; Cancel leaves nothing behind. PDFs are read with their layout: larger type is a heading, and a wider gap than the page's usual line spacing is a paragraph break. Tested by `scripts/room-demo-e2e.cjs` (text, Word and PDF).
+
+### Word template and homework from a lesson
+
+`public/guides/lesson-plan-template.docx` (built by `scripts/build-plan-template.py`) is a plan laid out the way the reader expects, with a second page explaining what can be written. It is linked from the lesson room. A line saying END OF LESSON stops the reading, so the guide page and any private notes below it never reach the lesson. Word files keep their Heading styles, blank lines and automatic a) b) c) and 1. 2. 3. lists.
+
+On the Plan tab, “Send the tasks as homework” gives the lesson's gaps, multiple choice, open questions and word list (as meaning questions) to the student as ordinary homework (`src/lib/platform/lessonHomework.ts`). Gaps and choices are marked by the app; open questions come to the teacher.
