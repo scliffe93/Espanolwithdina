@@ -120,3 +120,25 @@ export const CATEGORY_TIP: Record<ErrorCategory, string> = {
   voseo: 'In Buenos Aires vos takes the stress on the ending and no stem change: vos querés, podés, tenés, sos.',
   other: 'Review the model sentence and say it aloud twice.',
 };
+
+/**
+ * Does a wrong answer look like a slip of the fingers rather than not knowing it? 'accents' when only the accents
+ * differ, 'spelling' when a letter or two is off in a word long enough for that to be a typo. A category that names
+ * a real grammar mistake (wrong person, wrong tense) rules it out: "hablo" for "habla" is one letter but not a typo.
+ */
+export function spellingSlip(given: string, expected: string | undefined, category?: string): 'accents' | 'spelling' | null {
+  if (category === 'accents' || category === 'spelling') return category;
+  if (category && category !== 'vocabulary' && category !== 'other') return null;
+  const g = normalize(given);
+  if (!g || !expected) return null;
+  let best: 'accents' | 'spelling' | null = null;
+  for (const alt of expected.split(/\s*(?:\||\s\/\s)\s*/).map(normalize).filter(Boolean)) {
+    if (g === alt) return null;
+    if (stripAccents(g) === stripAccents(alt)) return 'accents';
+    const d = levenshtein(stripAccents(g), stripAccents(alt));
+    const words = alt.split(' ').length;
+    const allowed = alt.length >= 12 && words > 1 ? 2 : alt.length >= 8 ? 2 : alt.length >= 5 ? 1 : 0;
+    if (d > 0 && d <= allowed) best = 'spelling';
+  }
+  return best;
+}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Icon } from '../../components/Icon';
 import { ProgressRing, Sheet } from '../../components/ui';
-import { CATEGORY_LABEL } from '../../lib/answer';
+import { CATEGORY_LABEL, spellingSlip } from '../../lib/answer';
 import { usePlatform } from '../../lib/platform/context';
 import { describeActivity } from '../../lib/platform/homework';
 import { markLabel, segmentsWithCorrections } from '../../lib/platform/marking';
@@ -221,6 +221,7 @@ export function HomeworkReview({ homework, people, viewZone, onClose }: { homewo
                     {items.map((it, i) => {
                       const m = marked[i];
                       const ok = m?.ok ?? it.correct;
+                      const slip = spellingSlip(it.given, it.expected, it.category);
                       // An open question has no verdict from the app: it waits for the teacher's Right or Wrong.
                       const open = it.prompt.startsWith('Q: ') && it.expected === undefined;
                       return (
@@ -230,7 +231,8 @@ export function HomeworkReview({ homework, people, viewZone, onClose }: { homewo
                             <span className="text-ink-soft">{it.prompt}</span>
                             <span lang="es" className={`font-semibold ${ok ? 'text-olive' : 'text-terracotta-dark'}`}>{it.given || '—'}</span>
                             {!ok && it.expected && <span lang="es" className="text-ink-soft">→ <b className="text-ink">{it.expected}</b></span>}
-                            {!ok && it.category && <span className="text-xs text-ink-mute">{categoryLabel(it.category)}</span>}
+                            {!ok && it.category && !slip && <span className="text-xs text-ink-mute">{categoryLabel(it.category)}</span>}
+                            {!ok && slip && <span className="rounded-full bg-saffron-50 px-2 py-0.5 text-xs font-semibold text-ink ring-1 ring-saffron/50" data-testid={`rv-slip-${i}`}>{slip === 'accents' ? 'Only the accents are different' : 'Looks like a small spelling slip'}</span>}
                             {open && m?.ok === undefined && <span className="text-xs font-semibold text-azul">for you to mark</span>}
                             {!open && m?.ok !== undefined && <span className="text-xs text-azul">you changed this</span>}
                             <span className="ml-auto flex shrink-0 gap-1">

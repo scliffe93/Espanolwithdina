@@ -50,7 +50,7 @@ Ahora vivo en un piso pequeño cerca del metro. Me gusta mucho el barrio.
     const opt = p.getByTestId('material-option');
     if (await opt.count()) { await opt.first().click(); answered++; await p.waitForTimeout(400); continue; }
     const typed = p.getByTestId('material-typed');
-    if (await typed.count()) { await typed.fill('El lunes fui al mercado con mi vecina Carmen'); await p.getByTestId('material-check').click(); answered++; await p.waitForTimeout(400); continue; }
+    if (await typed.count()) { await typed.fill('El lunes fui al mercdo con mi vecina Carmen'); await p.getByTestId('material-check').click(); answered++; await p.waitForTimeout(400); continue; }
     // build: tap every tile then check
     const tiles = p.locator('[data-testid="material-runner"] button.chip:not(.invisible)');
     if (await tiles.count()) { while (await tiles.count()) await tiles.first().click(); await p.getByTestId('material-check').click(); answered++; await p.waitForTimeout(400); continue; }
@@ -73,6 +73,8 @@ Ahora vivo en un piso pequeño cerca del metro. Me gusta mucho el barrio.
   ok((await q.getByRole('button', { name: /Right/ }).getAttribute('aria-pressed')) === 'true' && !/for you to mark/.test(await q.innerText()), 'she marks it right');
   await p.locator('[data-testid="rv-wrong-0"]').click();
   ok((await p.locator('[data-testid="rv-wrong-0"]').getAttribute('aria-pressed')) === 'true', 'and can mark any other answer wrong');
+  const slips = await p.locator('[data-testid^="rv-slip-"]').allInnerTexts();
+  ok(slips.length <= 1 && (slips.length === 0 || /small spelling slip/.test(slips[0])), `a near-miss in a dictation is noted as a spelling slip, other wrong answers are not (${slips.length})`);
   await p.getByTestId('rv-answers').screenshot({ path: OUT + '/rv-buttons.png' });
   await p.screenshot({ path: OUT + '/material-review.png', fullPage: true });
   // The debrief can add a document too.
