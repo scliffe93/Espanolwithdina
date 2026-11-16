@@ -715,16 +715,23 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
       const wrows = await db.query<{ data: unknown }>("select data from public.lwd_platform where id = $1 and kind = 'lessonwork'", [workId(lid)]);
       let work = wrows[0] ? (parseRow(wrows[0]) as unknown as LessonWork) : null;
       if (isTeacher) return { status: 200, json: { plan, work, now: iso(now()) } };
-      work = { ...(work ?? emptyWork(lid, user.id, iso(now()))), seenAt: iso(now()) };
+      // The student's row is changed in place, one field at a time, never rewritten whole: a check-in ("I am here")
+      // that crosses with an answer in flight must not be able to wipe that answer.
+      const blank = emptyWork(lid, user.id, iso(now()));
+      await db.query("insert into public.lwd_platform (id, kind, teacher_id, student_id, data, updated_at) values ($1, 'lessonwork', $2, $3, $4::jsonb, $5) on conflict (id) do nothing", [blank.id, plan.teacherId, user.id, JSON.stringify(blank), iso(now())]);
       const blockId = str(b.blockId);
       if (blockId) {
         const block = plan.blocks.find((x) => x.id === blockId);
         if (!block || !block.open) throw new HttpError(403, 'forbidden', 'That part of the lesson is not open yet.');
         const value = str(b.value).slice(0, 2000);
         const correct = checkBlock(block, value);
-        work = { ...work, answers: { ...work.answers, [blockId]: { value, at: iso(now()), ...(correct === undefined ? {} : { correct }) } }, updatedAt: iso(now()) };
+        const answer = { value, at: iso(now()), ...(correct === undefined ? {} : { correct }) };
+        await db.query("update public.lwd_platform set data = jsonb_set(jsonb_set(jsonb_set(data, '{seenAt}', to_jsonb($2::text)), '{updatedAt}', to_jsonb($2::text)), array['answers', $3::text], $4::jsonb, true), updated_at = $5 where id = $1 and kind = 'lessonwork' and student_id = $6", [blank.id, iso(now()), blockId, JSON.stringify(answer), iso(now()), user.id]);
+      } else {
+        await db.query("update public.lwd_platform set data = jsonb_set(data, '{seenAt}', to_jsonb($2::text)) where id = $1 and kind = 'lessonwork' and student_id = $3", [blank.id, iso(now()), user.id]);
       }
-      await db.query("insert into public.lwd_platform (id, kind, teacher_id, student_id, data, updated_at) values ($1, 'lessonwork', $2, $3, $4::jsonb, $5) on conflict (id) do update set data = excluded.data, updated_at = excluded.updated_at where public.lwd_platform.kind = 'lessonwork' and public.lwd_platform.student_id = excluded.student_id", [work.id, plan.teacherId, user.id, JSON.stringify(work), iso(now())]);
+      const after = await db.query<{ data: unknown }>("select data from public.lwd_platform where id = $1 and kind = 'lessonwork'", [blank.id]);
+      work = after[0] ? (parseRow(after[0]) as unknown as LessonWork) : blank;
       return { status: 200, json: { plan: studentView(plan, work), work, now: iso(now()) } };
     }
 

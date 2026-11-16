@@ -4,6 +4,8 @@ import { PageHeader, Segmented } from '../../components/ui';
 import { isPresent } from '../../../supabase/functions/_shared/lesson';
 import { usePlatform, usePlatformQuery } from '../../lib/platform/context';
 import { BLOCK_LABEL, draftLesson, exampleLesson, newBlock } from '../../lib/platform/lessonDraft';
+import { describeImport, planFromText } from '../../lib/platform/lessonImport';
+import { extractText, sourceKindOf } from '../../lib/extractText';
 import type { LessonBlock, LessonPlan } from '../../lib/platform/types';
 import { navigate } from '../../lib/router';
 import { useStore } from '../../lib/store';
@@ -25,6 +27,29 @@ export function RoomList() {
   const people = students.data?.people ?? [];
   const nameOf = (id: string) => people.find((p) => p.id === id)?.firstName ?? 'Student';
   useEffect(() => { if (!studentId && people[0]) setStudentId(people[0].id); }, [people, studentId]);
+
+  // A lesson from the teacher's own plan: a document she uploads, or text she pastes.
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [pasting, setPasting] = useState(false);
+  const [pasted, setPasted] = useState('');
+  const fromText = async (text: string, fallback: string) => {
+    if (!backend || !studentId) return;
+    const made = planFromText(text, fallback);
+    if (!made.blocks.length) { setError('Nothing could be read from that. If it is a scanned page or a photo, paste the text instead.'); return; }
+    const plan = await backend.saveLesson({ studentId, title: made.title, date: today(), notes: `Made from your plan: ${describeImport(made)}${made.needAnswers ? ` ${made.needAnswers} gap or choice part${made.needAnswers === 1 ? ' has' : 's have'} no answer yet: add ${made.needAnswers === 1 ? 'it' : 'them'} below.` : ''}`, blocks: made.blocks, live: { on: false, current: null } });
+    navigate(`teach/room/${plan.id}?imported=1`);
+  };
+  const onFile = async (file?: File) => {
+    if (!file) return;
+    setBusy(true); setError(null);
+    try {
+      if (!sourceKindOf(file)) throw new Error('Use a Word document (.docx), a PDF or a text file.');
+      const r = await extractText(file);
+      await fromText(r.text, file.name.replace(/\.[^.]+$/, ''));
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not read that file.'); }
+    setBusy(false);
+    if (fileRef.current) fileRef.current.value = '';
+  };
 
   const create = async (kind: 'draft' | 'blank' | 'example') => {
     if (!backend || !studentId) return;
@@ -52,6 +77,32 @@ export function RoomList() {
           <button type="button" className="btn-ghost" disabled={busy || !studentId} onClick={() => void create('example')} data-testid="room-example"><Icon name="eye" size={16} /> Open an example lesson</button>
         </div>
         <p className="mt-2 text-sm text-ink-mute">A draft uses what the student has actually been getting wrong: a warm-up, their hardest point explained with their own mistakes, the exact forms they missed, and a wrap-up. You edit it from there.</p>
+        <div className="mt-4 border-t border-ink/10 pt-4" data-testid="room-import">
+          <p className="font-semibold">Or start from a lesson plan you already have</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <input ref={fileRef} type="file" accept=".pdf,.docx,.txt,.md,application/pdf,text/plain" className="sr-only" onChange={(e) => void onFile(e.target.files?.[0])} data-testid="room-file" />
+            <button type="button" className="btn-ghost" disabled={busy || !studentId} onClick={() => fileRef.current?.click()}><Icon name="upload" size={16} /> Upload a plan (Word, PDF or text)</button>
+            <button type="button" className="ctrl" disabled={busy || !studentId} onClick={() => setPasting(!pasting)} aria-expanded={pasting} data-testid="room-paste-toggle">{pasting ? 'Hide' : 'Paste it instead'}</button>
+          </div>
+          {pasting && (
+            <div className="mt-3">
+              <textarea className="input min-h-[160px] w-full" value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder={'El pretérito: ir y ser\n\nCalentamiento\n¿Qué hiciste el fin de semana?\n\nPráctica:\nAyer yo ___ (ir) al mercado. [fui]\n\nVocabulario\nayer = yesterday\nanoche = last night'} data-testid="room-paste" />
+              <button type="button" className="btn-primary mt-2" disabled={busy || !pasted.trim() || !studentId} onClick={async () => { setBusy(true); setError(null); try { await fromText(pasted, 'Lesson'); } catch (e) { setError(e instanceof Error ? e.message : 'Could not create the lesson.'); } setBusy(false); }} data-testid="room-paste-go">Make the lesson</button>
+            </div>
+          )}
+          <details className="mt-2 text-sm text-ink-soft">
+            <summary className="cursor-pointer font-medium text-ink">How your plan is read</summary>
+            <ul className="mt-2 grid gap-1">
+              <li><b>A heading</b> (a short line on its own, in capitals, or ending with a colon) starts a new part.</li>
+              <li><b>A sentence with ___</b> becomes fill-the-gap. Put the answer after it in square brackets: <span lang="es">Ayer yo ___ al cine. [fui]</span> Or list them on a line starting “Answers:”.</li>
+              <li><b>A question followed by a) b) c)</b> becomes multiple choice. Put a star after the right one.</li>
+              <li><b>A line ending in a question mark</b> becomes an open question.</li>
+              <li><b>Lines like</b> <span lang="es">la playa = the beach</span> become a word list.</li>
+              <li><b>Everything else</b> becomes an explanation. Nothing is invented and nothing is left out, and you can edit every part afterwards.</li>
+            </ul>
+            <p className="mt-2">The file is read on this device. A scanned page or a photo has no text to read: paste the text instead.</p>
+          </details>
+        </div>
         {students.data && people.length === 0 && <p className="mt-2 rounded-xl bg-saffron-50 px-3 py-2 text-sm">Add a student first (Students, Add a student). A lesson is always planned for one student, even a practice one.</p>}
         <p className="mt-1 text-sm text-ink-mute"><b>Open an example lesson</b> makes a finished seven-part lesson for the student you chose, to try the room with. They see nothing until you start it and open a part, and you can delete it afterwards.</p>
         <ErrorText error={error} />
@@ -114,6 +165,7 @@ export function TeacherRoom({ id }: { id: string }) {
   const [saved, setSaved] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   const [error, setError] = useState<string | null>(null);
   const [showNotes, setShowNotes] = useState(false);
+  const imported = /[?&]imported=1/.test(window.location.hash);
   const timer = useRef<number>();
   const latest = useRef<LessonPlan | null>(null);
   // The teacher's copy is the one that counts: it is loaded once and then only she changes it.
@@ -158,6 +210,7 @@ export function TeacherRoom({ id }: { id: string }) {
 
       {tab === 'plan' && (
         <div className="grid gap-4">
+          {imported && <p className="rounded-2xl bg-olive-50 px-4 py-3 text-sm ring-1 ring-olive/30" role="status" data-testid="import-note"><b>Made from your plan.</b> {plan.notes?.replace(/^Made from your plan: /, '')} Read through each part before the lesson: your student sees nothing until you open it.</p>}
           <section className="card grid gap-3 p-5 sm:grid-cols-[1fr_auto]">
             <label className="grid gap-1 text-sm font-medium">Title<input className="input text-lg" value={plan.title} onChange={(e) => change((p) => ({ ...p, title: e.target.value }))} data-testid="room-title" /></label>
             <label className="grid gap-1 text-sm font-medium">Day<input type="date" className="input" value={plan.date ?? ''} onChange={(e) => change((p) => ({ ...p, date: e.target.value }))} /></label>

@@ -15,13 +15,19 @@ export function useLesson(id: string | undefined) {
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const live = useRef(false);
-  const busy = useRef(false);
+  // One request at a time, in order: a check-in and an answer never overlap.
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+  const waiting = useRef(0);
 
   const take = useCallback((r: { plan: LessonPlan; work: LessonWork | null; now: string }) => { setPlan(r.plan); setWork(r.work); setNow(Date.parse(r.now) || Date.now()); live.current = r.plan.live.on; setError(null); setLoaded(true); }, []);
   const sync = useCallback(async () => {
-    if (!backend || !id || busy.current) return;
-    busy.current = true;
-    try { take(await backend.syncLesson(id)); } catch (e) { setError(e instanceof Error ? e.message : 'Could not reach the lesson.'); setLoaded(true); } finally { busy.current = false; }
+    if (!backend || !id || waiting.current > 0) return; // something is already on its way: no need to ask again
+    waiting.current++;
+    const run = queue.current.then(async () => {
+      try { take(await backend.syncLesson(id)); } catch (e) { setError(e instanceof Error ? e.message : 'Could not reach the lesson.'); setLoaded(true); } finally { waiting.current--; }
+    });
+    queue.current = run;
+    await run;
   }, [backend, id, take]);
 
   useEffect(() => {
@@ -42,7 +48,12 @@ export function useLesson(id: string | undefined) {
   const answer = useCallback(async (blockId: string, value: string) => {
     if (!backend || !id) return;
     setWork((w) => (w ? { ...w, answers: { ...w.answers, [blockId]: { value, at: new Date().toISOString(), ...(w.answers[blockId]?.correct !== undefined ? {} : {}) } } } : w));
-    try { take(await backend.syncLesson(id, { blockId, value })); } catch (e) { setError(e instanceof Error ? e.message : 'Could not send your answer.'); }
+    waiting.current++;
+    const run = queue.current.then(async () => {
+      try { take(await backend.syncLesson(id, { blockId, value })); } catch (e) { setError(e instanceof Error ? e.message : 'Could not send your answer.'); } finally { waiting.current--; }
+    });
+    queue.current = run;
+    await run;
   }, [backend, id, take]);
 
   return { plan, work, now, error, loaded, answer, sync };

@@ -79,6 +79,21 @@ describe('the lesson room', () => {
     expect(Object.keys((await sync(dina.token, 'lesson-abc12345')).json.work.answers)).toHaveLength(3);
   });
 
+  it('never loses an answer to a check-in that crosses with it', async () => {
+    const dina = await register('dina', 'Dina'); const sam = await register('sam', 'Sam');
+    await call('platform/records', { method: 'PUT', token: dina.token, body: { kind: 'lesson', id: 'lesson-abc12345', studentId: sam.id, data: { title: 'L', blocks: blocks({ warm: { open: true }, gap1: { open: true }, pick: { open: true } }), live: { on: true, current: 'warm' } } } });
+    // Three answers and five check-ins sent at the same moment, in a jumble.
+    await Promise.all([
+      sync(sam.token, 'lesson-abc12345'), sync(sam.token, 'lesson-abc12345', { blockId: 'warm', value: 'Fui al cine.' }), sync(sam.token, 'lesson-abc12345'),
+      sync(sam.token, 'lesson-abc12345', { blockId: 'gap1', value: 'fui' }), sync(sam.token, 'lesson-abc12345'), sync(sam.token, 'lesson-abc12345', { blockId: 'pick', value: 'está' }),
+      sync(sam.token, 'lesson-abc12345'), sync(sam.token, 'lesson-abc12345'),
+    ]);
+    const t = await sync(dina.token, 'lesson-abc12345');
+    expect(Object.keys(t.json.work.answers).sort()).toEqual(['gap1', 'pick', 'warm']);
+    expect(t.json.work.answers.gap1).toMatchObject({ value: 'fui', correct: true });
+    expect(isPresent(t.json.work, clock)).toBe(true);
+  });
+
   it('keeps everyone else out, and the student out of what is closed', async () => {
     const dina = await register('dina', 'Dina'); const sam = await register('sam', 'Sam'); const eve = await register('eve', 'Eve');
     await call('platform/records', { method: 'PUT', token: dina.token, body: { kind: 'lesson', id: 'lesson-abc12345', studentId: sam.id, data: { title: 'L', blocks: blocks({ warm: { open: true } }), live: { on: true, current: 'warm' } } } });
