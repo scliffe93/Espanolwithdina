@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Icon } from '../../components/Icon';
-import { PageHeader, Segmented } from '../../components/ui';
+import { DinaArt } from '../../components/Dina';
+import { Icon, type IconName } from '../../components/Icon';
+import { Segmented } from '../../components/ui';
 import { isPresent } from '../../../supabase/functions/_shared/lesson';
 import { usePlatform, usePlatformQuery } from '../../lib/platform/context';
 import { BLOCK_LABEL, draftLesson, exampleLesson, newBlock } from '../../lib/platform/lessonDraft';
-import { describeImport, planFromText } from '../../lib/platform/lessonImport';
+import { describeImport, planFromText, type ImportedPlan } from '../../lib/platform/lessonImport';
 import { extractText, sourceKindOf } from '../../lib/extractText';
 import type { LessonBlock, LessonPlan } from '../../lib/platform/types';
 import { navigate } from '../../lib/router';
@@ -16,7 +17,107 @@ import { useLesson } from './useLesson';
 const today = () => new Date().toISOString().slice(0, 10);
 const TYPES: LessonBlock['type'][] = ['text', 'question', 'gap', 'choice', 'vocab'];
 
-/** The teacher's lessons: one list, newest first, with a button to plan a new one. */
+/** Each kind of part has its own colour and icon, so a plan can be read at a glance. */
+export const TYPE_STYLE: Record<LessonBlock['type'], { icon: IconName; tile: string; bar: string; chip: string }> = {
+  text: { icon: 'book', tile: 'bg-azul-50 text-azul', bar: 'bg-azul', chip: 'bg-azul-50 text-azul' },
+  question: { icon: 'chat', tile: 'bg-terracotta-50 text-terracotta', bar: 'bg-terracotta', chip: 'bg-terracotta-50 text-terracotta-dark' },
+  gap: { icon: 'edit', tile: 'bg-saffron-50 text-ink', bar: 'bg-saffron', chip: 'bg-saffron-50 text-ink' },
+  choice: { icon: 'check', tile: 'bg-olive-50 text-olive', bar: 'bg-olive', chip: 'bg-olive-50 text-olive' },
+  vocab: { icon: 'translate', tile: 'bg-rosa-50 text-ink', bar: 'bg-rosa', chip: 'bg-rosa-50 text-ink' },
+};
+
+/** A small row of chips: how many of each kind of part a lesson has. */
+function PartChips({ blocks }: { blocks: LessonBlock[] }) {
+  return (
+    <span className="flex flex-wrap gap-1">
+      {TYPES.filter((t) => blocks.some((b) => b.type === t)).map((t) => (
+        <span key={t} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${TYPE_STYLE[t].chip}`}><Icon name={TYPE_STYLE[t].icon} size={11} /> {blocks.filter((b) => b.type === t).length}</span>
+      ))}
+    </span>
+  );
+}
+
+/**
+ * The review of an uploaded or pasted plan, before any lesson exists: her document on one side, the parts made from it
+ * on the other. She can retitle it, change what a part is, edit or remove parts and fill in missing answers, and only
+ * then create the lesson. Cancelling leaves nothing behind.
+ */
+function ImportReview({ source, sourceName, made, studentName, busy, onCreate, onCancel }: { source: string; sourceName: string; made: ImportedPlan; studentName: string; busy: boolean; onCreate: (title: string, blocks: LessonBlock[]) => void; onCancel: () => void }) {
+  const [title, setTitle] = useState(made.title);
+  const [blocks, setBlocks] = useState<LessonBlock[]>(made.blocks);
+  const [showSource, setShowSource] = useState(true);
+  const missing = blocks.filter((b) => (b.type === 'gap' || b.type === 'choice') && !(b.answer ?? '').trim()).length;
+  const empty = blocks.filter((b) => b.type !== 'vocab' && !b.body.trim()).length;
+  return (
+    <div data-testid="import-review">
+      <section className="relative overflow-hidden rounded-4xl bg-ink p-6 text-cream shadow-lift sm:p-7">
+        <div className="absolute -right-12 -top-12 h-48 w-48 rounded-full bg-olive/40 blur-2xl" />
+        <div className="relative flex flex-wrap items-end justify-between gap-4">
+          <div className="min-w-0 flex-1 basis-72">
+            <p className="eyebrow !text-saffron-light">Revisa tu clase · Review before it is created</p>
+            <h1 className="mt-1 font-display text-3xl font-semibold leading-tight sm:text-4xl">Here is the lesson made from your plan</h1>
+            <p className="mt-2 max-w-2xl text-cream/80">From <b className="text-cream">{sourceName}</b>, for {studentName}. Check it against your document. Change anything that came out wrong, then create the lesson. Nothing has been saved yet.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="rounded-full bg-cream/10 px-5 py-3 font-semibold text-cream ring-1 ring-cream/20 hover:bg-cream/15" onClick={onCancel} data-testid="review-cancel">Cancel</button>
+            <button type="button" className="inline-flex items-center gap-2 rounded-full bg-saffron px-6 py-3 font-bold text-ink shadow-lift transition hover:scale-[1.02] disabled:opacity-60" disabled={busy || blocks.length === 0} onClick={() => onCreate(title.trim() || 'Lesson', blocks)} data-testid="review-create"><Icon name="check" size={18} /> Create the lesson · {blocks.length} part{blocks.length === 1 ? '' : 's'}</button>
+          </div>
+        </div>
+        <div className="relative mt-5 grid gap-2 sm:grid-cols-3">
+          <div className="rounded-2xl bg-cream/10 p-3 ring-1 ring-cream/10"><p className="text-xs text-cream/70">Made from your plan</p><p className="mt-0.5 font-semibold" data-testid="review-summary">{describeImport({ ...made, blocks, counts: Object.fromEntries(TYPES.map((t) => [t, blocks.filter((x) => x.type === t).length])) as ImportedPlan['counts'] })}</p></div>
+          <div className={`rounded-2xl p-3 ring-1 ${missing ? 'bg-saffron text-ink ring-saffron' : 'bg-cream/10 ring-cream/10'}`} data-testid="review-missing"><p className={`text-xs ${missing ? 'text-ink/70' : 'text-cream/70'}`}>Answers</p><p className="mt-0.5 font-semibold">{missing ? `${missing} part${missing === 1 ? ' needs' : 's need'} an answer: they are marked below` : 'Every gap and choice has its answer'}</p></div>
+          <div className="rounded-2xl bg-cream/10 p-3 ring-1 ring-cream/10"><p className="text-xs text-cream/70">Your student</p><p className="mt-0.5 font-semibold">Sees nothing until you start the lesson and open a part</p></div>
+        </div>
+      </section>
+
+      <div className={`mt-5 grid gap-5 ${showSource ? 'lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]' : ''}`}>
+        {showSource && (
+          <aside className="lg:sticky lg:top-4 lg:self-start" data-testid="review-source">
+            <div className="card overflow-hidden">
+              <div className="flex items-center justify-between gap-2 border-b border-ink/5 bg-cream-100 px-4 py-2.5"><p className="eyebrow">Your document</p><button type="button" className="text-xs font-semibold text-ink-mute hover:text-ink" onClick={() => setShowSource(false)}>Hide</button></div>
+              <pre className="max-h-[70vh] overflow-auto whitespace-pre-wrap break-words p-4 font-sans text-[14px] leading-relaxed text-ink-soft" lang="es">{source.replace(/^# /gm, '')}</pre>
+            </div>
+            <p className="mt-2 text-xs text-ink-mute">This is the text read from your file, on this device. In a PDF, headings in larger type start a new part.</p>
+          </aside>
+        )}
+        <div className="min-w-0">
+          <div className="card mb-3 flex flex-wrap items-end gap-3 p-4">
+            <label className="grid min-w-0 flex-1 gap-1 text-sm font-medium">Title of the lesson<input className="input text-lg" value={title} onChange={(e) => setTitle(e.target.value)} data-testid="review-title" /></label>
+            {!showSource && <button type="button" className="ctrl" onClick={() => setShowSource(true)}><Icon name="eye" size={14} /> Show my document</button>}
+          </div>
+          {empty > 0 && <p className="mb-3 rounded-2xl bg-saffron-50 px-4 py-2.5 text-sm ring-1 ring-saffron/40">{empty} part{empty === 1 ? ' is' : 's are'} empty. Remove {empty === 1 ? 'it' : 'them'} or type what should be there.</p>}
+          <ol className="grid gap-3">
+            {blocks.map((b, i) => (
+              <BlockEditor key={b.id} b={b} i={i} n={blocks.length} flag={(b.type === 'gap' || b.type === 'choice') && !(b.answer ?? '').trim()}
+                onChange={(nb) => setBlocks((bs) => bs.map((x) => (x.id === b.id ? nb : x)))}
+                onMove={(d) => setBlocks((bs) => { const arr = [...bs]; const j = i + d; [arr[i], arr[j]] = [arr[j], arr[i]]; return arr; })}
+                onDelete={() => setBlocks((bs) => bs.filter((x) => x.id !== b.id))}
+                onDuplicate={() => setBlocks((bs) => { const arr = [...bs]; arr.splice(i + 1, 0, { ...b, id: newBlock(b.type).id }); return arr; })} />
+            ))}
+          </ol>
+          {blocks.length === 0 && <p className="card p-6 text-center text-ink-soft">Every part has been removed. Cancel, or go back and upload the plan again.</p>}
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button type="button" className="btn-primary" disabled={busy || blocks.length === 0} onClick={() => onCreate(title.trim() || 'Lesson', blocks)}><Icon name="check" size={18} /> Create the lesson</button>
+            <button type="button" className="btn-ghost" onClick={onCancel}>Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** One way of starting a lesson, as a card. */
+function StartCard({ icon, tone, title, text, onClick, disabled, testid, primary }: { icon: IconName; tone: string; title: string; text: string; onClick: () => void; disabled?: boolean; testid: string; primary?: boolean }) {
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} data-testid={testid}
+      className={`group flex items-start gap-3 rounded-3xl p-4 text-left ring-1 transition disabled:opacity-50 ${primary ? 'bg-terracotta text-white shadow-lift ring-terracotta hover:-translate-y-0.5' : 'bg-white ring-ink/10 hover:-translate-y-0.5 hover:shadow-soft hover:ring-ink/20'}`}>
+      <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${primary ? 'bg-white/20 text-white' : tone}`}><Icon name={icon} size={20} /></span>
+      <span className="min-w-0"><b className="block text-[16px] leading-tight">{title}</b><span className={`mt-1 block text-sm leading-snug ${primary ? 'text-white/85' : 'text-ink-soft'}`}>{text}</span></span>
+    </button>
+  );
+}
+
+/** The teacher's lessons: one list, newest first, with the ways to start a new one. */
 export function RoomList() {
   const { backend } = usePlatform();
   const students = useStudents();
@@ -28,27 +129,36 @@ export function RoomList() {
   const nameOf = (id: string) => people.find((p) => p.id === id)?.firstName ?? 'Student';
   useEffect(() => { if (!studentId && people[0]) setStudentId(people[0].id); }, [people, studentId]);
 
-  // A lesson from the teacher's own plan: a document she uploads, or text she pastes.
+  // A lesson from the teacher's own plan: a document she uploads, or text she pastes. It is shown to her for review
+  // first; the lesson is only created when she says so.
   const fileRef = useRef<HTMLInputElement>(null);
   const [pasting, setPasting] = useState(false);
   const [pasted, setPasted] = useState('');
-  const fromText = async (text: string, fallback: string) => {
-    if (!backend || !studentId) return;
+  const [review, setReview] = useState<{ source: string; name: string; made: ImportedPlan } | null>(null);
+  const read = (text: string, name: string, fallback: string) => {
     const made = planFromText(text, fallback);
     if (!made.blocks.length) { setError('Nothing could be read from that. If it is a scanned page or a photo, paste the text instead.'); return; }
-    const plan = await backend.saveLesson({ studentId, title: made.title, date: today(), notes: `Made from your plan: ${describeImport(made)}${made.needAnswers ? ` ${made.needAnswers} gap or choice part${made.needAnswers === 1 ? ' has' : 's have'} no answer yet: add ${made.needAnswers === 1 ? 'it' : 'them'} below.` : ''}`, blocks: made.blocks, live: { on: false, current: null } });
-    navigate(`teach/room/${plan.id}?imported=1`);
+    setError(null); setReview({ source: text.trim(), name, made });
+    window.scrollTo({ top: 0 });
   };
   const onFile = async (file?: File) => {
     if (!file) return;
     setBusy(true); setError(null);
     try {
       if (!sourceKindOf(file)) throw new Error('Use a Word document (.docx), a PDF or a text file.');
-      const r = await extractText(file);
-      await fromText(r.text, file.name.replace(/\.[^.]+$/, ''));
+      const r = await extractText(file, { layout: true });
+      read(r.text, file.name, file.name.replace(/\.[^.]+$/, ''));
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not read that file.'); }
     setBusy(false);
     if (fileRef.current) fileRef.current.value = '';
+  };
+  const createFromReview = async (title: string, blocks: LessonBlock[]) => {
+    if (!backend || !studentId) return;
+    setBusy(true); setError(null);
+    try {
+      const plan = await backend.saveLesson({ studentId, title, date: today(), notes: '', blocks, live: { on: false, current: null } });
+      navigate(`teach/room/${plan.id}`);
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not create the lesson.'); setBusy(false); }
   };
 
   const create = async (kind: 'draft' | 'blank' | 'example') => {
@@ -63,60 +173,88 @@ export function RoomList() {
     setBusy(false);
   };
 
+  if (review) return (<><ErrorText error={error} /><ImportReview source={review.source} sourceName={review.name} made={review.made} studentName={nameOf(studentId)} busy={busy} onCreate={(t, b) => void createFromReview(t, b)} onCancel={() => { setReview(null); setError(null); }} /></>);
+
+  const none = !!students.data && people.length === 0;
+  const running = (lessons.data ?? []).filter((l) => l.live.on);
   return (
     <div data-testid="room-list">
-      <PageHeader eyebrow="Aula · Lesson room" title="Lesson room" subtitle="Plan a lesson, share your screen, and open each part to your student when you are ready. They follow and answer on their own phone or tablet." />
-      <section className="card p-5">
-        <h2 className="text-lg font-semibold">Plan a lesson</h2>
-        <div className="mt-3 flex flex-wrap items-end gap-3">
-          <label className="grid gap-1 text-sm font-medium">For
-            <select className="input !w-48" value={studentId} onChange={(e) => setStudentId(e.target.value)} data-testid="room-student">{people.map((p) => <option key={p.id} value={p.id}>{p.firstName}</option>)}</select>
-          </label>
-          <button type="button" className="btn-primary" disabled={busy || !studentId} onClick={() => void create('draft')} data-testid="room-draft"><Icon name="sparkle" size={18} /> Draft it from their week</button>
-          <button type="button" className="btn-ghost" disabled={busy || !studentId} onClick={() => void create('blank')} data-testid="room-blank">Start blank</button>
-          <button type="button" className="btn-ghost" disabled={busy || !studentId} onClick={() => void create('example')} data-testid="room-example"><Icon name="eye" size={16} /> Open an example lesson</button>
-        </div>
-        <p className="mt-2 text-sm text-ink-mute">A draft uses what the student has actually been getting wrong: a warm-up, their hardest point explained with their own mistakes, the exact forms they missed, and a wrap-up. You edit it from there.</p>
-        <div className="mt-4 border-t border-ink/10 pt-4" data-testid="room-import">
-          <p className="font-semibold">Or start from a lesson plan you already have</p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <input ref={fileRef} type="file" accept=".pdf,.docx,.txt,.md,application/pdf,text/plain" className="sr-only" onChange={(e) => void onFile(e.target.files?.[0])} data-testid="room-file" />
-            <button type="button" className="btn-ghost" disabled={busy || !studentId} onClick={() => fileRef.current?.click()}><Icon name="upload" size={16} /> Upload a plan (Word, PDF or text)</button>
-            <button type="button" className="ctrl" disabled={busy || !studentId} onClick={() => setPasting(!pasting)} aria-expanded={pasting} data-testid="room-paste-toggle">{pasting ? 'Hide' : 'Paste it instead'}</button>
+      <section className="relative overflow-hidden rounded-4xl bg-ink p-6 text-cream shadow-lift sm:p-8">
+        <div className="absolute -right-10 -top-12 h-52 w-52 rounded-full bg-terracotta/40 blur-2xl" />
+        <div className="relative flex flex-wrap items-center gap-5">
+          <div className="shrink-0"><DinaArt size={104} expression="beam" /></div>
+          <div className="min-w-0 flex-1 basis-72">
+            <p className="eyebrow !text-saffron-light">Aula · Lesson room</p>
+            <h1 className="mt-1 font-display text-4xl font-semibold leading-tight sm:text-5xl">Teach on one shared screen</h1>
+            <p className="mt-2 max-w-xl text-cream/80">Your student follows on their own phone or tablet, and answers there.</p>
           </div>
-          {pasting && (
-            <div className="mt-3">
-              <textarea className="input min-h-[160px] w-full" value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder={'El pretérito: ir y ser\n\nCalentamiento\n¿Qué hiciste el fin de semana?\n\nPráctica:\nAyer yo ___ (ir) al mercado. [fui]\n\nVocabulario\nayer = yesterday\nanoche = last night'} data-testid="room-paste" />
-              <button type="button" className="btn-primary mt-2" disabled={busy || !pasted.trim() || !studentId} onClick={async () => { setBusy(true); setError(null); try { await fromText(pasted, 'Lesson'); } catch (e) { setError(e instanceof Error ? e.message : 'Could not create the lesson.'); } setBusy(false); }} data-testid="room-paste-go">Make the lesson</button>
-            </div>
-          )}
-          <details className="mt-2 text-sm text-ink-soft">
-            <summary className="cursor-pointer font-medium text-ink">How your plan is read</summary>
-            <ul className="mt-2 grid gap-1">
-              <li><b>A heading</b> (a short line on its own, in capitals, or ending with a colon) starts a new part.</li>
-              <li><b>A sentence with ___</b> becomes fill-the-gap. Put the answer after it in square brackets: <span lang="es">Ayer yo ___ al cine. [fui]</span> Or list them on a line starting “Answers:”.</li>
-              <li><b>A question followed by a) b) c)</b> becomes multiple choice. Put a star after the right one.</li>
-              <li><b>A line ending in a question mark</b> becomes an open question.</li>
-              <li><b>Lines like</b> <span lang="es">la playa = the beach</span> become a word list.</li>
-              <li><b>Everything else</b> becomes an explanation. Nothing is invented and nothing is left out, and you can edit every part afterwards.</li>
-            </ul>
-            <p className="mt-2">The file is read on this device. A scanned page or a photo has no text to read: paste the text instead.</p>
-          </details>
         </div>
-        {students.data && people.length === 0 && <p className="mt-2 rounded-xl bg-saffron-50 px-3 py-2 text-sm">Add a student first (Students, Add a student). A lesson is always planned for one student, even a practice one.</p>}
-        <p className="mt-1 text-sm text-ink-mute"><b>Open an example lesson</b> makes a finished seven-part lesson for the student you chose, to try the room with. They see nothing until you start it and open a part, and you can delete it afterwards.</p>
+        <ol className="relative mt-6 grid gap-2 sm:grid-cols-3">
+          {[['Plan', 'Build the lesson beforehand, or bring a plan you already have.'], ['Share your screen', 'Open Present on your call and start the lesson.'], ['Open each part', 'They see a part only when you show it. Their answers come to you.']].map(([t, d], i) => (
+            <li key={t} className="flex items-start gap-3 rounded-2xl bg-cream/10 p-3 ring-1 ring-cream/10"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-saffron text-sm font-bold text-ink">{i + 1}</span><span><b className="block">{t}</b><span className="text-sm text-cream/75">{d}</span></span></li>
+          ))}
+        </ol>
+      </section>
+
+      {running.length > 0 && (
+        <button type="button" onClick={() => navigate(`teach/room/${running[0].id}`)} className="mt-4 flex w-full items-center gap-4 rounded-3xl bg-olive p-4 text-left text-white shadow-lift" data-testid="room-running">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/20"><Icon name="video" size={22} /></span>
+          <span className="min-w-0 flex-1"><span className="eyebrow !text-white/80">Running now</span><b className="block truncate text-lg">{running[0].title} · {nameOf(running[0].studentId)}</b></span>
+          <span className="rounded-full bg-white px-4 py-2 font-bold text-ink">Go back in</span>
+        </button>
+      )}
+
+      <section className="mt-6" data-testid="room-start">
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <h2 className="text-2xl font-semibold">Start a lesson</h2>
+          <label className="flex items-center gap-2 text-sm font-medium text-ink-soft">for
+            <select className="input !w-48 !py-2" value={studentId} onChange={(e) => setStudentId(e.target.value)} data-testid="room-student">{people.map((p) => <option key={p.id} value={p.id}>{p.firstName}</option>)}</select>
+          </label>
+        </div>
+        {none && <p className="mb-3 rounded-2xl bg-saffron-50 px-4 py-3 text-sm ring-1 ring-saffron/40">Add a student first (Students, Add a student). A lesson is always planned for one student, even a practice one.</p>}
+        <input ref={fileRef} type="file" accept=".pdf,.docx,.txt,.md,application/pdf,text/plain" className="sr-only" onChange={(e) => void onFile(e.target.files?.[0])} data-testid="room-file" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <StartCard primary icon="sparkle" tone="" title="Draft it from their week" text="A warm-up, their hardest point with their own mistakes, the exact forms they missed, a wrap-up." onClick={() => void create('draft')} disabled={busy || !studentId} testid="room-draft" />
+          <StartCard icon="upload" tone="bg-azul-50 text-azul" title={busy ? 'Reading your plan…' : 'Upload a plan'} text="A Word document, a PDF or a text file. You review what it makes before the lesson is created." onClick={() => fileRef.current?.click()} disabled={busy || !studentId} testid="room-upload" />
+          <StartCard icon="copy" tone="bg-olive-50 text-olive" title="Paste a plan" text="Copy your plan from anywhere and paste it in. You review it first, the same way." onClick={() => setPasting(!pasting)} disabled={busy || !studentId} testid="room-paste-toggle" />
+          <StartCard icon="eye" tone="bg-saffron-50 text-ink" title="Open an example lesson" text="A finished seven-part lesson on the preterite of ir and ser, to try the room with." onClick={() => void create('example')} disabled={busy || !studentId} testid="room-example" />
+          <StartCard icon="edit" tone="bg-cream-100 text-ink-soft" title="Start blank" text="An empty lesson. Add the parts yourself." onClick={() => void create('blank')} disabled={busy || !studentId} testid="room-blank" />
+        </div>
+        {pasting && (
+          <div className="card mt-3 p-4" data-testid="room-import">
+            <label className="font-semibold" htmlFor="room-paste">Paste your lesson plan</label>
+            <textarea id="room-paste" className="input mt-2 min-h-[180px] w-full" value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder={'El pretérito: ir y ser\n\nCalentamiento\n¿Qué hiciste el fin de semana?\n\nPráctica:\nAyer yo ___ (ir) al mercado. [fui]\n\nVocabulario\nayer = yesterday\nanoche = last night'} data-testid="room-paste" />
+            <button type="button" className="btn-primary mt-2" disabled={busy || !pasted.trim() || !studentId} onClick={() => read(pasted, 'your pasted plan', 'Lesson')} data-testid="room-paste-go"><Icon name="eye" size={16} /> Review it</button>
+          </div>
+        )}
+        <details className="mt-3 rounded-2xl bg-white px-4 py-3 text-sm text-ink-soft ring-1 ring-ink/5">
+          <summary className="cursor-pointer font-semibold text-ink">How a plan is read</summary>
+          <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
+            <li><b className="text-ink">A heading</b> starts a new part: a short line on its own, a line in capitals, one ending with a colon, or larger type in a PDF.</li>
+            <li><b className="text-ink">A sentence with ___</b> becomes fill-the-gap. Put the answer after it in square brackets: <span lang="es">Ayer yo ___ al cine. [fui]</span> Or list them on a line starting “Answers:”.</li>
+            <li><b className="text-ink">A question followed by a) b) c)</b> becomes multiple choice. Put a star after the right one.</li>
+            <li><b className="text-ink">A line ending in a question mark</b> becomes an open question.</li>
+            <li><b className="text-ink">Lines like</b> <span lang="es">la playa = the beach</span> become a word list.</li>
+            <li><b className="text-ink">Everything else</b> becomes an explanation. Nothing is invented and nothing is left out.</li>
+          </ul>
+          <p className="mt-2">The file is read on this device. A scanned page or a photo has no text to read: paste the text instead.</p>
+        </details>
         <ErrorText error={error} />
       </section>
 
-      <h2 className="mb-2 mt-6 text-xl font-semibold">Your lessons</h2>
-      {!lessons.data ? <Loading /> : lessons.data.length === 0 ? <p className="text-sm text-ink-mute">No lessons planned yet.</p> : (
-        <ul className="grid gap-2 sm:grid-cols-2">
+      <h2 className="mb-3 mt-8 text-2xl font-semibold">Your lessons</h2>
+      {!lessons.data ? <Loading /> : lessons.data.length === 0 ? <p className="card p-6 text-center text-ink-soft" data-testid="room-none">No lessons yet. Start one above: the example lesson is the quickest way to see how the room works.</p> : (
+        <ul className="grid gap-3 sm:grid-cols-2">
           {lessons.data.map((l) => (
             <li key={l.id}>
-              <button type="button" onClick={() => navigate(`teach/room/${l.id}`)} className="card flex w-full items-center gap-3 p-4 text-left hover:shadow-lift" data-testid="room-open">
-                <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${l.live.on ? 'bg-olive text-white' : 'bg-cream-100 text-ink-soft'}`}><Icon name={l.live.on ? 'video' : 'book'} size={20} /></span>
-                <span className="min-w-0 flex-1"><b className="block truncate">{l.title}</b><span className="text-sm text-ink-mute">{nameOf(l.studentId)} · {l.date || l.createdAt.slice(0, 10)} · {l.blocks.length} part{l.blocks.length === 1 ? '' : 's'}{l.live.on ? ' · running now' : ''}</span></span>
-                <Icon name="arrowRight" size={16} className="text-ink-mute" />
+              <button type="button" onClick={() => navigate(`teach/room/${l.id}`)} className={`flex w-full items-center gap-3 rounded-3xl bg-white p-4 text-left ring-1 transition hover:-translate-y-0.5 hover:shadow-soft ${l.live.on ? 'ring-2 ring-olive' : 'ring-ink/10'}`} data-testid="room-open">
+                <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${l.live.on ? 'bg-olive text-white' : 'bg-cream-100 text-ink-soft'}`}><Icon name={l.live.on ? 'video' : 'book'} size={22} /></span>
+                <span className="min-w-0 flex-1">
+                  <b className="block truncate text-[16px]">{l.title}</b>
+                  <span className="block text-sm text-ink-mute">{nameOf(l.studentId)} · {new Date(`${l.date || l.createdAt.slice(0, 10)}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}{l.live.on ? ' · running now' : ''}</span>
+                  <span className="mt-1.5 block"><PartChips blocks={l.blocks} /></span>
+                </span>
+                <Icon name="arrowRight" size={16} className="shrink-0 text-ink-mute" />
               </button>
             </li>
           ))}
@@ -126,30 +264,39 @@ export function RoomList() {
   );
 }
 
-function BlockEditor({ b, i, n, onChange, onMove, onDelete, onDuplicate }: { b: LessonBlock; i: number; n: number; onChange: (b: LessonBlock) => void; onMove: (d: -1 | 1) => void; onDelete: () => void; onDuplicate: () => void }) {
+function BlockEditor({ b, i, n, onChange, onMove, onDelete, onDuplicate, flag }: { b: LessonBlock; i: number; n: number; onChange: (b: LessonBlock) => void; onMove: (d: -1 | 1) => void; onDelete: () => void; onDuplicate: () => void; flag?: boolean }) {
   const set = (patch: Partial<LessonBlock>) => onChange({ ...b, ...patch });
+  const [preview, setPreview] = useState(false);
+  const st = TYPE_STYLE[b.type];
   return (
-    <li className="card p-4" data-testid="block-editor">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="grid h-7 w-7 place-items-center rounded-full bg-ink text-xs font-bold text-cream">{i + 1}</span>
-        <select className="input !w-44 !py-1.5 text-sm" value={b.type} onChange={(e) => set({ ...newBlock(e.target.value as LessonBlock['type']), id: b.id, title: b.title, body: b.body, open: b.open })} aria-label="Kind of part">{TYPES.map((t) => <option key={t} value={t}>{BLOCK_LABEL[t]}</option>)}</select>
-        <input className="input min-w-0 flex-1 !py-1.5" value={b.title} onChange={(e) => set({ title: e.target.value })} placeholder="Heading" aria-label="Heading" />
-        <div className="flex gap-1">
-          <button type="button" className="ctrl !px-2" disabled={i === 0} onClick={() => onMove(-1)} aria-label="Move up">↑</button>
-          <button type="button" className="ctrl !px-2" disabled={i === n - 1} onClick={() => onMove(1)} aria-label="Move down">↓</button>
-          <button type="button" className="ctrl !px-2" onClick={onDuplicate} aria-label="Duplicate"><Icon name="copy" size={14} /></button>
-          <button type="button" className="ctrl !px-2" onClick={onDelete} aria-label="Delete this part"><Icon name="trash" size={14} /></button>
+    <li className={`relative overflow-hidden rounded-3xl bg-white shadow-soft ring-1 ${flag ? 'ring-2 ring-saffron' : 'ring-ink/5'}`} data-testid="block-editor" data-type={b.type} data-flag={flag || undefined}>
+      <span className={`absolute inset-y-0 left-0 w-1.5 ${st.bar}`} aria-hidden />
+      <div className="p-4 pl-5">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${st.tile}`}><Icon name={st.icon} size={17} /></span>
+          <span className="text-sm font-bold tabular-nums text-ink-mute">{i + 1}</span>
+          <select className="input !w-44 !py-1.5 text-sm font-semibold" value={b.type} onChange={(e) => set({ ...newBlock(e.target.value as LessonBlock['type']), id: b.id, title: b.title, body: b.body, open: b.open })} aria-label="Kind of part" data-testid="block-type">{TYPES.map((t) => <option key={t} value={t}>{BLOCK_LABEL[t]}</option>)}</select>
+          <input className="input min-w-0 flex-1 basis-48 !py-1.5" value={b.title} onChange={(e) => set({ title: e.target.value })} placeholder="Heading" aria-label="Heading" />
+          <div className="flex gap-1">
+            <button type="button" className={`ctrl !px-2.5 ${preview ? '!bg-ink !text-cream' : ''}`} onClick={() => setPreview(!preview)} aria-pressed={preview} aria-label="Preview this part as your student sees it" title="Preview"><Icon name="eye" size={14} /></button>
+            <button type="button" className="ctrl !px-2.5" disabled={i === 0} onClick={() => onMove(-1)} aria-label="Move up">↑</button>
+            <button type="button" className="ctrl !px-2.5" disabled={i === n - 1} onClick={() => onMove(1)} aria-label="Move down">↓</button>
+            <button type="button" className="ctrl !px-2.5" onClick={onDuplicate} aria-label="Duplicate"><Icon name="copy" size={14} /></button>
+            <button type="button" className="ctrl !px-2.5 hover:!text-terracotta-dark" onClick={onDelete} aria-label="Delete this part"><Icon name="trash" size={14} /></button>
+          </div>
         </div>
+        {b.type !== 'vocab' && <textarea className="input mt-3 min-h-[70px] w-full text-[16px]" value={b.body} onChange={(e) => set({ body: e.target.value })} placeholder={b.type === 'gap' ? 'The sentence, with ___ where the answer goes' : b.type === 'text' ? 'What you want to show or explain' : 'The question'} lang="es" spellCheck={false} data-testid="block-body" />}
+        {b.type === 'gap' && <label className="mt-2 grid gap-1 text-sm font-medium">Right answer <span className="font-normal text-ink-mute">(more than one? separate with |)</span><input className={`input ${flag ? '!ring-2 !ring-saffron' : ''}`} value={b.answer ?? ''} onChange={(e) => set({ answer: e.target.value })} placeholder="fui" lang="es" data-testid="block-answer" /></label>}
+        {b.type === 'choice' && (
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <label className="grid gap-1 text-sm font-medium">Options <span className="font-normal text-ink-mute">(one per line)</span><textarea className="input min-h-[84px]" value={(b.options ?? []).join('\n')} onChange={(e) => set({ options: e.target.value.split('\n') })} lang="es" data-testid="block-options" /></label>
+            <label className="grid content-start gap-1 text-sm font-medium">Right answer<select className={`input ${flag ? '!ring-2 !ring-saffron' : ''}`} value={b.answer ?? ''} onChange={(e) => set({ answer: e.target.value })} data-testid="block-answer"><option value="">Choose…</option>{(b.options ?? []).filter((o) => o.trim()).map((o) => <option key={o} value={o}>{o}</option>)}</select></label>
+          </div>
+        )}
+        {b.type === 'vocab' && <label className="mt-3 grid gap-1 text-sm font-medium">Words <span className="font-normal text-ink-mute">(one per line: español = English)</span><textarea className="input min-h-[110px]" value={(b.pairs ?? []).map((p) => `${p.es} = ${p.en}`).join('\n')} onChange={(e) => set({ pairs: e.target.value.split('\n').map((l) => { const [es, ...en] = l.split('='); return { es: es.trim(), en: en.join('=').trim() }; }) })} lang="es" data-testid="block-pairs" /></label>}
+        {flag && <p className="mt-2 text-sm font-semibold text-ink" role="status">No answer was found in your plan for this one. Add it above.</p>}
+        {preview && <div className="mt-3 rounded-3xl bg-cream-100 p-3"><p className="eyebrow mb-2">As your student sees it</p><BlockView block={b} mode="present" /></div>}
       </div>
-      {b.type !== 'vocab' && <textarea className="input mt-2 min-h-[70px] w-full" value={b.body} onChange={(e) => set({ body: e.target.value })} placeholder={b.type === 'gap' ? 'The sentence, with ___ where the answer goes' : b.type === 'text' ? 'What you want to show or explain' : 'The question'} lang="es" spellCheck={false} data-testid="block-body" />}
-      {b.type === 'gap' && <label className="mt-2 grid gap-1 text-sm font-medium">Right answer <span className="font-normal text-ink-mute">(more than one? separate with |)</span><input className="input" value={b.answer ?? ''} onChange={(e) => set({ answer: e.target.value })} placeholder="fui" lang="es" data-testid="block-answer" /></label>}
-      {b.type === 'choice' && (
-        <div className="mt-2 grid gap-2 sm:grid-cols-2">
-          <label className="grid gap-1 text-sm font-medium">Options <span className="font-normal text-ink-mute">(one per line)</span><textarea className="input min-h-[84px]" value={(b.options ?? []).join('\n')} onChange={(e) => set({ options: e.target.value.split('\n') })} lang="es" data-testid="block-options" /></label>
-          <label className="grid content-start gap-1 text-sm font-medium">Right answer<select className="input" value={b.answer ?? ''} onChange={(e) => set({ answer: e.target.value })} data-testid="block-answer"><option value="">Choose…</option>{(b.options ?? []).filter((o) => o.trim()).map((o) => <option key={o} value={o}>{o}</option>)}</select></label>
-        </div>
-      )}
-      {b.type === 'vocab' && <label className="mt-2 grid gap-1 text-sm font-medium">Words <span className="font-normal text-ink-mute">(one per line: español = English)</span><textarea className="input min-h-[110px]" value={(b.pairs ?? []).map((p) => `${p.es} = ${p.en}`).join('\n')} onChange={(e) => set({ pairs: e.target.value.split('\n').map((l) => { const [es, ...en] = l.split('='); return { es: es.trim(), en: en.join('=').trim() }; }) })} lang="es" data-testid="block-pairs" /></label>}
     </li>
   );
 }
@@ -165,7 +312,6 @@ export function TeacherRoom({ id }: { id: string }) {
   const [saved, setSaved] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   const [error, setError] = useState<string | null>(null);
   const [showNotes, setShowNotes] = useState(false);
-  const imported = /[?&]imported=1/.test(window.location.hash);
   const timer = useRef<number>();
   const latest = useRef<LessonPlan | null>(null);
   // The teacher's copy is the one that counts: it is loaded once and then only she changes it.
@@ -210,7 +356,6 @@ export function TeacherRoom({ id }: { id: string }) {
 
       {tab === 'plan' && (
         <div className="grid gap-4">
-          {imported && <p className="rounded-2xl bg-olive-50 px-4 py-3 text-sm ring-1 ring-olive/30" role="status" data-testid="import-note"><b>Made from your plan.</b> {plan.notes?.replace(/^Made from your plan: /, '')} Read through each part before the lesson: your student sees nothing until you open it.</p>}
           <section className="card grid gap-3 p-5 sm:grid-cols-[1fr_auto]">
             <label className="grid gap-1 text-sm font-medium">Title<input className="input text-lg" value={plan.title} onChange={(e) => change((p) => ({ ...p, title: e.target.value }))} data-testid="room-title" /></label>
             <label className="grid gap-1 text-sm font-medium">Day<input type="date" className="input" value={plan.date ?? ''} onChange={(e) => change((p) => ({ ...p, date: e.target.value }))} /></label>

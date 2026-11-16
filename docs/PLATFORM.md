@@ -220,3 +220,8 @@ A place to run a lesson: the teacher plans it beforehand, shares her screen on Z
 - Students are no longer offered the teacher's guide, and "How to use" sits at the bottom of their menu, below "Tú".
 - **My week** shows the last finished week by default, with a button for the week in progress. On Sunday the week just ending is published as the review. It also shows lessons with Dina that week and how many the student has had in all.
 
+
+
+### Reviewing an uploaded plan
+
+A plan that is uploaded (Word, PDF or text) or pasted is not saved straight away. The teacher first sees a review page: her own document on one side, the parts made from it on the other. She can change the title, change what a part is, edit, reorder or remove parts, and fill in any answer that was not found (those parts are marked). The lesson is created only when she presses Create the lesson; Cancel leaves nothing behind. PDFs are read with their layout: larger type is a heading, and a wider gap than the page's usual line spacing is a paragraph break. Tested by `scripts/room-demo-e2e.cjs` (text, Word and PDF).
