@@ -1,4 +1,4 @@
-import { laddersFor } from '../data/ladders';
+import { SENTENCE_SHARE, laddersFor } from '../data/ladders';
 import type { Activity, AppState, Cefr, Region } from '../types';
 import { withinLevel } from './platform/level';
 import { HABER_FORMS, VERBS, VERB_BY_INF, conjugate, getActiveVariety, isCompound, parseExample, personsForTense, verbKey, type Tense, type Verb, type VerbExample } from '../data/verbs';
@@ -249,9 +249,25 @@ export function buildSession({ state, focus, tense, length = 12, now = Date.now(
   // Always a full session: when one round of kinds is not enough, deal another.
   let deck = shuffle(kinds, rng);
   while (deck.length < length) deck = [...deck, ...shuffle(kinds, rng)];
+  // From words to sentences: the higher the student's step, the more of the session uses the verb inside a
+  // sentence instead of on its own. Example sentences exist for the present; other tenses lean on growing sentences.
+  const share = sentence ? SENTENCE_SHARE[Math.max(1, Math.min(5, Math.round(sentence))) - 1] : null;
+  if (share !== null && tense === 'present') {
+    const deal = (list: ExKind[], n: number) => { let d: ExKind[] = []; while (d.length < n) d = [...d, ...shuffle(list, rng)]; return d.slice(0, n); };
+    const inSentence = Math.round(length * share);
+    deck = [...deal(['context', 'build', 'fix', 'translate'], inSentence), ...deal(['choice', 'type', 'match', 'listen', 'type', 'choice'], length - inSentence)];
+  }
+  // Sentences are for words the student already knows: a verb answered right most of the time goes into them first.
+  const knows = (inf: string) => {
+    const cards = personsWithForm(VERB_BY_INF[inf], tense, region).map((p) => state.srs[verbKey(inf, tense, p)]).filter(Boolean);
+    const attempts = cards.reduce((a, c) => a + c!.attempts, 0);
+    return attempts >= 6 && cards.reduce((a, c) => a + c!.correct, 0) / attempts >= 0.8;
+  };
+  const known = share === null ? [] : (focus?.length ? verbs : VERBS.filter((v) => (allowed ? allowed.has(v.inf) : withinLevel(v.level, maxLevel))).sort((a, b) => a.frequencyRank - b.frequencyRank).map((v) => v.inf)).filter((inf) => VERB_BY_INF[inf] && knows(inf)).slice(0, 4);
+  let k = 0;
   const picks = deck.slice(0, length).sort((a, b) => order(a) - order(b));
   for (const kind of picks) {
-    const inf = verbs[i++ % verbs.length];
+    const inf = known.length && ['context', 'build', 'fix', 'translate'].includes(kind) ? known[k++ % known.length] : verbs[i++ % verbs.length];
     const verb = VERB_BY_INF[inf];
     const persons = personsWithForm(verb, tense, region);
     const examples = verb.examples.filter((e) => e.person >= 0 && (region !== 'mexico' || e.person !== 4) && !!parseExample(e).answer && !!verb.present[e.person]);
@@ -311,6 +327,9 @@ export function buildSession({ state, focus, tense, length = 12, now = Date.now(
     const ladder = from[Math.floor(rng() * from.length)];
     const top = Math.max(1, Math.min(ladder.rungs.length, sentence ?? 2));
     for (let r = 0; r < top; r++) out.push({ kind: 'extend', verb: ladder.verb, tense, ladder: ladder.id, rung: r });
+    // Tenses with no example sentences get a second growing sentence at the higher steps, so they too move into sentences.
+    const second = tense !== 'present' && (sentence ?? 0) >= 4 ? from.find((l) => l.id !== ladder.id) ?? ladders.find((l) => l.id !== ladder.id) : undefined;
+    if (second) for (let r = 0; r < top; r++) out.push({ kind: 'extend', verb: second.verb, tense, ladder: second.id, rung: r });
   }
   return fillPronouns(out, rng);
 }

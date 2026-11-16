@@ -6,7 +6,7 @@ import { CEFR_LEVELS, type AppState, type Cefr } from '../../types';
 import { levelReadiness, shouldSuggest } from '../../lib/levelUp';
 import { overallLevel } from '../../lib/platform/level';
 import { ReleaseBlocks } from './ReleaseBlocks';
-import { SENTENCE_STEPS, sentenceLevelFor } from '../../data/ladders';
+import { SENTENCE_SHARE, SENTENCE_STEPS, sentenceLevelFor } from '../../data/ladders';
 import { ErrorText, useAction } from './shared';
 
 /** The teacher's level ceiling for one student: the highest level of work they can open on their own. */
@@ -51,6 +51,7 @@ export function LevelAccess({ studentId, name, state }: { studentId: string; nam
   const suggest = !!ready && shouldSuggest(ready, q.data?.notYet);
   const [showWhy, setShowWhy] = useState(false);
   const sentence = Math.max(1, Math.min(5, q.data?.sentence ?? sentenceLevelFor(working)));
+  const inSentence = Math.round(12 * SENTENCE_SHARE[sentence - 1]);
   const moveUp = async () => {
     if (!backend || !ready?.next) return;
     const at = new Date().toISOString();
@@ -94,7 +95,7 @@ export function LevelAccess({ studentId, name, state }: { studentId: string; nam
       )}
       <div className="mb-3 rounded-2xl bg-white p-3 ring-1 ring-ink/5" data-testid="sentence-level">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="min-w-0 flex-1"><span className="eyebrow mr-2 !text-[10px]">Sentence length</span><b data-testid="sentence-current">{SENTENCE_STEPS[sentence - 1].label}</b> <span className="text-ink-mute">· step {sentence} of 5{q.data?.sentence ? ', set by you' : `, the usual for ${working}`}</span></p>
+          <p className="min-w-0 flex-1"><span className="eyebrow mr-2 !text-[10px]">From words to sentences</span><b data-testid="sentence-current">{SENTENCE_STEPS[sentence - 1].label}</b> <span className="text-ink-mute">· step {sentence} of 5{q.data?.sentence ? ', set by you' : `, the usual for ${working}`}</span></p>
           {q.data?.sentence ? <button type="button" className="ctrl !py-1.5" disabled={busy} onClick={() => void saveSentence(undefined)}>Follow their level</button> : null}
         </div>
         <div className="mt-2 grid grid-cols-5 gap-1.5" role="group" aria-label="How long sentences get">
@@ -104,7 +105,13 @@ export function LevelAccess({ studentId, name, state }: { studentId: string; nam
             </button>
           ))}
         </div>
-        <p className="mt-2 text-xs text-ink-mute">At this step {name} adds: <span lang="es" className="text-ink-soft">{SENTENCE_STEPS[sentence - 1].adds}</span>. For example: <span lang="es" className="text-ink-soft">{SENTENCE_STEPS[sentence - 1].example}</span> Each verb session ends with a sentence that grows this far, and the grammar drills use sentences of a matching length. Move it up as they get better.</p>
+        <p className="mt-2 text-xs text-ink-mute">At this step {name} adds: <span lang="es" className="text-ink-soft">{SENTENCE_STEPS[sentence - 1].adds}</span>. For example: <span lang="es" className="text-ink-soft">{SENTENCE_STEPS[sentence - 1].example}</span> </p>
+        <ul className="mt-2 grid gap-1 text-xs text-ink-soft sm:grid-cols-3" data-testid="sentence-mix">
+          <li className="rounded-lg bg-cream-100 px-2.5 py-1.5"><b className="text-ink">Verbs:</b> {inSentence === 0 ? 'every question is the word on its own' : `about ${inSentence} of 12 questions use the verb inside a sentence`}, on verbs {name} already gets right.</li>
+          <li className="rounded-lg bg-cream-100 px-2.5 py-1.5"><b className="text-ink">Growing sentence:</b> each session ends with a sentence built up over {sentence} step{sentence === 1 ? '' : 's'}{sentence >= 4 ? ', two of them in the other tenses' : ''}.</li>
+          <li className="rounded-lg bg-cream-100 px-2.5 py-1.5"><b className="text-ink">Grammar:</b> {sentence >= 5 ? 'sentences of any length' : `sentences of up to about ${[6, 8, 10, 13][sentence - 1]} words`}.</li>
+        </ul>
+        <p className="mt-2 text-xs text-ink-mute">Start low while the words are new. Slide it up once {name} knows them, so the same words come back inside longer sentences.</p>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p>

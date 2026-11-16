@@ -17,6 +17,9 @@ export const SENTENCE_STEPS: { level: number; label: string; adds: string; examp
   { level: 5, label: 'Linked sentences', adds: 'sin embargo, por eso, además', example: '…; sin embargo, mañana salgo con mis amigos.' },
 ];
 
+/** How much of a verb session uses the verb inside a sentence at each step: none at step 1, most at step 5. */
+export const SENTENCE_SHARE = [0, 0.2, 0.4, 0.6, 0.8];
+
 /** The sentence level a student starts at for their CEFR level, until the teacher sets one. */
 export function sentenceLevelFor(level: Cefr | null | undefined): number {
   return level === 'A1' ? 2 : level === 'A2' ? 3 : level === 'B1' ? 4 : level ? 5 : 2;
