@@ -84,7 +84,7 @@ function ReviewSession({ items, onDone }: { items: Item[]; onDone: () => void })
       mistake: !ok || accent ? { expected: it.display, given, category: category ?? 'other', context: 'Memory review' } : undefined,
     }));
     setScore((s) => ({ ok: s.ok + (ok ? 1 : 0), total: s.total + 1 }));
-    if (answers.current.length < 60) answers.current.push({ prompt: it.prompt, expected: it.display, given, correct: ok, ...(category && !ok ? { category } : {}) });
+    if (answers.current.length < 60) answers.current.push({ prompt: `${it.sub ? `${it.sub}: ` : ''}${it.prompt}`, expected: it.display, given, correct: ok, ...(category && !ok ? { category } : {}) });
     setRes({ ok, accent, category });
     if (ok) sfx.correct(); else sfx.wrong();
     setPhase('result');

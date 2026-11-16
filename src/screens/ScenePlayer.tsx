@@ -117,7 +117,7 @@ export function ScenePlayer({ id }: { id: string }) {
     stopSpeaking();
     const retry = resolveNext(c) === nodeId;
     setStats((s) => ({ ...s, [c.quality]: s[c.quality] + 1 }));
-    if (answers.current.length < 60) { const best = choices.find((x) => x.quality === 'great'); answers.current.push({ prompt: r(lineText.es), given: r(c.es), ...(best && best !== c ? { expected: r(best.es) } : {}), correct: c.quality !== 'off', ...(c.quality === 'off' && c.category ? { category: c.category } : {}) }); }
+    if (answers.current.length < 60) { const best = choices.find((x) => x.quality === 'great'); answers.current.push({ prompt: `Reply to: “${r(lineText.es)}”`, given: r(c.es), ...(best && best !== c ? { expected: r(best.es) } : {}), correct: c.quality !== 'off', ...(c.quality === 'off' && c.category ? { category: c.category } : {}) }); }
     const who = node!.speaker === 'narrator' ? scene.cast[0] : node!.speaker;
     if (c.rel) setRel((x) => ({ ...x, [who]: (x[who] ?? 0) + c.rel! }));
     if (c.setFlag) setFlags((f) => ({ ...f, [c.setFlag![0]]: c.setFlag![1] }));

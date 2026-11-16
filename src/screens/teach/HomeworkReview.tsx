@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Icon } from '../../components/Icon';
 import { ProgressRing, Sheet } from '../../components/ui';
-import { CATEGORY_LABEL, spellingSlip } from '../../lib/answer';
+import { CATEGORY_LABEL, CATEGORY_TIP, spellingSlip } from '../../lib/answer';
 import { usePlatform } from '../../lib/platform/context';
 import { describeActivity } from '../../lib/platform/homework';
 import { markLabel, segmentsWithCorrections } from '../../lib/platform/marking';
@@ -12,6 +12,24 @@ import type { ErrorCategory } from '../../types';
 import { ConfirmButton, ErrorText, Field, StatusChip, ZoneSelect, nameOf, toneFor, useAction } from './shared';
 
 const TAGS = Object.keys(FOCUS_TAG_LABEL) as FocusTag[];
+/** In a sentence, what the student was asked to do, so the teacher can talk it through without opening the exercise. */
+function whatItWas(prompt: string, kind: string): string {
+  if (/^Match /.test(prompt)) return 'A matching exercise: tap a pronoun, then tap the verb form that goes with it. Every wrong pairing tried is listed.';
+  if (/^Fill the gap:/.test(prompt)) return 'A Spanish sentence with the verb missing, and its English meaning as the clue. They typed the verb.';
+  if (/^Build( the sentence)?:/.test(prompt)) return 'The words of a sentence in a jumbled order. They tapped them into the right order.';
+  if (/^Fix the mistake:/.test(prompt)) return 'A Spanish sentence with one wrong verb form. They had to spot it and type the right form.';
+  if (/^Translate:/.test(prompt)) return 'An English sentence to write in Spanish.';
+  if (/^Dictation:/.test(prompt)) return 'They heard the sentence read aloud and typed what they heard. Accents and punctuation are forgiven.';
+  if (/^Meaning of /.test(prompt) || /^¿Qué significa/.test(prompt)) return 'A Spanish word with several English meanings to choose from.';
+  if (/^Q: /.test(prompt)) return 'An open question from you. They typed a free answer, and the app does not mark it.';
+  if (/^Reply to: /.test(prompt)) return 'A line said to them in a story scene. They chose a reply: natural, acceptable, or one that does not work.';
+  if (/\(game\)$/.test(prompt)) return 'A round in an arcade game, played against the clock. The right answer is shown, and what they did when they missed.';
+  if (/^Say it in Spanish: /.test(prompt)) return 'An English word or phrase to say or type in Spanish, from their memory deck.';
+  if (/^.+ \+ .+ \(.+\)$/.test(prompt)) return 'A pronoun and a verb in a given tense. They had to give the right form of the verb.';
+  if (/___/.test(prompt)) return 'A sentence with a gap. They typed or chose what goes in it.';
+  return kind === 'vocabulary' ? 'A card from their memory deck: they recall the Spanish and the app checks it.' : 'One question from this homework.';
+}
+
 const categoryLabel = (c?: string) => (c && c in CATEGORY_LABEL ? CATEGORY_LABEL[c as ErrorCategory] : c ?? '');
 
 /**
@@ -223,7 +241,8 @@ export function HomeworkReview({ homework, people, viewZone, onClose }: { homewo
                     {items.map((it, i) => {
                       const m = marked[i];
                       const ok = m?.ok ?? it.correct;
-                      const slip = spellingSlip(it.given, it.expected, it.category);
+                      const isMatch = /^Match /.test(it.prompt);
+                      const slip = isMatch ? null : spellingSlip(it.given, it.expected, it.category);
                       // An open question has no verdict from the app: it waits for the teacher's Right or Wrong.
                       const open = it.prompt.startsWith('Q: ') && it.expected === undefined;
                       return (
@@ -232,7 +251,7 @@ export function HomeworkReview({ homework, people, viewZone, onClose }: { homewo
                             <span className="w-5 shrink-0 text-xs text-ink-mute">{i + 1}.</span>
                             <span className="text-ink-soft">{it.prompt}</span>
                             <span lang="es" className={`font-semibold ${ok ? 'text-olive' : 'text-terracotta-dark'}`}>{it.given || '—'}</span>
-                            {!ok && it.expected && <span lang="es" className="text-ink-soft">→ <b className="text-ink">{it.expected}</b></span>}
+                            {!ok && it.expected && !isMatch && <span lang="es" className="text-ink-soft">→ <b className="text-ink">{it.expected}</b></span>}
                             {!ok && it.category && !slip && <span className="text-xs text-ink-mute">{categoryLabel(it.category)}</span>}
                             {!ok && slip && <span className="rounded-full bg-saffron-50 px-2 py-0.5 text-xs font-semibold text-ink ring-1 ring-saffron/50" data-testid={`rv-slip-${i}`}>{slip === 'accents' ? 'Only the accents are different' : 'Looks like a small spelling slip'}</span>}
                             {open && m?.ok === undefined && <span className="text-xs font-semibold text-azul">for you to mark</span>}
@@ -247,10 +266,14 @@ export function HomeworkReview({ homework, people, viewZone, onClose }: { homewo
                           </div>
                           {expanded === i && (
                             <dl className="mt-2 grid gap-x-3 gap-y-1 rounded-xl bg-cream-100 p-3 text-sm sm:grid-cols-[auto_1fr]" data-testid={`rv-detail-${i}`}>
-                              <dt className="text-ink-mute">Asked</dt><dd>{it.prompt}</dd>
+                              <dt className="text-ink-mute">The exercise</dt><dd className="text-ink-soft">{whatItWas(it.prompt, h.activity.kind)}</dd>
+                              <dt className="text-ink-mute">Asked</dt><dd lang="es">{it.prompt}</dd>
                               <dt className="text-ink-mute">{name} answered</dt><dd lang="es" className="font-semibold">{it.given || (it.correct ? 'Completed. This kind of exercise does not keep each answer.' : 'No answer was kept.')}</dd>
-                              {it.expected && <><dt className="text-ink-mute">Right answer</dt><dd lang="es" className="font-semibold">{it.expected}</dd></>}
-                              {it.category && <><dt className="text-ink-mute">Kind of slip</dt><dd>{categoryLabel(it.category)}</dd></>}
+                              {it.expected && !isMatch && <><dt className="text-ink-mute">Right answer</dt><dd lang="es" className="font-semibold">{it.expected}</dd></>}
+                              {it.expected && isMatch && <><dt className="text-ink-mute">The right pairs</dt><dd lang="es" className="flex flex-wrap gap-1.5">{it.expected.split(' · ').map((pair) => { const [pro, ...form] = pair.includes(' → ') ? pair.split(' → ') : [pair]; const missed = !!it.given && it.given.startsWith('Mixed up') && (it.given.includes(`: ${pro} + `) || it.given.includes(`, ${pro} + `)); return <span key={pair} className={`rounded-full px-2.5 py-1 ring-1 ${missed ? 'bg-terracotta-50 ring-terracotta/40' : 'bg-white ring-ink/10'}`}>{pro} <b>{form.join(' → ')}</b>{missed ? ' ✗' : ''}</span>; })}</dd></>}
+                              {!ok && it.category && <><dt className="text-ink-mute">Kind of slip</dt><dd>{categoryLabel(it.category)}</dd></>}
+                              {!ok && it.category && it.category in CATEGORY_TIP && <><dt className="text-ink-mute">To explain it</dt><dd data-testid={`rv-tip-${i}`}>{CATEGORY_TIP[it.category as ErrorCategory]}</dd></>}
+                              {!ok && slip && <><dt className="text-ink-mute">Worth knowing</dt><dd>{slip === 'accents' ? 'Only the accents are different, so they knew the word.' : 'This is a letter or two off, so it may be a typing slip, not a gap in what they know.'}</dd></>}
                               <dt className="text-ink-mute">The app said</dt><dd>{open ? 'Nothing: this one is for you to mark' : it.correct ? 'Right' : 'Wrong'}{m?.ok !== undefined && !open ? `, and you changed it to ${m.ok ? 'right' : 'wrong'}` : ''}</dd>
                             </dl>
                           )}

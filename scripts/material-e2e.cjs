@@ -76,6 +76,10 @@ Ahora vivo en un piso pequeño cerca del metro. Me gusta mucho el barrio.
   // An answer opens into full detail when clicked, and the sheet opens out to the whole window.
   await p.getByTestId('rv-row-1').click({ position: { x: 60, y: 8 } });
   ok(await p.getByTestId('rv-detail-1').isVisible() && /Right answer|answered/.test(await p.getByTestId('rv-detail-1').innerText()), 'clicking an answer shows it in full');
+  ok(/The exercise/.test(await p.getByTestId('rv-detail-1').innerText()), 'the detail says in a sentence what the exercise was');
+  await p.getByTestId('rv-row-0').click({ position: { x: 60, y: 8 } });
+  const d0 = await p.getByTestId('rv-detail-0').innerText();
+  ok(/To explain it/.test(d0) && /Right answer/.test(d0), `a wrong answer comes with how to explain it (${d0.replace(/\s+/g, ' ').slice(0, 160)})`);
   await p.getByTestId('sheet-expand').click(); await p.waitForTimeout(500);
   const box = await p.getByRole('dialog').boundingBox();
   ok(box.height >= 850 && box.width >= 1200, `Expand opens the sheet to the whole window (${Math.round(box.width)}×${Math.round(box.height)})`);

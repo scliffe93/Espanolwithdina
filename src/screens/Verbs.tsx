@@ -57,7 +57,7 @@ function promptFor(ex: Exercise): string {
     case 'build': return `Build the sentence: ${ex.example.en}`;
     case 'fix': return `Fix the mistake: ${ex.example.en}`;
     case 'translate': return `Translate: ${ex.example.en}`;
-    case 'match': return `Match the forms of ${ex.verb} (${tenseLabel(ex.tense)})`;
+    case 'match': return `Match each pronoun with its form of ${ex.verb} (${tenseLabel(ex.tense)}): ${ex.pronouns.join(', ')}`;
     case 'serEstar': return `${ex.item.before} ___ ${ex.item.after}`.trim();
     case 'grammar': return `${ex.item.before} ___ ${ex.item.after}${ex.item.hint ? ` (${ex.item.hint})` : ''}`.trim();
   }
@@ -497,6 +497,8 @@ function MatchView({ ex, locked, onSubmit }: { ex: Extract<Exercise, { kind: 'ma
   const [matched, setMatched] = useState<number[]>([]);
   const [wrongFlash, setWrongFlash] = useState<number | null>(null);
   const [misses, setMisses] = useState<number[]>([]);
+  // Every wrong pairing tried, in order, so the teacher can see what was mixed up with what.
+  const tries = useRef<string[]>([]);
   const say = useSay();
 
   const pickForm = (p: number) => {
@@ -511,13 +513,14 @@ function MatchView({ ex, locked, onSubmit }: { ex: Extract<Exercise, { kind: 'ma
       setSel(null);
       if (m.length === ex.persons.length) {
         const ok = misses.length === 0;
-        onSubmit({ correct: ok, expected: ex.persons.map((q, i) => `${ex.pronouns[i]} ${conjugate(verb, ex.tense, q)}`).join(' · '), given: ok ? '' : `${misses.length} mismatch${misses.length > 1 ? 'es' : ''}`, category: ok ? undefined : 'person-agreement' });
+        onSubmit({ correct: ok, expected: ex.persons.map((q, i) => `${ex.pronouns[i]} → ${conjugate(verb, ex.tense, q)}`).join(' · '), given: ok ? 'Matched every pair first time' : `Mixed up: ${tries.current.slice(0, 8).join(', ')}`, category: ok ? undefined : 'person-agreement' });
       }
     } else {
       if (!misses.includes(sel)) {
         setMisses((x) => [...x, sel]);
         update((s) => recordAttempt(s, { key, grade: 0, exerciseType: 'match', verb: ex.verb, tense: ex.tense, mistake: { expected: conjugate(verb, ex.tense, sel), given: conjugate(verb, ex.tense, p), category: 'person-agreement', context: `Match · ${ex.verb}` } }));
       }
+      tries.current.push(`${ex.pronouns[ex.persons.indexOf(sel)]} + ${conjugate(verb, ex.tense, p)}`);
       setWrongFlash(p);
       setTimeout(() => setWrongFlash(null), 450);
     }
