@@ -202,3 +202,19 @@ Tests: `tests/levels.test.ts`, `scripts/levels-e2e.cjs`.
 
 Browser test: `scripts/dele-e2e.cjs`.
 
+## The lesson room
+
+A place to run a lesson: the teacher plans it beforehand, shares her screen on Zoom (or any call) and puts each part up when she is ready; the student, on their own phone or tablet, sees only what she has opened, their screen follows hers, and their answers appear on hers.
+
+- **Where.** Teacher: **Lesson room** in the menu (`#/teach/room`). Student: a green **Your lesson is open · Join** card appears on their home page by itself when she starts, and their phone is notified. Afterwards the opened parts stay on their home page as **Notes from your lessons**.
+- **Planning (the Plan tab).** A lesson is a list of parts: an explanation, an open question, a fill-the-gap sentence, a multiple-choice question, or a word list. She can add, edit, reorder, duplicate and delete them, and write private notes. Everything saves by itself, so she can prepare days ahead. **Draft it from their week** writes a first version from the student's own results: a warm-up, their hardest point explained with their own mistakes, gap exercises on the exact forms they missed, the verbs to recycle and a wrap-up.
+- **Presenting (the Present tab).** Large type, made to be screen-shared. The list on the left opens or closes each part for the student; the part on screen says "Only you can see this" until she presses **Show it to Sam**. **Open all** and **Close all** do the lot. A chip shows whether the student is in the lesson. For gap and choice parts she can show the answer. Her notes stay folded away unless she opens them.
+- **What the student can and cannot see.** Only opened parts. Never her notes. The right answer to a part only after they have answered it or she has shown it. This is enforced on the server (`studentView` in `supabase/functions/_shared/lesson.ts`), not just hidden on the page, and it applies to everything the server sends a student.
+- **How the two devices stay in step.** Each asks the server every two seconds while the lesson is running (five when it is not). The plan is written only by the teacher and the student's answers only by the server on the student's behalf (two separate records), so neither can overwrite the other. No extra service is used.
+- **Code and tests.** `src/screens/room/`, `src/lib/platform/lessonDraft.ts`, server route `platform/lessons/sync`. `tests/lesson-api.test.ts` covers the rules on a real database; `scripts/room-e2e.cjs` runs a whole lesson with a teacher laptop and a student phone at once (25 checks); `scripts/room-demo-e2e.cjs` covers the demo.
+
+## Smaller changes
+
+- Students are no longer offered the teacher's guide, and "How to use" sits at the bottom of their menu, below "Tú".
+- **My week** shows the last finished week by default, with a button for the week in progress. On Sunday the week just ending is published as the review. It also shows lessons with Dina that week and how many the student has had in all.
+

@@ -75,6 +75,7 @@ export function Today() {
   const lessonActions = (b: Booking) => (
     <>
       <button type="button" className="ctrl" onClick={() => openStudent(b.studentId)}><Icon name="user" size={14} /> Open student</button>
+      {b.status === 'scheduled' && <button type="button" className="ctrl" onClick={() => navigate('teach/room')}><Icon name="video" size={14} /> Lesson room</button>}
       {b.status === 'scheduled' && <button type="button" className="ctrl" disabled={busy} onClick={() => setStatus(b, 'completed', 'Lesson marked as completed')}><Icon name="check" size={14} /> Mark completed</button>}
       {b.status === 'scheduled' && <ConfirmButton confirmLabel="Yes, cancel" disabled={busy} onConfirm={() => setStatus(b, 'cancelled', 'Lesson cancelled')}><Icon name="x" size={14} /> Cancel</ConfirmButton>}
     </>

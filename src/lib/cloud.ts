@@ -120,7 +120,7 @@ export const reportApi = {
 };
 
 export interface PlatformPerson { id: string; username: string; firstName: string; role: 'student' | 'teacher' | 'admin' }
-export type PlatformKind = 'booking' | 'homework' | 'feedback' | 'activity' | 'invoice' | 'config' | 'credit' | 'student';
+export type PlatformKind = 'booking' | 'homework' | 'feedback' | 'activity' | 'invoice' | 'config' | 'credit' | 'student' | 'lesson';
 
 /** Teaching platform endpoints (same Edge Function). Every call is scoped server-side to the signed-in person's role. */
 export const platformApi = {
@@ -129,6 +129,7 @@ export const platformApi = {
   records: <T>(token: string, kind: PlatformKind, studentId?: string) => request<{ records: T[] }>(`platform/records?kind=${kind}${studentId ? `&studentId=${encodeURIComponent(studentId)}` : ''}`, { token }),
   put: <T>(token: string, kind: PlatformKind, id: string, studentId: string, data: T) => request<{ record: T }>('platform/records', { method: 'PUT', token, body: { kind, id, studentId, data } }),
   submitHomework: <T>(token: string, id: string, result: unknown) => request<{ record: T }>('platform/homework/submit', { token, body: { id, result } }),
+  syncLesson: <P, W>(token: string, id: string, answer?: { blockId: string; value: string }) => request<{ plan: P; work: W | null; now: string }>('platform/lessons/sync', { token, body: { id, ...(answer ?? {}) } }),
   sendWriting: <T>(token: string, input: { title: string; prompt: string; text: string; minWords?: number }) => request<{ record: T }>('platform/writing', { token, body: input }),
   reportInvoicePaid: <T>(token: string, id: string, info: { method?: string; note?: string }) => request<{ record: T }>('platform/invoices/report-paid', { token, body: { id, ...info } }),
   remove: (token: string, id: string) => request<void>('platform/records/delete', { method: 'POST', token, body: { id } }),

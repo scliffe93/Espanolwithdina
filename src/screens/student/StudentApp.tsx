@@ -3,6 +3,7 @@ import { InvoicesPage } from './Invoices';
 import { FeedbackPage } from './Feedback';
 import { Home } from './Home';
 import { HomeworkPage } from './Homework';
+import { StudentRoom } from '../room/StudentRoom';
 
 // ───────────────────────────────────────────────────────────────
 // The student side of the teaching platform (route 'student').
@@ -14,6 +15,7 @@ import { HomeworkPage } from './Homework';
 // ───────────────────────────────────────────────────────────────
 
 export function StudentApp({ page, params }: { page?: string; params: URLSearchParams }) {
+  if (page?.startsWith('room/')) return <StudentRoom key={page} id={page.slice(5)} />;
   switch (page) {
     case 'calendar': return <Calendar />;
     case 'homework': return <HomeworkPage params={params} />;

@@ -29,12 +29,12 @@ const STUDENT: { title: string; steps: string[] }[] = [
 /** Short guided videos for students, with a spoken voiceover: Dina and Toby walk through each task. Files live in public/guides/videos (made by scripts/videos). */
 const VIDEOS: { file: string; title: string; about: string; seconds: number }[] = [
   { file: '1-getting-started', title: 'Getting started', about: 'Log in and put the app on your iPhone.', seconds: 57 },
-  { file: '2-your-lessons', title: 'Your lessons', about: 'Your next lesson and what to prepare.', seconds: 46 },
-  { file: '3-your-homework', title: 'Your homework', about: 'Find it, do it, read the feedback.', seconds: 42 },
-  { file: '4-practise-on-your-own', title: 'Practise on your own', about: 'Verbs, word packs and games.', seconds: 65 },
-  { file: '5-feedback-and-progress', title: 'Feedback and progress', about: 'What Dina said and how far you have come.', seconds: 56 },
-  { file: '6-invoices', title: 'Invoices', about: 'What is due and how to say you have paid.', seconds: 61 },
-  { file: '7-exam-practice', title: 'Exam practice', about: 'Reading, listening and writing, like the real exam.', seconds: 60 },
+  { file: '2-your-lessons', title: 'Your lessons', about: 'Your next lesson and what to prepare.', seconds: 47 },
+  { file: '3-your-homework', title: 'Your homework', about: 'Find it, do it, read the feedback.', seconds: 43 },
+  { file: '4-practise-on-your-own', title: 'Practise on your own', about: 'Verbs, word packs and games.', seconds: 93 },
+  { file: '5-feedback-and-progress', title: 'Feedback and progress', about: 'What Dina said and how far you have come.', seconds: 82 },
+  { file: '6-invoices', title: 'Invoices', about: 'What is due and how to say you have paid.', seconds: 62 },
+  { file: '7-exam-practice', title: 'Exam practice', about: 'Reading, listening and writing, like the real exam.', seconds: 77 },
 ];
 
 function VideoGuides() {
@@ -66,7 +66,9 @@ export function Guide() {
   const { me } = usePlatform();
   const account = useAccount();
   const forced = new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('for');
-  const teacher = forced ? forced === 'teacher' : me?.role === 'teacher';
+  // A student only ever sees the student guide: the teacher's guide is not offered to them, even by link.
+  const isStudent = me?.role === 'student';
+  const teacher = isStudent ? false : forced ? forced === 'teacher' : me?.role === 'teacher' || me?.role === 'admin';
   const sections = teacher ? TEACHER : STUDENT;
   const other = teacher ? 'student' : 'teacher';
   return (
@@ -83,7 +85,7 @@ export function Guide() {
       </div>
       <div className="mt-5 flex flex-wrap gap-2">
         <button className="btn-primary" onClick={() => navigate(teacher ? 'teach' : account.session ? 'student' : cloudConfigured ? 'account?mode=login' : 'home')}>{teacher ? 'Go to Today' : account.session ? 'Go to my lessons' : 'Log in'} <Icon name="arrowRight" size={16} /></button>
-        <button className="ctrl" onClick={() => navigate(`guide?for=${other}`)}>Read the {other} guide</button>
+        {!isStudent && <button className="ctrl" onClick={() => navigate(`guide?for=${other}`)}>Read the {other} guide</button>}
         <a className="ctrl" href={`${import.meta.env.BASE_URL}guides/${teacher ? 'teacher' : 'student'}-guide.pdf`} target="_blank" rel="noreferrer"><Icon name="download" size={14} /> Download this guide as a PDF</a>
       </div>
     </div>

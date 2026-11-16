@@ -81,7 +81,7 @@ const tab = (h, name) => h.p.locator('nav').last().getByText(name, { exact: true
     await h.step('Tap *Start*. Each session is twelve short exercises.', start);
     await h.tap(start, 300); await h.clear(); await h.wait(1300);
     await h.note('Answer each one, or tap the *microphone* and say it. If you slip, it comes back until it sticks.', 700);
-    await h.go('#/verbs', 1200);
+    await h.go('#/world', 500); await h.go('#/verbs', 1300); // leave the session first: going to the page you are on does nothing
     await h.step('The *grid drill* puts several verbs side by side.', 'open-grid');
     await h.tap('open-grid', 1200);
     await h.note('Each verb shows its *meaning*, and whether it is *regular* or *irregular*. Fill the gaps, then check them all at once.', h.p.getByTestId('grid-legend'), 900);

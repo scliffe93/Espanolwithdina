@@ -1,9 +1,10 @@
 import type { AppState } from '../../types';
 import { ApiError, platformApi, type PlatformKind, type Session } from '../cloud';
 import { migrate } from '../state';
-import { PlatformError, findOverlap, uid, validateBooking, type PlatformBackend, type StudentSettingsInput } from './backend';
+import { PlatformError, findOverlap, uid, validateBooking, type LessonInput, type PlatformBackend, type StudentSettingsInput } from './backend';
 import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, Marking, Person, StudentSettings, TeacherConfig } from './types';
 import { settingsId } from './level';
+import type { LessonPlan, LessonWork } from './types';
 import { DEFAULT_TEACHER_CONFIG } from './types';
 
 // ───────────────────────────────────────────────────────────────
@@ -265,6 +266,25 @@ class CloudBackend implements PlatformBackend {
   }
 
   // ── Per-student settings ──
+  async lessons(studentId?: string) {
+    this.cache.delete(`lesson|${this.isTeacher() ? studentId ?? '' : ''}`);
+    const rows = await this.records<LessonPlan>('lesson', this.isTeacher() ? studentId : undefined);
+    return [...rows].sort((a, b) => (b.date ?? b.createdAt).localeCompare(a.date ?? a.createdAt));
+  }
+  async saveLesson(input: LessonInput) {
+    this.assertTeacher();
+    const id = input.id ?? `lesson-${uid()}`;
+    return this.put<LessonPlan>('lesson', id, input.studentId, { ...input, id } as unknown as LessonPlan);
+  }
+  async deleteLesson(id: string) {
+    this.assertTeacher();
+    await this.wrap(() => platformApi.remove(this.token, id));
+    this.cache.clear();
+  }
+  async syncLesson(id: string, answer?: { blockId: string; value: string }) {
+    return this.wrap(() => platformApi.syncLesson<LessonPlan, LessonWork>(this.token, id, answer));
+  }
+
   async studentSettings(studentId: string) {
     if (!this.isTeacher() && studentId !== this.actor.id) throw new PlatformError('forbidden', 'You can only see your own settings.');
     const rows = await this.records<StudentSettings>('student', this.isTeacher() ? studentId : undefined);

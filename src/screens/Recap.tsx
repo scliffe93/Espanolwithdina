@@ -4,32 +4,44 @@ import { DinaArt } from '../components/Dina';
 import { FocusAreas } from '../components/FocusAreas';
 import { MovingUp } from '../components/MovingUp';
 import { focusAreas, lessonPrep } from '../lib/focus';
-import { usePlatform } from '../lib/platform/context';
+import { usePlatform, usePlatformQuery } from '../lib/platform/context';
 import { Icon } from '../components/Icon';
 import { SCENE_BY_ID } from '../data/story';
-import { allVerbMastery, errorBreakdown, previousWeek, thisWeek } from '../lib/analytics';
+import { allVerbMastery, errorBreakdown, weekSummary } from '../lib/analytics';
 import { challengeForWeek } from '../lib/challenges';
-import { formatMinutes, formatRange, weekId, weekStart } from '../lib/dates';
+import { addDays, formatMinutes, formatRange, weekId, weekStart } from '../lib/dates';
 import { rulesCoach } from '../lib/coach';
 import { navigate } from '../lib/router';
 import { buildTeacherReport, isValidEmail, mailtoHref, reportSubject, reportText } from '../lib/report';
 import { useStore } from '../lib/store';
 import { routeHref } from './World';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 const DAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
 export function Recap() {
   const { state, update } = useStore();
-  const w = thisWeek(state);
-  const prev = previousWeek(state);
+  // The review is of a finished week. Monday to Saturday it shows last week; on Sunday the week just ending is
+  // published as the review. The button looks at the other one.
+  const sunday = new Date().getDay() === 0;
+  const [which, setWhich] = useState<'last' | 'this'>(sunday ? 'this' : 'last');
+  const back = which === 'this' ? 0 : 1;
+  const start = addDays(weekStart(), -7 * back);
+  const end = addDays(start, 7).getTime();
+  const w = weekSummary(state, start);
+  const prev = weekSummary(state, addDays(start, -7));
+  // Lessons with the teacher: the ones in this week, and how many there have been in all.
+  const lessonsQ = usePlatformQuery((b) => (b.actor.role === 'student' ? b.bookings({}) : Promise.resolve([])), []);
+  const held = (lessonsQ.data ?? []).filter((b) => b.status !== 'cancelled' && Date.parse(b.startsAt) < Date.now());
+  const lessonsThisWeek = (lessonsQ.data ?? []).filter((b) => b.status !== 'cancelled' && Date.parse(b.startsAt) >= start.getTime() && Date.parse(b.startsAt) < end);
+  const nextLessonAt = (lessonsQ.data ?? []).filter((b) => b.status === 'scheduled' && Date.parse(b.startsAt) > Date.now()).sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0];
   const { me } = usePlatform();
   // A student who has not set up the storyline still has a week to look back on.
   const p = { name: state.profile?.name || me?.firstName || '', region: state.profile?.region ?? ('spain' as const), dailyMinutes: state.profile?.dailyMinutes ?? 10 };
-  const challenge = challengeForWeek(weekStart());
+  const challenge = challengeForWeek(start);
   const done = challenge.measure(w) >= challenge.target;
   const strong = allVerbMastery(state, 'present', p.region).filter((m) => (m.level === 'mastered' || m.level === 'familiar') && w.verbsPracticed.includes(m.inf));
-  const weekAch = state.achievements.filter((a) => a.at >= weekStart().getTime());
+  const weekAch = state.achievements.filter((a) => a.at >= start.getTime() && a.at < end);
   const recs = rulesCoach.recommend(state, Date.now()).slice(0, 3);
   const minutesDelta = Math.round((w.activeSeconds - prev.activeSeconds) / 60);
   const report = buildTeacherReport(state);
@@ -38,11 +50,11 @@ export function Recap() {
   const better: string[] = [], watch: string[] = [];
   const pct = (v: number | null) => (v === null ? null : Math.round(v * 100));
   const acc = pct(w.accuracy), accPrev = pct(prev.accuracy);
-  if (acc !== null && accPrev !== null) { if (acc >= accPrev + 3) better.push(`You got ${acc}% right, up from ${accPrev}% last week.`); else if (acc <= accPrev - 5) watch.push(`You got ${acc}% right, down from ${accPrev}% last week. That often happens in a week with something new in it.`); else better.push(`Your accuracy held steady at ${acc}%.`); }
+  if (acc !== null && accPrev !== null) { if (acc >= accPrev + 3) better.push(`You got ${acc}% right, up from ${accPrev}% the week before.`); else if (acc <= accPrev - 5) watch.push(`You got ${acc}% right, down from ${accPrev}% the week before. That often happens in a week with something new in it.`); else better.push(`Your accuracy held steady at ${acc}%.`); }
   else if (acc !== null) better.push(`You got ${acc}% of your answers right.`);
-  if (minutesDelta >= 5) better.push(`You studied ${minutesDelta} minutes more than last week.`); else if (minutesDelta <= -10 && prev.activeSeconds > 0) watch.push(`You studied ${-minutesDelta} minutes less than last week.`);
-  if (w.studyDays > prev.studyDays && w.studyDays >= 2) better.push(`You practised on ${w.studyDays} days, ${w.studyDays - prev.studyDays} more than last week.`);
-  for (const e of errorBreakdown(state, 7)) { if (e.previous >= 3 && e.count <= e.previous / 2) better.push(`${e.label}: ${e.count} slip${e.count === 1 ? '' : 's'} this week, down from ${e.previous}.`); else if (e.count >= 4 && e.count >= e.previous * 2) watch.push(`${e.label} came up ${e.count} times, more than last week.`); }
+  if (minutesDelta >= 5) better.push(`You studied ${minutesDelta} minutes more than the week before.`); else if (minutesDelta <= -10 && prev.activeSeconds > 0) watch.push(`You studied ${-minutesDelta} minutes less than the week before.`);
+  if (w.studyDays > prev.studyDays && w.studyDays >= 2) better.push(`You practised on ${w.studyDays} days, ${w.studyDays - prev.studyDays} more than the week before.`);
+  for (const e of errorBreakdown(state, 7, Math.min(end, Date.now()))) { if (e.previous >= 3 && e.count <= e.previous / 2) better.push(`${e.label}: ${e.count} slip${e.count === 1 ? '' : 's'} this week, down from ${e.previous}.`); else if (e.count >= 4 && e.count >= e.previous * 2) watch.push(`${e.label} came up ${e.count} times, more than the week before.`); }
   if (strong.length) better.push(`${strong.length} verb${strong.length === 1 ? ' is' : 's are'} now sticking: ${strong.slice(0, 5).map((m) => m.inf).join(', ')}.`);
   if (w.newVocab.length) better.push(`You met ${w.newVocab.length} new word${w.newVocab.length === 1 ? '' : 's'}.`);
 
@@ -57,7 +69,7 @@ export function Recap() {
         <div className="relative flex items-center gap-4">
           <DinaArt size={96} expression="beam" />
           <div>
-            <p className="eyebrow !text-saffron-light">Tu semana · {formatRange(w.start)}</p>
+            <p className="eyebrow !text-saffron-light">{which === 'last' ? 'La semana pasada · Last week' : sunday ? 'Tu semana · This week’s review' : 'Esta semana · This week so far'} · {formatRange(w.start)}</p>
             <h1 className="font-display text-3xl font-semibold sm:text-4xl">{w.activeSeconds > 0 ? `¡Qué semana, ${p.name}!` : `Tu semana empieza aquí, ${p.name}`}</h1>
           </div>
         </div>
@@ -66,7 +78,7 @@ export function Recap() {
             [formatMinutes(w.activeSeconds), 'active learning', minutesDelta ? `${minutesDelta > 0 ? '+' : ''}${minutesDelta} min vs last week` : ''],
             [`${w.studyDays}`, 'study days', ''],
             [`${w.verbsPracticed.length}`, 'verbs practised', `${strong.length} strong`],
-            [`${w.scenesCompleted.length}`, 'chapters lived', ''],
+            lessonsQ.data && (held.length || lessonsThisWeek.length) ? [`${lessonsThisWeek.length}`, `lesson${lessonsThisWeek.length === 1 ? '' : 's'} with Dina`, `${held.length} in total`] : [`${w.scenesCompleted.length}`, 'chapters lived', ''],
           ].map(([v, l, s]) => (
             <div key={l} className="rounded-2xl bg-cream/10 p-3 ring-1 ring-cream/10">
               <p className="font-display text-2xl font-semibold">{v}</p>
@@ -79,6 +91,22 @@ export function Recap() {
           <BarChart title="Active minutes per day" unit="min" data={w.minutesByDay.map((v, i) => ({ label: DAYS[i], value: Math.round(v) }))} height={90} />
         </div>
       </motion.section>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2" data-testid="recap-switch">
+        <button type="button" className="ctrl" onClick={() => setWhich(which === 'last' ? 'this' : 'last')} data-testid="recap-toggle"><Icon name="calendar" size={15} /> {which === 'last' ? 'See this week so far' : 'See last week'}</button>
+        <span className="text-sm text-ink-mute">{which === 'last' ? (sunday ? '' : 'This week’s review is published on Sunday.') : sunday ? 'Published today. From Monday a new week starts.' : 'Not finished yet: the review is published on Sunday.'}</span>
+      </div>
+
+      {lessonsQ.data && (held.length > 0 || nextLessonAt) && (
+        <section className="card mt-4 flex flex-wrap items-center gap-4 p-5" data-testid="recap-lessons">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-terracotta-50 text-terracotta"><Icon name="calendar" size={22} /></span>
+          <div className="min-w-0 flex-1">
+            <p className="eyebrow">Clases con Dina · Lessons with Dina</p>
+            <p className="font-semibold">{lessonsThisWeek.length ? `${lessonsThisWeek.length} lesson${lessonsThisWeek.length === 1 ? '' : 's'} ${which === 'last' ? 'last week' : 'this week'}${lessonsThisWeek.some((b) => b.topic) ? `: ${lessonsThisWeek.map((b) => b.topic).filter(Boolean).join('; ')}` : ''}` : `No lesson ${which === 'last' ? 'last week' : 'this week'}`}</p>
+            <p className="text-sm text-ink-soft">You have had <b data-testid="recap-lessons-total">{held.length}</b> lesson{held.length === 1 ? '' : 's'} with Dina so far{nextLessonAt ? `. Next: ${new Date(nextLessonAt.startsAt).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })} at ${new Date(nextLessonAt.startsAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : ''}.</p>
+          </div>
+        </section>
+      )}
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <div className="card p-5">

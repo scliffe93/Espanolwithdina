@@ -1,3 +1,5 @@
+import type { LessonPlan, LessonWork } from '../../../supabase/functions/_shared/lesson';
+export type { LessonBlock, LessonPlan, LessonWork, LessonAnswer, BlockType } from '../../../supabase/functions/_shared/lesson';
 // ───────────────────────────────────────────────────────────────
 // Learning with Dina — teaching platform data model.
 // Shared by the local demo workspace (IndexedDB) and the cloud backend.
@@ -314,6 +316,8 @@ export interface PlatformData {
   config?: TeacherConfig;
   credits?: Credit[];
   students?: StudentSettings[];
+  lessons?: LessonPlan[];
+  lessonWork?: LessonWork[];
 }
 
 export const DEMO_TEACHER_ID = 'demo-dina';

@@ -5,6 +5,7 @@ import { settingsId } from './level';
 import { DEFAULT_TEACHER_CONFIG } from './types';
 import { overlaps } from './time';
 import { followUpFor, type AdaptHomework } from '../../../supabase/functions/_shared/adapt';
+import { checkBlock, cleanPlan, emptyWork, studentView, type LessonBlock, type LessonPlan, type LessonWork } from '../../../supabase/functions/_shared/lesson';
 
 // ───────────────────────────────────────────────────────────────
 // The teaching platform API, as seen by the UI. Two implementations:
@@ -69,7 +70,16 @@ export interface PlatformBackend {
   studentSettings(studentId: string): Promise<StudentSettings | null>;
   /** Teacher only. */
   saveStudentSettings(input: StudentSettingsInput): Promise<StudentSettings>;
+  // ── the lesson room ──
+  /** The teacher's plans (all, or one student's); for a student, their own lessons as far as they have been opened. */
+  lessons(studentId?: string): Promise<LessonPlan[]>;
+  saveLesson(input: LessonInput): Promise<LessonPlan>;
+  deleteLesson(id: string): Promise<void>;
+  /** What a device asks for every couple of seconds during a lesson. For the student it also says "I am here" and can carry an answer. */
+  syncLesson(id: string, answer?: { blockId: string; value: string }): Promise<{ plan: LessonPlan; work: LessonWork | null; now: string }>;
 }
+
+export interface LessonInput { id?: string; studentId: string; title: string; date?: string; notes?: string; blocks: LessonBlock[]; live: LessonPlan['live'] }
 
 /** What the teacher saves for a student. The whole row is replaced, so pass every field you want to keep. */
 export interface StudentSettingsInput { studentId: string; maxLevel: StudentSettings['maxLevel']; note?: string; stepped?: boolean; unlocked?: string[]; verified?: StudentSettings['verified']; notYet?: StudentSettings['notYet'] }
@@ -341,6 +351,48 @@ export class DemoBackend implements PlatformBackend {
   }
 
   // ── Per-student settings ──
+  // The demo keeps everything in this browser. Two tabs (the teacher's and the student's) share it, so the lesson
+  // room reads the stored copy afresh before every step: that is what makes the two tabs see each other.
+  private async refresh() { const fresh = await this.storage.loadData().catch(() => null); if (fresh) this.data = fresh; }
+  async lessons(studentId?: string) {
+    await this.refresh();
+    const all = this.data.lessons ?? [];
+    if (this.isTeacher()) return all.filter((l) => l.teacherId === this.actor.id && (!studentId || l.studentId === studentId)).sort((a, b) => (b.date ?? b.createdAt).localeCompare(a.date ?? a.createdAt));
+    return all.filter((l) => l.studentId === this.actor.id).map((l) => studentView(l, (this.data.lessonWork ?? []).find((w) => w.lessonId === l.id) ?? null)).sort((a, b) => (b.date ?? b.createdAt).localeCompare(a.date ?? a.createdAt));
+  }
+  async saveLesson(input: LessonInput) {
+    this.assertTeacher();
+    this.assertStudentAccess(input.studentId);
+    await this.refresh();
+    const prev = (this.data.lessons ?? []).find((l) => l.id === input.id);
+    const id = input.id ?? `lesson-${uid()}`;
+    const plan: LessonPlan = { id, studentId: input.studentId, teacherId: this.actor.id, ...cleanPlan(input as unknown as Record<string, unknown>), createdAt: prev?.createdAt ?? this.iso(), updatedAt: this.iso() };
+    await this.commit((d) => { d.lessons = [...(d.lessons ?? []).filter((l) => l.id !== id), plan]; });
+    return plan;
+  }
+  async deleteLesson(id: string) {
+    this.assertTeacher();
+    await this.refresh();
+    await this.commit((d) => { d.lessons = (d.lessons ?? []).filter((l) => l.id !== id); d.lessonWork = (d.lessonWork ?? []).filter((w) => w.lessonId !== id); });
+  }
+  async syncLesson(id: string, answer?: { blockId: string; value: string }) {
+    await this.refresh();
+    const plan = (this.data.lessons ?? []).find((l) => l.id === id);
+    if (!plan || (!this.isTeacher() && plan.studentId !== this.actor.id)) throw new PlatformError('not_found', 'Lesson not found.');
+    let work = (this.data.lessonWork ?? []).find((w) => w.lessonId === id) ?? null;
+    if (this.isTeacher()) return { plan, work, now: this.iso() };
+    work = { ...(work ?? emptyWork(id, this.actor.id, this.iso())), seenAt: this.iso() };
+    if (answer) {
+      const block = plan.blocks.find((b) => b.id === answer.blockId);
+      if (!block || !block.open) throw new PlatformError('forbidden', 'That part of the lesson is not open yet.');
+      const correct = checkBlock(block, answer.value);
+      work = { ...work, answers: { ...work.answers, [answer.blockId]: { value: answer.value.slice(0, 2000), at: this.iso(), ...(correct === undefined ? {} : { correct }) } }, updatedAt: this.iso() };
+    }
+    const saved = work;
+    await this.commit((d) => { d.lessonWork = [...(d.lessonWork ?? []).filter((w) => w.lessonId !== id), saved]; });
+    return { plan: studentView(plan, saved), work: saved, now: this.iso() };
+  }
+
   async studentSettings(studentId: string) {
     this.assertStudentAccess(studentId);
     return (this.data.students ?? []).find((s) => s.studentId === studentId) ?? null;

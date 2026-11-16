@@ -20,6 +20,7 @@
 import { followUpFor, type AdaptHomework } from './adapt.ts';
 import { PUSH_HOSTS, sendPush, validEndpoint, type VapidKeys } from './webpush.ts';
 import { lessonBrief, streakOf, type BriefDay, type BriefHomework } from './brief.ts';
+import { checkBlock, cleanPlan, emptyWork, studentView, workId, type LessonPlan, type LessonWork } from './lesson.ts';
 
 export interface Db {
   query<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]>;
@@ -531,7 +532,7 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
     // may only log activity or submit homework); the teacher reads all and writes all.
     const isAdmin = user.role === 'admin';
     const isTeacher = user.role === 'teacher' || isAdmin; // the admin can do everything the teacher can
-    const KINDS = ['booking', 'homework', 'feedback', 'activity', 'invoice', 'config', 'credit', 'student'];
+    const KINDS = ['booking', 'homework', 'feedback', 'activity', 'invoice', 'config', 'credit', 'student', 'lesson', 'lessonwork'];
     const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const parseRow = (r: { data: unknown }) => (typeof r.data === 'string' ? JSON.parse(r.data) : r.data) as Record<string, unknown>;
     const studentExists = async (id: string) => UUID.test(id) && (await db.query("select 1 from public.lwd_users where id = $1 and role = 'student'", [id])).length > 0;
@@ -590,6 +591,11 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
       if (!isTeacher) { params.push(user.id); where += ` and student_id = $${params.length}`; }
       else if (sid) { params.push(sid); where += ` and student_id = $${params.length}`; }
       const rows = await db.query<{ data: unknown }>(`select data from public.lwd_platform where ${where} order by updated_at desc limit 2000`, params);
+      if (kind === 'lesson' && !isTeacher) {
+        // A student is given each plan only as far as it has been opened to them.
+        const works = (await db.query<{ data: unknown }>("select data from public.lwd_platform where kind = 'lessonwork' and student_id = $1", [user.id])).map((x) => parseRow(x) as unknown as LessonWork);
+        return { status: 200, json: { records: rows.map((x) => parseRow(x) as unknown as LessonPlan).map((plan) => studentView(plan, works.find((w) => w.lessonId === plan.id) ?? null)) } };
+      }
       return { status: 200, json: { records: rows.map(parseRow) } };
     }
 
@@ -602,6 +608,7 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
       if (!/^[A-Za-z0-9_-]{8,64}$/.test(id)) throw new HttpError(400, 'invalid', 'Bad record id.');
       if (!UUID.test(studentId)) throw new HttpError(400, 'invalid', 'Bad student id.');
       if (!b.data || typeof b.data !== 'object' || Array.isArray(b.data)) throw new HttpError(400, 'invalid', 'Missing record data.');
+      if (kind === 'lessonwork') throw new HttpError(403, 'forbidden', 'Answers are recorded by the lesson itself.');
       if (!isTeacher) {
         if (kind !== 'activity' || studentId !== user.id) throw new HttpError(403, 'forbidden', 'Only the teacher can do that.');
       } else if (kind === 'config') {
@@ -610,8 +617,9 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
       if (kind === 'student' && id !== `student-${studentId}`) throw new HttpError(400, 'invalid', 'A student has one settings row.'); // one row per student, so a stale ceiling can never shadow a newer one
       const before = await db.query<{ data: unknown }>('select data from public.lwd_platform where id = $1 and kind = $2', [id, kind]);
       const prev = before[0] ? parseRow(before[0]) : null;
-      const rec: Record<string, unknown> = { ...(b.data as Record<string, unknown>), id, studentId };
+      let rec: Record<string, unknown> = { ...(b.data as Record<string, unknown>), id, studentId };
       if (kind !== 'activity') rec.teacherId = user.id; // never trust the client's teacherId
+      if (kind === 'lesson') rec = { id, studentId, teacherId: user.id, ...cleanPlan(rec), createdAt: str(prev?.createdAt) || iso(now()), updatedAt: iso(now()) };
       if (kind === 'booking' && rec.status === 'scheduled') {
         const start = Date.parse(str(rec.startsAt));
         const dur = Number(rec.durationMin);
@@ -654,6 +662,9 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
           const number = clip(rec.number, 30) || 'Invoice';
           if (rec.status === 'sent' && (!prev || prev.status === 'draft')) msg = { title: `New invoice from ${from}`, body: `${number}. Open the app to see the amount and how to pay.`, url: '#/student/invoices', tag: `inv-${id}` };
           else if (rec.status === 'paid' && prev && prev.status !== 'paid') msg = { title: 'Payment received', body: `${from} has marked ${number} as paid. Thank you.`, url: '#/student/invoices', tag: `inv-${id}` };
+        } else if (kind === 'lesson') {
+          const was = (prev?.live as { on?: boolean } | undefined)?.on === true, is = (rec.live as { on?: boolean }).on === true;
+          if (is && !was) msg = { title: `${from} has opened your lesson`, body: `${clip(rec.title)}. Tap to join on this device.`, url: `#/student/room/${id}`, tag: `lesson-${id}` };
         } else if (kind === 'student') {
           const had = new Set(Array.isArray(prev?.unlocked) ? (prev!.unlocked as unknown[]) : []);
           const added = rec.stepped === true && Array.isArray(rec.unlocked) ? (rec.unlocked as unknown[]).filter((x) => !had.has(x)) : [];
@@ -689,6 +700,32 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
       }
       if (!isTeacher && cur.status !== 'submitted' && cur.status !== 'reviewed') await notify([str(cur.teacherId)], { title: `${user.first_name} handed in homework`, body: clip((cur.activity as Record<string, unknown> | undefined)?.title) || 'Open the app to review it.', url: '#/teach/homework', tag: `sub-${str(b.id)}` });
       return { status: 200, json: { record: next, followUp } };
+    }
+
+    // ── the lesson room ──
+    // One call does everything a device needs every couple of seconds: it returns the plan and the student's work.
+    // For the student it also says "I am here" and, when `blockId` is given, records an answer.
+    if (path === 'platform/lessons/sync' && method === 'POST') {
+      const b = await body(req);
+      const lid = str(b.id);
+      const rows = await db.query<{ data: unknown; student_id: string }>("select data, student_id from public.lwd_platform where id = $1 and kind = 'lesson'", [lid]);
+      const row = rows[0];
+      if (!row || (!isTeacher && row.student_id !== user.id)) throw new HttpError(404, 'not_found', 'Lesson not found.');
+      const plan = parseRow(row) as unknown as LessonPlan;
+      const wrows = await db.query<{ data: unknown }>("select data from public.lwd_platform where id = $1 and kind = 'lessonwork'", [workId(lid)]);
+      let work = wrows[0] ? (parseRow(wrows[0]) as unknown as LessonWork) : null;
+      if (isTeacher) return { status: 200, json: { plan, work, now: iso(now()) } };
+      work = { ...(work ?? emptyWork(lid, user.id, iso(now()))), seenAt: iso(now()) };
+      const blockId = str(b.blockId);
+      if (blockId) {
+        const block = plan.blocks.find((x) => x.id === blockId);
+        if (!block || !block.open) throw new HttpError(403, 'forbidden', 'That part of the lesson is not open yet.');
+        const value = str(b.value).slice(0, 2000);
+        const correct = checkBlock(block, value);
+        work = { ...work, answers: { ...work.answers, [blockId]: { value, at: iso(now()), ...(correct === undefined ? {} : { correct }) } }, updatedAt: iso(now()) };
+      }
+      await db.query("insert into public.lwd_platform (id, kind, teacher_id, student_id, data, updated_at) values ($1, 'lessonwork', $2, $3, $4::jsonb, $5) on conflict (id) do update set data = excluded.data, updated_at = excluded.updated_at where public.lwd_platform.kind = 'lessonwork' and public.lwd_platform.student_id = excluded.student_id", [work.id, plan.teacherId, user.id, JSON.stringify(work), iso(now())]);
+      return { status: 200, json: { plan: studentView(plan, work), work, now: iso(now()) } };
     }
 
     if (path === 'platform/writing' && method === 'POST') {
@@ -730,7 +767,8 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
     if (path === 'platform/records/delete' && method === 'POST') {
       const b = await body(req);
       if (!isTeacher) throw new HttpError(403, 'forbidden', 'Only the teacher can do that.');
-      await db.query("delete from public.lwd_platform where id = $1 and kind in ('homework', 'feedback', 'invoice', 'credit')", [str(b.id)]);
+      await db.query("delete from public.lwd_platform where id = $1 and kind in ('homework', 'feedback', 'invoice', 'credit', 'lesson')", [str(b.id)]);
+      await db.query("delete from public.lwd_platform where id = $1 and kind = 'lessonwork'", [workId(str(b.id))]);
       return { status: 204 };
     }
 

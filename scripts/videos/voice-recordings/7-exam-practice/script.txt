@@ -1,0 +1,14 @@
+Exam practice
+Record each line as its own file, named as shown (m4a, mp3 or wav), and save them in this folder.
+
+l0  ¡Hola! Dina and Toby here. Let us show you the exam practice.
+l1  Tap Más, down here.
+l2  Then tap Exam practice.
+l3  The tasks are like the DELE exam: reading, listening and writing, for your level.
+l4  Tap a reading task.
+l5  Read the text, answer every question, then tap Check my answers. The clock is the real exam time.
+l6  Each answer is explained, with where it was in the text.
+l7  Now a writing task.
+l8  Write your answer. The app counts your words against the exam limit.
+l9  When you finish, tap Send to Dina to mark. I will correct it on your own words.
+l10  Good luck with your practice! ¡Chau!

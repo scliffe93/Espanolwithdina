@@ -4,6 +4,7 @@ import { Invoices } from './Invoices';
 import { StudentProfile } from './StudentProfile';
 import { Students } from './Students';
 import { Today } from './Today';
+import { RoomList, TeacherRoom } from '../room/TeacherRoom';
 
 /**
  * Dina's teacher dashboard. Routes (see App.tsx):
@@ -12,6 +13,7 @@ import { Today } from './Today';
  *   teach/students       → both students at a glance
  *   teach/student/<id>   → one student's full profile (?tab=lessons|homework|feedback|activity)
  *   teach/homework       → all homework, awaiting review first
+ *   teach/room           → the lesson room: plans; teach/room/<id> → plan and present one lesson
  */
 export function TeacherApp({ page, id, params }: { page?: string; id?: string; params: URLSearchParams }) {
   switch (page) {
@@ -20,6 +22,7 @@ export function TeacherApp({ page, id, params }: { page?: string; id?: string; p
     case 'student': return id ? <StudentProfile key={id} id={id} params={params} /> : <Students key="students" />;
     case 'homework': return <HomeworkPage key="homework" params={params} />;
     case 'invoices': return <Invoices key="invoices" params={params} />;
+    case 'room': return id ? <TeacherRoom key={id} id={id} /> : <RoomList key="room" />;
     default: return <Today key="today" />;
   }
 }

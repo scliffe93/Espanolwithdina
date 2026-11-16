@@ -102,5 +102,12 @@ async function shot(p, name, opts = {}) { await clean(p); await p.waitForTimeout
   const brief = p.getByTestId('lesson-brief').first(); await brief.locator('button').first().click().catch(() => {}); await p.waitForTimeout(400); await el('t-brief', brief);
   await p.goto(BASE + '#/teach/student/demo-sam'); await p.waitForTimeout(1800);
   const sug = p.getByTestId('level-suggestion'); await sug.getByRole('button', { name: /See the evidence/ }).click().catch(() => {}); await p.waitForTimeout(400); await el('t-levelup', sug);
+  // The lesson room.
+  await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1500);
+  await p.getByTestId('room-student').selectOption({ label: 'Sam' }); await p.getByTestId('room-draft').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(800);
+  await shot(p, 't-room-plan');
+  await p.getByTestId('to-present').click(); await p.getByTestId('start-lesson').click(); await p.getByTestId('show-to-student').click().catch(() => {}); await p.waitForTimeout(6500);
+  await shot(p, 't-room-present');
+  await p.getByTestId('end-lesson').click(); await p.waitForTimeout(800);
   await b.close();
 })().catch((e) => { console.error(e); process.exit(1); });

@@ -1,6 +1,7 @@
 import { NotificationsCard } from '../../components/NotificationsCard';
 import { FocusAreas } from '../../components/FocusAreas';
 import { MovingUp } from '../../components/MovingUp';
+import { RoomCard } from '../room/StudentRoom';
 import { focusAreas, lessonPrep } from '../../lib/focus';
 import { currentStreak } from '../../lib/analytics';
 import { DailyReminder } from '../../components/DailyReminder';
@@ -261,6 +262,7 @@ export function Home() {
     <div data-testid="student-home">
       <PageHeader eyebrow="Mis clases · My lessons & homework" title={`Hola, ${name}`} subtitle="Your lessons with Dina, your homework and her feedback — all in one place." right={<span className="flex items-center gap-2">{state.settings.streaksEnabled && <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-white px-3 py-1.5 text-sm ring-1 ring-ink/10" title="Days in a row with practice" data-testid="streak"><Icon name="flame" size={16} className={currentStreak(state) ? 'text-terracotta' : 'text-ink-mute'} /><b>{currentStreak(state)}</b><span className="text-ink-mute">day streak</span></span>}<DemoChip /></span>} />
       <StudentNav page="home" />
+      <RoomCard />
       <NotificationsCard compact />
       <DailyReminder compact />
       {error && <ErrorCard error={error} retry={reload} />}
