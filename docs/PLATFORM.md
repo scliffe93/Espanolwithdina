@@ -194,3 +194,11 @@ Nothing in this prototype costs anything to run (static site + browser storage).
 
 Tests: `tests/levels.test.ts`, `scripts/levels-e2e.cjs`.
 
+## Exam practice, writing the teacher marks, and the weekly recap
+
+- **Exam practice (`#/dele`).** Twelve tasks written in the style of the DELE, three per level from A1 to B2: a text with three-option questions, a recording heard at most twice (read by the device's Spanish voice, script hidden until the answers are checked) and a writing task with the exam's word range. Each runs against the real exam's clock, is scored against its 60% pass mark and explains every answer by pointing at the text. A student sees the papers of their level and below; the teacher sees them all. These are our own tasks, not official or past papers, and the page says so. Speaking is left to lessons. Content: `src/data/dele.ts` (checked by `tests/dele.test.ts`).
+- **Writing the teacher marks.** Written homework with a word target, and marking with corrections laid over the student's own words, already existed. Two things are new: the exam writing tasks can be set as homework from the assign form ("Exam practice: A2 writing"), and a student who writes one on their own can press "Send to Dina to mark". It arrives in her homework list as handed-in work (server route `platform/writing`, at most five a day) and her marking comes back to the student like any other.
+- **Weekly recap (`#/recap`, "My week" in the menu).** As well as the week's numbers it now says what got better against last week in sentences, what slipped, and what to take to the next lesson (the top three areas from "What to concentrate on"), with progress toward the next level. With a daily reminder on, Sunday's reminder is the recap notice.
+
+Browser test: `scripts/dele-e2e.cjs`.
+

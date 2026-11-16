@@ -45,7 +45,7 @@ export const wordCount = (t: string) => (t.trim() ? t.trim().split(/\s+/).length
 const ACCENTS = ['á', 'é', 'í', 'ó', 'ú', 'ñ', 'ü', '¿', '¡'];
 
 /** Toolbar that inserts Spanish characters at the caret of a textarea. */
-function AccentBar({ target, value, onChange, disabled }: { target: React.RefObject<HTMLTextAreaElement>; value: string; onChange: (v: string) => void; disabled?: boolean }) {
+export function AccentBar({ target, value, onChange, disabled }: { target: React.RefObject<HTMLTextAreaElement>; value: string; onChange: (v: string) => void; disabled?: boolean }) {
   const insert = (ch: string) => {
     const el = target.current;
     const s = el?.selectionStart ?? value.length;

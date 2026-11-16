@@ -1,3 +1,4 @@
+import { DEMO_TEACHER_ID } from './types';
 import type { AppState } from '../../types';
 import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, Marking, PlatformData, Person, StudentSettings, TeacherConfig } from './types';
 import { settingsId } from './level';
@@ -36,6 +37,8 @@ export interface PlatformBackend {
   updateHomework(id: string, patch: { instructions?: string; dueAt?: string; activity?: HomeworkActivity }): Promise<Homework>;
   deleteHomework(id: string): Promise<void>;
   submitHomework(id: string, result: HomeworkResult): Promise<Homework>;
+  /** A student sends the teacher a piece of writing done on their own (exam practice). It arrives as handed-in written homework. */
+  sendWriting(input: { title: string; prompt: string; text: string; minWords?: number }): Promise<Homework>;
   /** Teacher: feedback plus, optionally, the marking (mark, per-answer notes, corrections). Marks the homework reviewed. */
   reviewHomework(id: string, feedback: string, marking?: Omit<Marking, 'at'>): Promise<Homework>;
   feedback(studentId?: string): Promise<Feedback[]>;
@@ -233,6 +236,17 @@ export class DemoBackend implements PlatformBackend {
     if (followUp) await this.logActivity('homework', `${followUp.plan?.adaptive === 'retry' ? 'Re-try added' : 'Stretch task added'}: ${followUp.activity.title}`, next.studentId);
     await this.logActivity('homework', `Homework completed: ${next.activity.title}${result.summary ? ` — ${result.summary}` : ''}`, next.studentId);
     return next;
+  }
+
+  async sendWriting(input: { title: string; prompt: string; text: string; minWords?: number }) {
+    if (this.isTeacher()) throw new PlatformError('forbidden', 'Only a student can send writing in.');
+    const text = input.text.trim();
+    if (text.split(/\s+/).filter(Boolean).length < 5) throw new PlatformError('invalid', 'Write a little more before sending it.');
+    const teacherId = this.data.homework.find((h) => h.studentId === this.actor.id)?.teacherId ?? this.data.bookings.find((b) => b.studentId === this.actor.id)?.teacherId ?? DEMO_TEACHER_ID;
+    const h = { id: `self-${uid()}`, studentId: this.actor.id, teacherId, activity: { kind: 'written', title: input.title, prompt: input.prompt, ...(input.minWords ? { minWords: input.minWords } : {}) }, instructions: '', assignedAt: this.iso(), dueAt: this.iso(), status: 'submitted', selfSet: true, result: { completedAt: this.iso(), text, summary: `${text.split(/\s+/).filter(Boolean).length} words` } } as Homework;
+    await this.commit((d) => { d.homework.push(h); });
+    await this.logActivity('homework', `Sent writing to mark: ${h.activity.title}`, this.actor.id);
+    return h;
   }
 
   async reviewHomework(id: string, feedback: string, marking?: Omit<Marking, 'at'>) {

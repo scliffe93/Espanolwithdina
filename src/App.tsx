@@ -8,6 +8,7 @@ import { SyncBadge } from './components/SyncBadge';
 import { WelcomeBack } from './components/WelcomeBack';
 import { Account } from './screens/Account';
 import { Journey } from './screens/Journey';
+import { Dele } from './screens/Dele';
 import { resumeLabel } from './lib/resume';
 import { usePlatform } from './lib/platform/context';
 import { Demo } from './screens/Demo';
@@ -53,6 +54,7 @@ const TEACHER_NAV: NavItem[] = [
   { name: 'teach', sub: 'students', label: 'Students', es: 'Alumnos', icon: 'user', mobile: true },
   { name: 'teach', sub: 'homework', label: 'Homework', es: 'Deberes', icon: 'book', mobile: true },
   { name: 'teach', sub: 'invoices', label: 'Invoices', es: 'Facturas', icon: 'mail' },
+  { name: 'dele', label: 'Exam practice', es: 'Examen', icon: 'edit' },
   { name: 'demo', label: 'Switch person', es: 'Cambiar', icon: 'refresh', mobile: true },
   { name: 'account', label: 'Account', es: 'Cuenta', icon: 'settings', mobile: true },
   { name: 'guide', label: 'How to use', es: 'Guía', icon: 'book' },
@@ -63,6 +65,8 @@ const NAV: NavItem[] = [
   { name: 'verbs', label: 'Verbs', es: 'Verbos', icon: 'dumbbell', mobile: true },
   { name: 'review', label: 'Memory', es: 'Memoria', icon: 'brain', mobile: true },
   { name: 'journey', label: 'My journey', es: 'Mi camino', icon: 'star', mobile: true },
+  { name: 'dele', label: 'Exam practice', es: 'Examen', icon: 'edit' },
+  { name: 'recap', label: 'My week', es: 'Mi semana', icon: 'calendar' },
   { name: 'progress', label: 'Statistics', es: 'Progreso', icon: 'chart' },
   { name: 'teacher', label: 'Teacher', es: 'Profe', icon: 'mail' },
   { name: 'settings', label: 'Me', es: 'Tú', icon: 'user', mobile: true },
@@ -200,7 +204,7 @@ export default function App() {
   // Route guards
   useEffect(() => {
     if (!ready) return;
-    const pre: RouteName[] = ['home', 'guide', 'admin', 'welcome', 'onboarding', 'level', 'assessment', 'dna', 'privacy', 'account', 'settings', 'demo', 'teach', 'student', 'homework', 'pitch'];
+    const pre: RouteName[] = ['home', 'guide', 'admin', 'welcome', 'onboarding', 'level', 'assessment', 'dna', 'privacy', 'account', 'settings', 'dele', 'recap', 'demo', 'teach', 'student', 'homework', 'pitch'];
     if (!state.onboardingDone && !pre.includes(route.name)) navigate('welcome');
     if (state.onboardingDone && ['welcome', 'onboarding', 'level', 'dna'].includes(route.name)) navigate('world');
   }, [ready, state.onboardingDone, route.name]);
@@ -233,6 +237,9 @@ export default function App() {
       case 'home': screen = <Demo />; break;
       case 'guide': screen = <Guide />; break;
       case 'pitch': screen = <PitchScreen params={route.params} />; break;
+      // Exam practice and the weekly recap work for a student who has not set up the storyline.
+      case 'dele': return <><Toasts /><WelcomeBack /><Shell route={route.name} routeId={route.id}><ErrorBoundary resetKey={route.id ?? 'dele'}><Dele key={route.id ?? 'home'} id={route.id} /></ErrorBoundary></Shell></>;
+      case 'recap': return <><Toasts /><WelcomeBack /><Shell route={route.name} routeId={route.id}><ErrorBoundary resetKey="recap"><Recap /></ErrorBoundary></Shell></>;
       case 'admin': case 'teach': case 'student': case 'homework':
         // The platform can be used before onboarding (Dina and the admin have no learner profile of their own).
         return <><Toasts /><WelcomeBack /><Shell route={route.name} routeId={route.id}>{route.name === 'admin' ? <Admin /> : <PlatformScreen route={route.name} id={route.id} params={route.params} />}</Shell></>;
@@ -262,6 +269,7 @@ export default function App() {
     case 'teach': case 'student': case 'homework': screen = <PlatformScreen route={route.name} id={route.id} params={route.params} />; break;
     case 'account': screen = <Account />; break;
     case 'journey': screen = <Journey />; break;
+    case 'dele': screen = <Dele key={route.id ?? 'home'} id={route.id} />; break;
     case 'game':
       screen = route.id === 'order' ? <OrderUp key="order" /> : route.id === 'swipe' ? <SwipeCheck key="swipe" /> : route.id === 'serestar' ? <SerEstarDrop key="serestar" /> : route.id === 'penalty' ? <Penalty key="penalty" /> : route.id === 'derbi' ? <Derbi key="derbi" /> : route.id === 'lineup' ? <LineUp key="lineup" /> : route.id === 'pairs' ? <Pairs key="pairs" /> : route.id === 'type' ? <QuickKeys key="type" /> : route.id === 'say' ? <SayIt key="say" /> : route.id === 'porpara' ? <GrammarDash key="porpara" id="porpara" mode="por-para" /> : route.id === 'pasado' ? <GrammarDash key="pasado" id="pasado" mode="pret-imp" /> : route.id === 'subjuntivo' ? <GrammarDash key="subjuntivo" id="subjuntivo" mode="subjunctive" /> : route.id === 'si' ? <GrammarDash key="si" id="si" mode="conditional" /> : <MetroRush key="metro" />;
       break;

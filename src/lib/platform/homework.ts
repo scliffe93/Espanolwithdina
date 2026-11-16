@@ -3,6 +3,7 @@ import { SCENE_BY_ID } from '../../data/story';
 import { VERB_BY_INF } from '../../data/verbs';
 import { GRAMMAR_MODES, GRAMMAR_MODE_BY_ID } from '../../data/grammar';
 import { PACK_BY_ID, VOCAB_PACKS } from '../../data/vocabPacks';
+import { DELE_TASKS } from '../../data/dele';
 import { useRoute, navigate } from '../router';
 import { usePlatform } from './context';
 import type { ActivityType, Homework, HomeworkActivity, HomeworkKind, HomeworkResult } from './types';
@@ -69,6 +70,8 @@ export const HOMEWORK_TEMPLATES: { kind: HomeworkKind; label: string; build: (p:
   { kind: 'story', label: 'Storyline chapter', build: (p) => ({ kind: 'story', title: p.title ?? (p.sceneId && SCENE_BY_ID[p.sceneId] ? `${SCENE_BY_ID[p.sceneId].titleEs} chapter` : 'Story chapter'), sceneId: p.sceneId }) },
   { kind: 'speaking', label: 'Speaking challenge', build: (p) => ({ kind: 'speaking', title: p.title ?? 'Speaking challenge', prompt: p.prompt ?? 'Preséntate en español: quién eres, de dónde eres y qué te gusta hacer.' }) },
   { kind: 'written', label: 'Written homework', build: (p) => ({ kind: 'written', title: p.title ?? 'Written homework', prompt: p.prompt ?? 'Escribe 6 frases sobre tu día de hoy.', minWords: 40 }) },
+  // Exam-style writing tasks, set as written homework so the teacher marks them with corrections on the student's words.
+  ...DELE_TASKS.filter((t) => t.part === 'writing').map((t) => ({ kind: 'written' as const, label: `Exam practice: ${t.level} writing (${t.writing!.minWords} to ${t.writing!.maxWords} words)`, build: (p: { title?: string; prompt?: string }) => ({ kind: 'written' as const, title: p.title ?? `Exam practice ${t.level} · ${t.title}`, prompt: p.prompt ?? `${t.instructions} ${t.writing!.points.join(' ')} (${t.writing!.minWords}–${t.writing!.maxWords} palabras)`, minWords: t.writing!.minWords }) })),
   { kind: 'material', label: 'From a document or text (your own material)', build: (p) => ({ kind: 'material', title: p.title ?? 'Exercises from your material' }) },
 ];
 

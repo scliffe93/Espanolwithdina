@@ -144,6 +144,8 @@ export interface Homework {
   feedback?: { body: string; at: string };
   /** The teacher's marking (score or grade, per-answer notes, corrections). */
   marking?: Marking;
+  /** The student sent this in on their own (exam practice writing); the teacher did not set it. */
+  selfSet?: boolean;
   /** Set when the item belongs to a generated weekly plan; `adaptive` marks items the app added from results. */
   plan?: { week: string; goal?: string; day?: number; adaptive?: 'retry' | 'stretch'; sourceId?: string };
 }

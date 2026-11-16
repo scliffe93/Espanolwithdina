@@ -170,6 +170,13 @@ class CloudBackend implements PlatformBackend {
     return r.record;
   }
 
+  async sendWriting(input: { title: string; prompt: string; text: string; minWords?: number }) {
+    const r = await this.wrap(() => platformApi.sendWriting<Homework>(this.token, input));
+    this.cache.clear();
+    await this.logActivity('homework', `Sent writing to mark: ${r.record.activity.title}`, r.record.studentId);
+    return r.record;
+  }
+
   async reviewHomework(id: string, feedback: string, marking?: Omit<Marking, 'at'>) {
     this.assertTeacher();
     const cur = (await this.records<Homework>('homework')).find((h) => h.id === id);
