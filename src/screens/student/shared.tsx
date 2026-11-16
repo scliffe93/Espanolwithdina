@@ -226,7 +226,7 @@ export function LessonDetails({ b, dark, hideDate }: { b: Booking; dark?: boolea
       </Row>
       <Row icon={b.format === 'online' ? 'video' : 'pin'} label={b.format === 'online' ? 'Online lesson' : 'Face to face'} mute={mute}>
         {b.location.trim() ? (
-          link ? <a href={b.location.trim()} target="_blank" rel="noopener noreferrer" className="break-all underline decoration-1 underline-offset-2">{b.location.trim()}</a> : b.location
+          link ? <a href={b.location.trim()} target="_blank" rel="noopener noreferrer" className="-my-2 inline-block break-all py-2 underline decoration-1 underline-offset-2">{b.location.trim()}</a> : b.location
         ) : <span className={mute}>{b.format === 'online' ? 'Link to be confirmed' : 'Place to be confirmed'}</span>}
       </Row>
       <Row icon="book" label="Topic" mute={mute}>{b.topic}</Row>

@@ -53,7 +53,7 @@ export function Invoices({ params }: { params: URLSearchParams }) {
             <Stat label="Paid this month" value={money(summary.paidThisMonth, cfg!.currency)} sub="by payment date" />
             <Stat label="Invoiced this month" value={money(summary.invoicedThisMonth, cfg!.currency)} sub={`${summary.count.draft} draft${summary.count.draft === 1 ? '' : 's'} not yet sent`} />
           </div>
-          {!cfg!.paymentInstructions && <div className="mb-4 rounded-2xl bg-saffron-50 p-4 text-sm"><b>Add how students should pay</b> (bank details or a payment link) under <button type="button" className="font-semibold underline" onClick={() => setSettings(true)}>Rates &amp; payment details</button>. It prints on every invoice.</div>}
+          {!cfg!.paymentInstructions && <div className="mb-4 rounded-2xl bg-saffron-50 p-4 text-sm"><b>Add how students should pay</b> (bank details or a payment link) under <button type="button" className="-my-2 inline-block py-2 font-semibold underline" onClick={() => setSettings(true)}>Rates &amp; payment details</button>. It prints on every invoice.</div>}
           <Section title="All invoices" eyebrow={`${list.length} total`} right={<div className="overflow-x-auto"><Segmented label="Filter" value={filter} onChange={setFilter} options={FILTERS} /></div>}>
             {shown.length === 0 ? <p className="text-sm text-ink-mute">{list.length ? 'Nothing in this view.' : 'No invoices yet. Tap New invoice: it offers the lessons you have taught that are not billed yet.'}</p> : (
               <ul className="grid grid-cols-1 gap-2" data-testid="invoice-list">

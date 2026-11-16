@@ -6,7 +6,11 @@ l1  Tap Feedback.
 l2  My comments from your lessons are here.
 l3  Corrections are the slips to watch out for.
 l4  Recommendations tell you what to practise next.
-l5  Now tap Mi camino to see your progress.
-l6  Your level, your study time, and everything you have learned so far.
-l7  Trends show your minutes, accuracy and words, over eight weeks.
-l8  Every bit of practice counts. You are doing great! ¡Chau!
+l5  Now tap Más, for everything else.
+l6  Tap My journey to see your progress.
+l7  Your level, your study time, and everything you have learned so far.
+l8  Tap a trend to see it week by week.
+l9  What to concentrate on tells you what you find hard, why, and how to fix it.
+l10  It shows your own answers, and what to take to your lesson.
+l11  Your level shows how close you are to moving up. I decide when you are ready.
+l12  Every bit of practice counts. You are doing great! ¡Chau!

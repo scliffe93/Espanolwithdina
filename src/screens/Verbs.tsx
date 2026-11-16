@@ -760,7 +760,7 @@ export function Verbs({ params }: { params: URLSearchParams }) {
                   <span className="block truncate text-xs text-ink-mute">{v.en.split(' (')[0]}</span>
                 </span>
               </button>
-              <button className="rounded-full p-1.5 text-ink-mute hover:bg-cream-100" aria-pressed={inFocus} aria-label={inFocus ? `Remove ${v.inf} from focus` : `Add ${v.inf} to focus`} onClick={() => setFocus(inFocus ? focus.filter((x) => x !== v.inf) : [...focus, v.inf])}>
+              <button className="-m-1 rounded-full p-2.5 text-ink-mute hover:bg-cream-100" aria-pressed={inFocus} aria-label={inFocus ? `Remove ${v.inf} from focus` : `Add ${v.inf} to focus`} onClick={() => setFocus(inFocus ? focus.filter((x) => x !== v.inf) : [...focus, v.inf])}>
                 <Icon name={inFocus ? 'check' : 'sparkle'} size={16} />
               </button>
             </div>

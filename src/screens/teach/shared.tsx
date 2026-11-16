@@ -264,7 +264,7 @@ export function LessonCard({ b, people, zone, onEdit, actions, compact }: { b: B
           {b.tz !== zone && <p className="text-xs text-ink-mute">Scheduled as {fmtTime(b.startsAt, b.tz)} · {zoneLabel(b.tz)}</p>}
           {!compact && b.location && (
             <p className="mt-1 truncate text-sm text-ink-soft">
-              {link ? <a className="text-azul underline-offset-2 hover:underline" href={b.location} target="_blank" rel="noreferrer">{b.location}</a> : b.location}
+              {link ? <a className="-my-2 inline-block break-all py-2 text-azul underline-offset-2 hover:underline" href={b.location} target="_blank" rel="noreferrer">{b.location}</a> : b.location}
             </p>
           )}
           {!compact && b.prepNotes && <p className="mt-1 rounded-xl bg-cream-100 px-3 py-2 text-sm text-ink-soft"><span className="eyebrow mr-1.5 !text-[10px]">Prep</span>{b.prepNotes}</p>}

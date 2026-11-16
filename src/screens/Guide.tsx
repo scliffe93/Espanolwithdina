@@ -34,6 +34,7 @@ const VIDEOS: { file: string; title: string; about: string; seconds: number }[] 
   { file: '4-practise-on-your-own', title: 'Practise on your own', about: 'Verbs, word packs and games.', seconds: 65 },
   { file: '5-feedback-and-progress', title: 'Feedback and progress', about: 'What Dina said and how far you have come.', seconds: 56 },
   { file: '6-invoices', title: 'Invoices', about: 'What is due and how to say you have paid.', seconds: 61 },
+  { file: '7-exam-practice', title: 'Exam practice', about: 'Reading, listening and writing, like the real exam.', seconds: 60 },
 ];
 
 function VideoGuides() {
@@ -42,7 +43,7 @@ function VideoGuides() {
     <section className="card mb-4 p-5" data-testid="guide-videos">
       <p className="eyebrow">Vídeos · Watch how</p>
       <h2 className="mt-1 font-display text-2xl font-semibold">Dina and Toby show you</h2>
-      <p className="mt-1 text-sm text-ink-soft">Six short videos, about a minute each, with sound. Dina talks you through each step and Toby barks at the thing to look at. Watch here or download one to keep or send on.</p>
+      <p className="mt-1 text-sm text-ink-soft">Seven short videos, about a minute each, with sound. Dina talks you through each step and Toby barks at the thing to look at. Watch here or download one to keep or send on.</p>
       <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
         {VIDEOS.map((v, i) => (
           <li key={v.file} className="flex min-w-0 flex-col overflow-hidden rounded-2xl bg-cream-100">

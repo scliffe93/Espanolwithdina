@@ -114,7 +114,7 @@ export function Today() {
                 {todays.map((b, i) => <div key={b.id}><LessonCard b={b} people={people} zone={zone} onEdit={(x) => setBooking({ open: true, edit: x })} actions={lessonActions(b)} />{briefFor(b, i === todays.findIndex((x) => x.status === 'scheduled' && Date.parse(x.startsAt) + x.durationMin * 60_000 > Date.now()))}</div>)}
               </div>
             ) : (
-              <p className="text-sm text-ink-mute">No lessons today. <button type="button" className="font-semibold text-terracotta underline-offset-2 hover:underline" onClick={() => setBooking({ open: true })}>Book one</button> or enjoy the quiet.</p>
+              <p className="text-sm text-ink-mute">No lessons today. <button type="button" className="-my-2 inline-block py-2 font-semibold text-terracotta underline-offset-2 hover:underline" onClick={() => setBooking({ open: true })}>Book one</button> or enjoy the quiet.</p>
             )}
           </Section>
 

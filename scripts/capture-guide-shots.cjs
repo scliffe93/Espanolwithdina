@@ -82,5 +82,25 @@ async function shot(p, name, opts = {}) { await clean(p); await p.waitForTimeout
   await p.goto(BASE + '#/student/feedback'); await p.waitForTimeout(1500);
   await p.locator('li', { hasText: 'Written: present yourself' }).first().getByRole('button', { name: 'See the marking' }).click(); await p.waitForTimeout(1500);
   await shot(p, 's-marked', { fullPage: true });
+  // The newer features. Element shots where a whole page would be too much.
+  const el = async (name, loc) => { await clean(p); await loc.scrollIntoViewIfNeeded().catch(() => {}); await p.waitForTimeout(400); await loc.screenshot({ path: `${OUT}/${name}.png` }).then(() => console.log('•', name)).catch((e) => console.log('✗', name, String(e).split('\n')[0])); };
+  await p.goto(BASE + '#/verbs'); await p.waitForTimeout(1200); await p.getByTestId('open-grid').click(); await p.waitForTimeout(900); await shot(p, 's-grid');
+  await p.goto(BASE + '#/world'); await p.waitForTimeout(300); await p.goto(BASE + '#/games'); await p.waitForTimeout(1500); await shot(p, 's-arcade');
+  await p.goto(BASE + '#/dele'); await p.waitForTimeout(1500); await shot(p, 's-dele');
+  await p.locator('[data-testid*="-writing-"]').first().click(); await p.waitForTimeout(1200); await p.getByTestId('dele-text').fill('Hola Pablo: estoy muy contento por tu visita. En mayo hace sol y no hace frío.'); await shot(p, 's-dele-writing');
+  await p.goto(BASE + '#/student'); await p.waitForTimeout(1800);
+  await p.getByTestId('focus-areas').locator('button[aria-expanded]').first().click().catch(() => {}); await p.waitForTimeout(500);
+  await el('s-concentrate', p.locator('section', { has: p.getByTestId('focus-areas') }).first());
+  await el('s-movingup', p.getByTestId('moving-up'));
+  await p.goto(BASE + '#/recap'); await p.waitForTimeout(1500); await shot(p, 's-recap', { fullPage: true });
+  await p.goto(BASE + '#/journey'); await p.waitForTimeout(1500); await p.getByTestId('trend-accuracy').click(); await p.waitForTimeout(700); await shot(p, 's-trend');
+  await p.keyboard.press('Escape');
+  await p.goto(BASE + '#/settings'); await p.waitForTimeout(1500); await el('s-troubleshooting', p.locator('section', { has: p.getByTestId('troubleshooting') }).first());
+  // Dina: the brief before a lesson and the move-up suggestion.
+  await p.goto(BASE + '#/demo'); await p.waitForTimeout(800); await p.getByTestId('demo-dina').click(); await p.waitForTimeout(1800);
+  await p.goto(BASE + '#/teach'); await p.waitForTimeout(1800);
+  const brief = p.getByTestId('lesson-brief').first(); await brief.locator('button').first().click().catch(() => {}); await p.waitForTimeout(400); await el('t-brief', brief);
+  await p.goto(BASE + '#/teach/student/demo-sam'); await p.waitForTimeout(1800);
+  const sug = p.getByTestId('level-suggestion'); await sug.getByRole('button', { name: /See the evidence/ }).click().catch(() => {}); await p.waitForTimeout(400); await el('t-levelup', sug);
   await b.close();
 })().catch((e) => { console.error(e); process.exit(1); });

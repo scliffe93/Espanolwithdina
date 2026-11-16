@@ -36,13 +36,13 @@ export function Bar({ value, color = 'bg-terracotta', className = '' }: { value:
 
 export function PageHeader({ eyebrow, title, subtitle, right }: { eyebrow?: string; title: ReactNode; subtitle?: ReactNode; right?: ReactNode }) {
   return (
-    <header className="mb-6 flex items-end justify-between gap-4">
-      <div>
+    <header className="mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+      <div className="min-w-0 flex-1 basis-56">
         {eyebrow && <p className="eyebrow mb-1.5">{eyebrow}</p>}
         <h1 className="text-[32px] leading-[1.05] font-semibold sm:text-[40px] text-balance">{title}</h1>
         {subtitle && <p className="mt-2 max-w-xl text-ink-soft">{subtitle}</p>}
       </div>
-      {right}
+      {right && <div className="flex max-w-full flex-wrap items-center gap-2">{right}</div>}
     </header>
   );
 }

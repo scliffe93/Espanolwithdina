@@ -162,6 +162,17 @@ const teacherSections = [
     <p>Sell lessons in blocks and let the app count them. In <b>Rates &amp; payment details → Lesson packages</b> define each package: name, number of lessons, minutes per lesson, price, and how many months it stays valid.</p>
     <ol class="steps"><li><b>Sell a package</b> (Invoices page, or the Lessons tab of a student’s profile): choose the student and the package, the purchase date, and tick “already paid” if the money is in. The invoice is created for you.</li><li>From the purchase date, every lesson you teach that student uses one credit. Lessons you bill one by one are never counted.</li><li>The balance (“3 of 10 left · 2 booked”) shows on the Students page, on the profile and on the student’s own home page. When it is down to one lesson, Today flags it so you can offer the next package.</li></ol>
     ${figure('t-balance', 'h3', 'A student’s balance on the Lessons tab, with the packages bought and lessons used.')}`],
+  ['Before each lesson: the brief', `
+    <p>Every scheduled lesson on <b>Today</b> has <b>Before this lesson</b>: what the student did since their last lesson, in a form you can read in a minute. The same brief is on the student’s profile, and it is sent to your phone 24 hours before the lesson if you have notifications on.</p>
+    ${figure('t-brief', 'h3', 'The brief: days practised, minutes and accuracy, what keeps going wrong, homework, and what to do in the lesson.')}
+    <ul class="ticks"><li>It covers the time since the student’s previous lesson, not a fixed week.</li><li>“Keeps going wrong” shows the forms they actually missed.</li><li>Students see their own version of this (“What to concentrate on”), so they arrive knowing what to ask.</li></ul>`],
+  ['Moving a student up a level', `
+    <p>The app weighs five signs at the student’s level: the level’s tenses are secure, enough verbs known well, enough words remembered, 80% right over four weeks, and regular practice. When all five are in place it suggests a move up. <b>Nothing changes until you confirm.</b></p>
+    ${figure('t-levelup', 'h3', 'On the student’s profile: how close they are, the evidence, and the buttons.')}
+    <ul class="ticks"><li><b>Move up</b> raises their level: the next level’s games, tenses and exam papers open, and they are told you moved them up.</li><li><b>Not yet</b> silences the suggestion for three weeks.</li><li>You can move someone up before the app suggests it: open the evidence and use “Move up anyway”.</li><li><b>Ready to move up</b> on Today lists everyone the app thinks is ready.</li></ul>`],
+  ['Exam practice and writing sent in', `
+    <p>Students have <b>Exam practice</b> in the style of the DELE for their level. You can open every level from your own menu to see the tasks.</p>
+    <ul class="ticks"><li>To set a writing task, use <b>Assign homework</b> and choose “Exam practice: A2 writing” (or another level). It arrives as written homework with the word target.</li><li>A student can also send you exam writing they did on their own. It appears under <b>Homework awaiting review</b> like any handed-in work.</li><li>Mark it as usual: select their words, type the correction, add a mark and feedback. They see your corrections laid over their own text.</li><li>Reading and listening score themselves; the results appear in the student’s activity.</li></ul>`],
   ['Housekeeping and tips', `
     <div class="cards">
       <div class="card"><h4>Change your password</h4><p>Account → change password. Also where you log out or switch to another account on a shared device.</p></div>
@@ -205,7 +216,7 @@ const studentSections = [
       <div class="card"><h4>My city</h4><p>Live your city in Spanish, chapter by chapter. Speak your replies out loud.</p></div>
       <div class="card"><h4>Verbs</h4><p>Type the forms. Use <i>Help me remember</i> when one will not stick: it joins your memory deck.</p></div>
       <div class="card"><h4>Memory</h4><p>Spaced repetition brings back exactly the words and verbs you are about to forget.</p></div>
-      <div class="card"><h4>Arcade</h4><p>Seven games built on your verbs, listening and vocabulary, including the football games for your city.</p></div>
+      <div class="card"><h4>Arcade</h4><p>Quick games on your verbs, words, listening and grammar, picked from what you enjoy. New games open as you move up a level.</p></div>
     </div>
     ${figure('s-world', 'h3', 'My city: your storyline, practice and games for the city you chose.')}`],
   ['The arcade and the football games', `
@@ -216,9 +227,32 @@ const studentSections = [
     <div class="two"><div>${figure('s-verbs', '', 'Verb gym: choose a tense and the verbs to drill.')}</div><div>${figure('s-review', '', 'Memory review: the cards due today.')}</div></div>
     <ul class="ticks"><li>Accents matter: type them. On a phone, hold the letter; on a computer use the keys shown.</li><li>Add a personal association to a card you keep forgetting; the app tracks which memory techniques work for you.</li></ul>`],
   ['Grammar drills, tenses and word packs', `
-    <p>In the verb gym you can drill ten tenses and five grammar points: ser vs estar, por vs para, preterite vs imperfect, subjunctive or not, and if-sentences. Each has the level it is recommended from.</p>
+    <p>In the verb gym you can drill sixteen verb forms and five grammar points: ser vs estar, por vs para, preterite vs imperfect, subjunctive or not, and if-sentences. Each has the level it is recommended from.</p>
     ${figure('s-packs-section', 'h3', 'Word packs on the Memory page: ten words on one theme, from A1 to C2. Learn a pack now, or add it to your deck for the reviews.')}
     <ul class="ticks"><li>If Dina has set a level for you, tenses, drills and packs above it are locked until she raises it; anything she assigns still opens.</li></ul>`],
+  ['The grid drill, and saying your answers', `
+    <p>In the verb gym, <b>Grid drill</b> puts several verbs side by side, one row for each person. Each verb shows its meaning and a label: <b>Regular</b>, <b>Stem change</b> or <b>Irregular</b>. Seeing them together is how the patterns start to stand out.</p>
+    ${figure('s-grid', 'h2', 'The grid drill: the forms you are unsure of are blank, the rest are filled in.')}
+    <ul class="ticks"><li><b>My weak spots</b> blanks only the forms you have not mastered. <b>Everything</b> blanks the whole table.</li><li>Fill them all in, then tap <b>Check the table</b>. The right form appears under each miss, and <b>Try the ones I missed</b> brings back just those.</li><li>In a normal session, typed questions have a <b>microphone</b>: tap it and say the form. You can say the pronoun too.</li></ul>`],
+  ['Exam practice', `
+    <p><b>Exam practice</b> (under <b>Más</b> on a phone) has tasks in the style of the DELE, the official Spanish diploma: reading, listening and writing for your level and the ones below it.</p>
+    ${figure('s-dele', 'h3', 'Three tasks for each level, with the real exam’s timings underneath.')}
+    <ul class="ticks"><li><b>Reading</b> and <b>listening</b> are scored against the exam’s 60% pass mark, and every answer is explained by pointing at the text.</li><li>As in the exam, a recording can be played <b>twice</b>.</li><li><b>Writing</b> counts your words against the exam’s limit. When you finish, tap <b>Send to Dina to mark</b>: it appears in your homework, and her corrections come back on your own words.</li></ul>
+    ${figure('s-dele-writing', 'h3', 'A writing task: what to include, the word range, and your answer.')}
+    <div class="note">These are practice tasks written for this app, not official papers. Speaking is practised in your lessons.</div>`],
+  ['What to concentrate on, your level and your week', `
+    <p>Your home page tells you what you are finding hard, in plain sentences, so you walk into a lesson knowing what to ask.</p>
+    ${figure('s-concentrate', 'h2', 'What to concentrate on: your own answers, why it happens, how to improve, and what to take to your lesson.')}
+    <div class="two"><div>${figure('s-movingup', '', 'Your level: the five signs of being ready for the next one. Dina decides when you move up.')}</div><div>
+      <ul class="ticks"><li>On <b>My journey</b>, tap a trend, a slip or a tense to open the detail behind it.</li><li><b>My week</b> (in the menu) says what got better this week and what to bring to your next lesson.</li><li>As your level rises, the app’s buttons and headings move into Spanish: <i>Continuar</i>, <i>Comprobar</i>, <i>Escuchar</i>. You can change this in Settings.</li><li>When Dina moves you up, new games and tenses open.</li></ul></div></div>`],
+  ['Notifications, reminders and when something goes wrong', `
+    <div class="cards">
+      <div class="card"><h4>Notifications</h4><p>Turn them on under Account or Settings to hear when Dina sets or marks homework, sends feedback or changes a lesson. On an iPhone, add the app to your Home Screen first.</p></div>
+      <div class="card"><h4>Daily reminder</h4><p>Pick a time and you get one nudge a day, unless you have already practised. It keeps your streak going. On Sundays it is your week’s recap.</p></div>
+      <div class="card"><h4>If a page stops</h4><p>You will see “This page hit a problem” with <b>Try again</b> and <b>Refresh the app</b>. Your progress is safe.</p></div>
+      <div class="card"><h4>Troubleshooting</h4><p>Settings and Account have <b>Test the voice</b> and <b>Refresh the app</b>. While you are logged in, problems are sent to the app’s administrator automatically, without your password or answers.</p></div>
+    </div>
+    ${figure('s-troubleshooting', 'h3', 'Troubleshooting: test the voice, refresh the app, see recent problems.')}`],
   ['How the app adapts to you', `
     <p>You never have to decide what to practise. The app watches what you do and adjusts.</p>
     <dl class="kv"><dt>Under 60% on a task</dt><dd>A shorter re-try appears two days later.</dd><dt>90% or more on a verb drill</dt><dd>A stretch task appears in the next tense.</dd><dt>Memory deck</dt><dd>Words and verbs come back just before you would forget them.</dd><dt>Your mistakes</dt><dd>Drills lean towards the verbs and patterns you get wrong most.</dd><dt>Dina’s debrief</dt><dd>Each week’s plan is built from her notes and your own data.</dd></dl>

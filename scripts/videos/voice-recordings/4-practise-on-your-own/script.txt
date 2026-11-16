@@ -4,9 +4,11 @@ Record each line as its own file, named as shown (m4a, mp3 or wav), and save the
 l0  ¡Hola! Dina and Toby here. Let us show you how to practise on your own.
 l1  Tap Verbos for the verb gym.
 l2  Choose a tense. Let's try the preterite.
-l3  Tap Start. Each session is about ten short exercises.
-l4  Answer each one. If you slip, it comes back later, until it sticks.
-l5  Memoria brings words back, just before you would forget them.
-l6  In Word packs, tap Learn now to add ten new words.
-l7  Juegos has quick games with your own verbs and words. Toby's favourite!
-l8  Five minutes a day is better than one hour on Sunday. ¡Chau!
+l3  Tap Start. Each session is twelve short exercises.
+l4  Answer each one, or tap the microphone and say it. If you slip, it comes back until it sticks.
+l5  The grid drill puts several verbs side by side.
+l6  Each verb shows its meaning, and whether it is regular or irregular. Fill the gaps, then check them all at once.
+l7  Memoria brings words back, just before you would forget them.
+l8  In Word packs, tap Learn now to add ten new words.
+l9  Juegos picks games for you, from what you enjoy. New ones open as you move up a level. Toby's favourite!
+l10  Five minutes a day is better than one hour on Sunday. ¡Chau!

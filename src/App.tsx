@@ -119,7 +119,7 @@ function Shell({ children, route, routeId }: { children: ReactNode; route: Route
   const inRest = rest.some(isActive);
   const [more, setMore] = useState(false);
   return (
-    <div className="min-h-[100dvh] bg-cream">
+    <div className="min-h-[100dvh] overflow-x-clip bg-cream">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-full focus:bg-ink focus:px-4 focus:py-2 focus:text-cream">Skip to content</a>
       {/* Desktop side rail */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-ink/5 bg-[#F4E7D3]/60 p-5 backdrop-blur lg:flex">
@@ -136,9 +136,9 @@ function Shell({ children, route, routeId }: { children: ReactNode; route: Route
       </aside>
 
       {/* Mobile top bar */}
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-ink/5 bg-cream/85 px-4 py-2.5 backdrop-blur lg:hidden">
+      <header className="sticky top-0 z-30 flex items-center justify-between gap-2 overflow-hidden border-b border-ink/5 bg-cream/85 px-4 py-2.5 backdrop-blur lg:hidden">
         <BrandLogo variant="bar" />
-        <div className="flex min-w-0 items-center gap-1.5"><DemoPill /><SyncBadge compact />{!teacher && <TimerPill compact />}</div>
+        <div className="flex min-w-0 items-center gap-1.5 overflow-hidden"><DemoPill /><SyncBadge compact />{!teacher && <TimerPill compact />}</div>
       </header>
 
       <main id="main" className="px-4 pb-28 pt-5 sm:px-6 lg:ml-60 lg:px-10 lg:pb-12 lg:pt-10">
