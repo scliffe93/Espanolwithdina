@@ -36,6 +36,7 @@ export function HomeworkReview({ homework, people, viewZone, onClose }: { homewo
   const [grade, setGrade] = useState('');
   const [marked, setMarked] = useState<Record<number, MarkedItem>>({});
   const [openNote, setOpenNote] = useState<number | null>(null);
+  const [expanded, setExpanded] = useState<number | null>(null);
   const [corrections, setCorrections] = useState<Correction[]>([]);
   const [draft, setDraft] = useState<Correction>({ quote: '', correction: '', note: '', category: undefined });
   const textRef = useRef<HTMLQuoteElement>(null);
@@ -55,6 +56,7 @@ export function HomeworkReview({ homework, people, viewZone, onClose }: { homewo
     setGrade(m?.grade ?? '');
     setMarked(Object.fromEntries((m?.items ?? []).map((x) => [x.index, x])));
     setOpenNote(null);
+    setExpanded(null);
     setCorrections(m?.corrections ?? []);
     setDraft({ quote: '', correction: '', note: '', category: undefined });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -216,7 +218,7 @@ export function HomeworkReview({ homework, people, viewZone, onClose }: { homewo
               )}
               {items.length > 0 && (
                 <div className="mt-3" data-testid="rv-answers">
-                  <p className="eyebrow mb-2 !text-[10px]">Answer by answer · {items.length}</p>
+                  <p className="eyebrow mb-2 !text-[10px]">Answer by answer · {items.length} · click an answer to see it in full</p>
                   <ol className="grid gap-1.5 text-sm">
                     {items.map((it, i) => {
                       const m = marked[i];
@@ -226,7 +228,7 @@ export function HomeworkReview({ homework, people, viewZone, onClose }: { homewo
                       const open = it.prompt.startsWith('Q: ') && it.expected === undefined;
                       return (
                         <li key={i} className={`rounded-xl px-3 py-2 ring-1 ${open && m?.ok === undefined ? 'bg-azul-50 ring-azul/20' : ok ? 'bg-white ring-ink/5' : 'bg-terracotta-50 ring-terracotta/20'}`} data-testid={`rv-answer-${i}`}>
-                          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                          <div className="flex cursor-pointer flex-wrap items-baseline gap-x-2 gap-y-0.5" onClick={(e) => { if (!(e.target as HTMLElement).closest('button,input')) setExpanded(expanded === i ? null : i); }} data-testid={`rv-row-${i}`}>
                             <span className="w-5 shrink-0 text-xs text-ink-mute">{i + 1}.</span>
                             <span className="text-ink-soft">{it.prompt}</span>
                             <span lang="es" className={`font-semibold ${ok ? 'text-olive' : 'text-terracotta-dark'}`}>{it.given || '—'}</span>
@@ -243,6 +245,15 @@ export function HomeworkReview({ homework, people, viewZone, onClose }: { homewo
                               <button type="button" className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-ink-soft ring-1 ring-ink/15 hover:ring-ink/40" onClick={() => setOpenNote(openNote === i ? null : i)} data-testid={`rv-note-${i}`}>{m?.comment ? 'Edit note' : 'Note'}</button>
                             </span>
                           </div>
+                          {expanded === i && (
+                            <dl className="mt-2 grid gap-x-3 gap-y-1 rounded-xl bg-cream-100 p-3 text-sm sm:grid-cols-[auto_1fr]" data-testid={`rv-detail-${i}`}>
+                              <dt className="text-ink-mute">Asked</dt><dd>{it.prompt}</dd>
+                              <dt className="text-ink-mute">{name} answered</dt><dd lang="es" className="font-semibold">{it.given || (it.correct ? 'Completed. This kind of exercise does not keep each answer.' : 'No answer was kept.')}</dd>
+                              {it.expected && <><dt className="text-ink-mute">Right answer</dt><dd lang="es" className="font-semibold">{it.expected}</dd></>}
+                              {it.category && <><dt className="text-ink-mute">Kind of slip</dt><dd>{categoryLabel(it.category)}</dd></>}
+                              <dt className="text-ink-mute">The app said</dt><dd>{open ? 'Nothing: this one is for you to mark' : it.correct ? 'Right' : 'Wrong'}{m?.ok !== undefined && !open ? `, and you changed it to ${m.ok ? 'right' : 'wrong'}` : ''}</dd>
+                            </dl>
+                          )}
                           {(openNote === i || m?.comment) && (
                             <input className="input mt-1.5 !py-1.5 text-sm" value={m?.comment ?? ''} onChange={(e) => setItem(i, { comment: e.target.value })} placeholder="A word for the student on this one" maxLength={300} autoFocus={openNote === i} data-testid={`rv-note-input-${i}`} />
                           )}

@@ -73,6 +73,13 @@ Ahora vivo en un piso pequeño cerca del metro. Me gusta mucho el barrio.
   ok((await q.getByRole('button', { name: /Right/ }).getAttribute('aria-pressed')) === 'true' && !/for you to mark/.test(await q.innerText()), 'she marks it right');
   await p.locator('[data-testid="rv-wrong-0"]').click();
   ok((await p.locator('[data-testid="rv-wrong-0"]').getAttribute('aria-pressed')) === 'true', 'and can mark any other answer wrong');
+  // An answer opens into full detail when clicked, and the sheet opens out to the whole window.
+  await p.getByTestId('rv-row-1').click({ position: { x: 60, y: 8 } });
+  ok(await p.getByTestId('rv-detail-1').isVisible() && /Right answer|answered/.test(await p.getByTestId('rv-detail-1').innerText()), 'clicking an answer shows it in full');
+  await p.getByTestId('sheet-expand').click(); await p.waitForTimeout(500);
+  const box = await p.getByRole('dialog').boundingBox();
+  ok(box.height >= 850 && box.width >= 1200, `Expand opens the sheet to the whole window (${Math.round(box.width)}×${Math.round(box.height)})`);
+  await p.screenshot({ path: OUT + '/rv-expanded.png' });
   const slips = await p.locator('[data-testid^="rv-slip-"]').allInnerTexts();
   ok(slips.length <= 1 && (slips.length === 0 || /small spelling slip/.test(slips[0])), `a near-miss in a dictation is noted as a spelling slip, other wrong answers are not (${slips.length})`);
   await p.getByTestId('rv-answers').screenshot({ path: OUT + '/rv-buttons.png' });

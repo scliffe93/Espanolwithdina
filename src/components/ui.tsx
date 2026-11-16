@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Icon, type IconName } from './Icon';
 import { useStore } from '../lib/store';
 
@@ -48,6 +48,9 @@ export function PageHeader({ eyebrow, title, subtitle, right }: { eyebrow?: stri
 }
 
 export function Sheet({ open, onClose, title, children, wide }: { open: boolean; onClose: () => void; title: string; children: ReactNode; wide?: boolean }) {
+  // A wide sheet can be opened out to the whole window, for long lists on a short screen.
+  const [full, setFull] = useState(false);
+  useEffect(() => { if (!open) setFull(false); }, [open]);
   useEffect(() => {
     if (!open) return;
     const on = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -61,13 +64,17 @@ export function Sheet({ open, onClose, title, children, wide }: { open: boolean;
           <div className="absolute inset-0 bg-ink/40 backdrop-blur-sm" onClick={onClose} />
           <motion.div
             role="dialog" aria-modal="true" aria-label={title}
-            className={`relative max-h-[88vh] w-full overflow-y-auto rounded-t-4xl bg-cream p-6 pb-safe shadow-lift sm:rounded-4xl ${wide ? 'sm:max-w-4xl' : 'sm:max-w-lg'}`}
+            className={`relative w-full overflow-y-auto overscroll-contain bg-cream px-6 pb-6 pb-safe shadow-lift ${full ? 'h-full max-h-none sm:max-w-none' : `max-h-[94vh] rounded-t-4xl sm:rounded-4xl ${wide ? 'sm:max-w-4xl' : 'sm:max-w-lg'}`}`}
+            data-full={full || undefined}
             initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 320, damping: 30 }}
           >
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-semibold">{title}</h2>
-              <button className="ctrl !px-2" onClick={onClose} aria-label="Close"><Icon name="x" size={18} /></button>
+            <div className="sticky top-0 z-10 -mx-6 mb-4 flex items-center justify-between gap-2 bg-cream/95 px-6 pb-3 pt-5 backdrop-blur">
+              <h2 className="min-w-0 truncate text-xl font-semibold">{title}</h2>
+              <span className="flex shrink-0 gap-1.5">
+                {wide && <button className="ctrl hidden sm:inline-flex" onClick={() => setFull(!full)} aria-pressed={full} data-testid="sheet-expand">{full ? 'Smaller' : 'Expand'}</button>}
+                <button className="ctrl !px-2" onClick={onClose} aria-label="Close"><Icon name="x" size={18} /></button>
+              </span>
             </div>
             {children}
           </motion.div>
