@@ -82,7 +82,7 @@ export interface PlatformBackend {
 export interface LessonInput { id?: string; studentId: string; title: string; date?: string; notes?: string; blocks: LessonBlock[]; live: LessonPlan['live'] }
 
 /** What the teacher saves for a student. The whole row is replaced, so pass every field you want to keep. */
-export interface StudentSettingsInput { studentId: string; maxLevel: StudentSettings['maxLevel']; note?: string; stepped?: boolean; unlocked?: string[]; verified?: StudentSettings['verified']; notYet?: StudentSettings['notYet'] }
+export interface StudentSettingsInput { studentId: string; maxLevel: StudentSettings['maxLevel']; note?: string; stepped?: boolean; unlocked?: string[]; verified?: StudentSettings['verified']; notYet?: StudentSettings['notYet']; sentence?: number }
 
 /** A tidy payment notice: short method and note, nothing else. */
 export function paymentReport(at: string, info: { method?: string; note?: string } = {}): NonNullable<Invoice['paymentReported']> {
@@ -400,7 +400,7 @@ export class DemoBackend implements PlatformBackend {
   async saveStudentSettings(input: StudentSettingsInput) {
     this.assertTeacher();
     this.assertStudentAccess(input.studentId);
-    const s: StudentSettings = { id: settingsId(input.studentId), studentId: input.studentId, teacherId: this.actor.id, maxLevel: input.maxLevel, ...(input.note?.trim() ? { note: input.note.trim() } : {}), ...(input.stepped ? { stepped: true } : {}), ...(input.unlocked?.length ? { unlocked: [...new Set(input.unlocked)] } : {}), ...(input.verified ? { verified: input.verified } : {}), ...(input.notYet ? { notYet: input.notYet } : {}), updatedAt: this.iso() };
+    const s: StudentSettings = { id: settingsId(input.studentId), studentId: input.studentId, teacherId: this.actor.id, maxLevel: input.maxLevel, ...(input.note?.trim() ? { note: input.note.trim() } : {}), ...(input.stepped ? { stepped: true } : {}), ...(input.unlocked?.length ? { unlocked: [...new Set(input.unlocked)] } : {}), ...(input.verified ? { verified: input.verified } : {}), ...(input.notYet ? { notYet: input.notYet } : {}), ...(input.sentence ? { sentence: Math.max(1, Math.min(5, Math.round(input.sentence))) } : {}), updatedAt: this.iso() };
     await this.commit((d) => { d.students = [...(d.students ?? []).filter((x) => x.studentId !== s.studentId), s]; });
     return s;
   }

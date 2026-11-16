@@ -301,6 +301,8 @@ export interface StudentSettings {
   verified?: { level: Cefr; at: string };
   /** The teacher said "not yet" to the app's suggestion to move up from this level; it is not suggested again for a while. */
   notYet?: { level: Cefr; at: string };
+  /** How long the sentences in the student's practice get, 1 to 5. Unset = follows their level. */
+  sentence?: number;
   updatedAt: string;
 }
 

@@ -6,6 +6,7 @@ import { CEFR_LEVELS, type AppState, type Cefr } from '../../types';
 import { levelReadiness, shouldSuggest } from '../../lib/levelUp';
 import { overallLevel } from '../../lib/platform/level';
 import { ReleaseBlocks } from './ReleaseBlocks';
+import { SENTENCE_STEPS, sentenceLevelFor } from '../../data/ladders';
 import { ErrorText, useAction } from './shared';
 
 /** The teacher's level ceiling for one student: the highest level of work they can open on their own. */
@@ -22,7 +23,7 @@ export function LevelAccess({ studentId, name, state }: { studentId: string; nam
 
   const save = async () => {
     if (!backend) return;
-    const saved = await run(() => backend.saveStudentSettings({ studentId, maxLevel: level || null, note, stepped: q.data?.stepped, unlocked: q.data?.unlocked, verified: q.data?.verified, notYet: q.data?.notYet }));
+    const saved = await run(() => backend.saveStudentSettings({ sentence: q.data?.sentence, studentId, maxLevel: level || null, note, stepped: q.data?.stepped, unlocked: q.data?.unlocked, verified: q.data?.verified, notYet: q.data?.notYet }));
     if (saved) {
       q.reload();
       notify('Level access saved', saved.maxLevel ? `${name} can open work up to ${saved.maxLevel}.` : `${name} can open everything.`);
@@ -30,10 +31,17 @@ export function LevelAccess({ studentId, name, state }: { studentId: string; nam
     }
   };
 
+  /** How long the student's practice sentences get. Undefined goes back to following their level. */
+  const saveSentence = async (step: number | undefined) => {
+    if (!backend) return;
+    const saved = await run(() => backend.saveStudentSettings({ studentId, maxLevel: current, note: q.data?.note, stepped: q.data?.stepped, unlocked: q.data?.unlocked, verified: q.data?.verified, notYet: q.data?.notYet, sentence: step }));
+    if (saved) { q.reload(); notify('Sentence length saved', step ? `${name} now builds sentences up to step ${step}: ${SENTENCE_STEPS[step - 1].label.toLowerCase()}.` : `${name}'s sentences follow their level again.`); }
+  };
+
   /** Saves a change to the gradual-release blocks, keeping the ceiling and note as they are. */
   const saveRelease = async (patch: { stepped: boolean; unlocked: string[] }, message: string) => {
     if (!backend) return;
-    const saved = await run(() => backend.saveStudentSettings({ studentId, maxLevel: current, note: q.data?.note, verified: q.data?.verified, notYet: q.data?.notYet, ...patch }));
+    const saved = await run(() => backend.saveStudentSettings({ sentence: q.data?.sentence, studentId, maxLevel: current, note: q.data?.note, verified: q.data?.verified, notYet: q.data?.notYet, ...patch }));
     if (saved) { notify('Saved', message); q.reload(); }
   };
 
@@ -42,16 +50,17 @@ export function LevelAccess({ studentId, name, state }: { studentId: string; nam
   const ready = state && q.data !== undefined ? levelReadiness(state, working) : null;
   const suggest = !!ready && shouldSuggest(ready, q.data?.notYet);
   const [showWhy, setShowWhy] = useState(false);
+  const sentence = Math.max(1, Math.min(5, q.data?.sentence ?? sentenceLevelFor(working)));
   const moveUp = async () => {
     if (!backend || !ready?.next) return;
     const at = new Date().toISOString();
     // A student with a ceiling has it raised; one without keeps everything open and just has the new level recorded.
-    const saved = await run(() => backend.saveStudentSettings({ studentId, maxLevel: current ? ready.next : null, note: q.data?.note, stepped: q.data?.stepped, unlocked: q.data?.unlocked, verified: { level: ready.next!, at } }));
+    const saved = await run(() => backend.saveStudentSettings({ sentence: q.data?.sentence, studentId, maxLevel: current ? ready.next : null, note: q.data?.note, stepped: q.data?.stepped, unlocked: q.data?.unlocked, verified: { level: ready.next!, at } }));
     if (saved) { q.reload(); notify(`${name} moved up to ${ready.next}`, 'They will see it in their app, with the new games and tenses open.'); }
   };
   const notYet = async () => {
     if (!backend || !ready) return;
-    const saved = await run(() => backend.saveStudentSettings({ studentId, maxLevel: current, note: q.data?.note, stepped: q.data?.stepped, unlocked: q.data?.unlocked, verified: q.data?.verified, notYet: { level: ready.level, at: new Date().toISOString() } }));
+    const saved = await run(() => backend.saveStudentSettings({ sentence: q.data?.sentence, studentId, maxLevel: current, note: q.data?.note, stepped: q.data?.stepped, unlocked: q.data?.unlocked, verified: q.data?.verified, notYet: { level: ready.level, at: new Date().toISOString() } }));
     if (saved) { q.reload(); notify('Not yet', `The app will not suggest it again for three weeks.`); }
   };
 
@@ -83,6 +92,20 @@ export function LevelAccess({ studentId, name, state }: { studentId: string; nam
           )}
         </div>
       )}
+      <div className="mb-3 rounded-2xl bg-white p-3 ring-1 ring-ink/5" data-testid="sentence-level">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="min-w-0 flex-1"><span className="eyebrow mr-2 !text-[10px]">Sentence length</span><b data-testid="sentence-current">{SENTENCE_STEPS[sentence - 1].label}</b> <span className="text-ink-mute">· step {sentence} of 5{q.data?.sentence ? ', set by you' : `, the usual for ${working}`}</span></p>
+          {q.data?.sentence ? <button type="button" className="ctrl !py-1.5" disabled={busy} onClick={() => void saveSentence(undefined)}>Follow their level</button> : null}
+        </div>
+        <div className="mt-2 grid grid-cols-5 gap-1.5" role="group" aria-label="How long sentences get">
+          {SENTENCE_STEPS.map((st) => (
+            <button key={st.level} type="button" disabled={busy} aria-pressed={sentence === st.level} onClick={() => void saveSentence(st.level)} className={`rounded-xl px-2 py-2 text-left text-xs ring-1 transition ${sentence === st.level ? 'bg-ink text-cream ring-ink' : st.level < sentence ? 'bg-olive-50 ring-olive/30' : 'bg-white ring-ink/10 hover:ring-ink/40'}`} data-testid={`sentence-${st.level}`}>
+              <b className="block text-sm">{st.level}</b><span className={sentence === st.level ? 'text-cream/80' : 'text-ink-soft'}>{st.label}</span>
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-ink-mute">At this step {name} adds: <span lang="es" className="text-ink-soft">{SENTENCE_STEPS[sentence - 1].adds}</span>. For example: <span lang="es" className="text-ink-soft">{SENTENCE_STEPS[sentence - 1].example}</span> Each verb session ends with a sentence that grows this far, and the grammar drills use sentences of a matching length. Move it up as they get better.</p>
+      </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p>
           <span className="eyebrow mr-2 !text-[10px]">Level access</span>

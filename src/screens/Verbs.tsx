@@ -11,6 +11,7 @@ import { recognitionSupported, recognize, regionLang, type RecognitionHandle } f
 import { allVerbMastery } from '../lib/analytics';
 import { CATEGORY_LABEL, CATEGORY_TIP, checkAnswer, classifyVerbError, normalize } from '../lib/answer';
 import { levelIndex } from '../lib/assessmentScore';
+import { LADDER_BY_ID, SENTENCE_STEPS, parseRung } from '../data/ladders';
 import { EX_LABEL, buildSession, cardKeyFor, pronounFor, shuffle, type Exercise } from '../lib/exercises';
 import { navigate } from '../lib/router';
 import { addSpeakingAttempt, completeLesson, recordAttempt } from '../lib/state';
@@ -60,6 +61,7 @@ function promptFor(ex: Exercise): string {
     case 'match': return `Match each pronoun with its form of ${ex.verb} (${tenseLabel(ex.tense)}): ${ex.pronouns.join(', ')}`;
     case 'serEstar': return `${ex.item.before} ___ ${ex.item.after}`.trim();
     case 'grammar': return `${ex.item.before} ___ ${ex.item.after}${ex.item.hint ? ` (${ex.item.hint})` : ''}`.trim();
+    case 'extend': { const rung = LADDER_BY_ID[ex.ladder].rungs[ex.rung]; const pr = parseRung(rung); return `Grow the sentence: ${pr.before}___${pr.after} (${rung.en})`; }
   }
 }
 
@@ -121,7 +123,7 @@ function Session({ exercises: initial, tense, onExit, onAgain, resume }: { exerc
     setLog((l) => [...l, { verb: verbInf, correct: r.correct, category: r.category, focus: r.focus, expected: r.expected, given: r.given, prompt: promptFor(ex) }]);
     // Revisit mistakes automatically later in the session, as a production exercise.
     // Revisit a mistake once; a retry that is also wrong is left for spaced repetition (no endless loops).
-    if (!r.correct && card && !requeued.current.has(i) && ex.kind !== 'serEstar' && ex.kind !== 'grammar' && !(ex as { retry?: boolean }).retry) {
+    if (!r.correct && card && !requeued.current.has(i) && ex.kind !== 'serEstar' && ex.kind !== 'grammar' && ex.kind !== 'extend' && !(ex as { retry?: boolean }).retry) {
       requeued.current.add(i);
       setQueue((q) => [...q, { kind: 'type', verb: verbInf, tense: card.tense, person: card.person, pronoun: (ex as { pronoun?: string }).pronoun || pronounFor(VERB_BY_INF[verbInf], card.person), retry: true } as Exercise]);
     }
@@ -463,6 +465,31 @@ function ExerciseView({ ex, locked, onSubmit, onHint }: { ex: Exercise; locked: 
         </div>
       );
     }
+    case 'extend': {
+      const ladder = LADDER_BY_ID[ex.ladder];
+      const rung = ladder.rungs[ex.rung];
+      const pr = parseRung(rung);
+      const step = SENTENCE_STEPS[ex.rung];
+      return (
+        <div>
+          <div className="mt-3 rounded-3xl bg-white p-5 shadow-soft" data-testid="extend">
+            <div className="mb-3 flex items-center gap-1.5" aria-label={`Step ${ex.rung + 1} of this sentence`}>
+              {ladder.rungs.map((_, k) => <span key={k} className={`h-1.5 flex-1 rounded-full ${k < ex.rung ? 'bg-olive' : k === ex.rung ? 'bg-terracotta' : 'bg-ink/10'}`} />)}
+            </div>
+            {ex.rung > 0 && <p className="text-sm text-ink-mute">{t('So far:')} <span lang="es" className="text-ink-soft">{parseRung(ladder.rungs[ex.rung - 1]).plain}</span></p>}
+            <p className="mt-2 font-display text-2xl leading-relaxed" lang="es">{pr.before}<span className="mx-1 inline-block min-w-[6ch] border-b-2 border-dashed border-terracotta">&nbsp;</span>{pr.after}</p>
+            <p className="mt-2 text-ink-mute">{rung.en}</p>
+            <p className="mt-1 text-sm text-terracotta">{ex.rung === 0 ? `(${ex.verb})` : `${t('Add:')} ${step?.adds ?? ''}`}</p>
+          </div>
+          <ExtendInput locked={locked} placeholder={t('Type what is missing')} onSubmit={(v) => {
+            const res = checkAnswer(v, [pr.add]);
+            onSubmit(res === 'wrong'
+              ? { correct: false, expected: pr.add, given: v, category: ex.rung === 0 ? 'other' : 'other', sayText: pr.plain }
+              : { correct: true, accentOnly: res === 'accent', category: res === 'accent' ? 'accents' : undefined, expected: pr.add, given: v, sayText: pr.plain });
+          }} />
+        </div>
+      );
+    }
     case 'serEstar': {
       const it = ex.item;
       return (
@@ -486,6 +513,19 @@ function AutoPlay({ text }: { text: string }) {
   const say = useSay();
   useEffect(() => { const t = setTimeout(() => say(text), 300); return () => clearTimeout(t); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return null;
+}
+
+/** A plain answer box for adding to a growing sentence: several words, checked as written. */
+function ExtendInput({ onSubmit, locked, placeholder }: { onSubmit: (v: string) => void; locked: boolean; placeholder: string }) {
+  const { t } = useT();
+  const [v, setV] = useState('');
+  return (
+    <form className="mt-4 flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); if (!locked && v.trim()) onSubmit(v.trim()); }}>
+      <input lang="es" aria-label="Your answer" className="input min-w-0 flex-1 text-lg" value={v} onChange={(e) => setV(e.target.value)} disabled={locked} placeholder={placeholder} autoCapitalize="none" autoCorrect="off" spellCheck={false} autoFocus data-testid="extend-input" />
+      <button type="submit" className="btn-primary" disabled={locked || !v.trim()}>{t('Check')}</button>
+      {!locked && <button type="button" className="ctrl" onClick={() => onSubmit('')}>{t('Skip')}</button>}
+    </form>
+  );
 }
 
 function MatchView({ ex, locked, onSubmit }: { ex: Extract<Exercise, { kind: 'match' }>; locked: boolean; onSubmit: (r: Result) => void }) {
@@ -658,16 +698,20 @@ export function Verbs({ params }: { params: URLSearchParams }) {
     if (!opts.mode && tenseLocked(TENSES.find((x) => x.id === t)!)) return;
     const f = opts.focus ?? (focus.length ? focus : undefined);
     setSaved(null); setRound((r) => r + 1);
-    setSession({ ex: buildSession({ state, focus: f, tense: t, mode: opts.mode, maxLevel: ceiling, allowed: released }), tense: t, again: { focus: f, mode: opts.mode } });
+    setSession({ ex: buildSession({ state, focus: f, tense: t, mode: opts.mode, maxLevel: ceiling, allowed: released, sentence: access.sentence }), tense: t, again: { focus: f, mode: opts.mode } });
   };
 
   // Deep links (coach, scene completion) start a session immediately.
+  const linked = useRef<string | null>(null);
   useEffect(() => {
+    if (access.loading) return; // wait for the teacher's settings (level, released verbs, sentence length)
+    if (linked.current === params.toString()) return; // one start for each link, however often the settings refresh
+    linked.current = params.toString();
     if (mode) start({ mode });
     else if (focusParam.length && (params.get('start') || params.toString().includes('focus'))) start({ focus: focusParam });
     else if (params.get('start')) start({ tense: (params.get('tense') as Tense) || tense });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.toString()]);
+  }, [params.toString(), access.loading]);
 
   if (grid && !session) return <VerbGrid tense={tenseLocked(TENSES.find((t) => t.id === tense)!) ? 'present' : tense} focus={focus.length ? focus : undefined} maxLevel={ceiling} allowed={released} onExit={() => { setGrid(false); navigate('verbs'); }} />;
   if (session) return <Session key={round} exercises={session.ex} tense={session.tense} resume={session.resume} onAgain={() => start({ ...session.again, tense: session.tense })} onExit={() => { setSession(null); navigate('verbs'); }} />;

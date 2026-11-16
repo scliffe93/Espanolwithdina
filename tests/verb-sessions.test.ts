@@ -13,7 +13,10 @@ describe('verb sessions', () => {
       const state = { ...defaultState(), profile: { ...(defaultState().profile ?? {}), region, activities: [] } } as never;
       for (const t of TENSES) for (const focus of [undefined, ...VERBS.map((v) => [v.inf])]) for (let n = 0; n < (focus ? 2 : 30); n++) {
         let s; try { s = buildSession({ state, tense: t.id, focus }); } catch (e) { add(`CRASH build ${t.id} ${focus} ${(e as Error).message}`); continue; }
-        if (s.length !== 12) add(`session of ${s.length} in ${t.id}`);
+        // Twelve questions, then the steps of one growing sentence where the tense has one.
+        const grow = s.filter((e) => e.kind === 'extend').length;
+        if (s.length - grow !== 12) add(`session of ${s.length - grow} in ${t.id}`);
+        if (grow > 5) add(`too many sentence steps in ${t.id}`);
         for (const ex of s) {
           try {
             cardKeyFor(ex);

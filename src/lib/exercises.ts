@@ -1,3 +1,4 @@
+import { laddersFor } from '../data/ladders';
 import type { Activity, AppState, Cefr, Region } from '../types';
 import { withinLevel } from './platform/level';
 import { HABER_FORMS, VERBS, VERB_BY_INF, conjugate, getActiveVariety, isCompound, parseExample, personsForTense, verbKey, type Tense, type Verb, type VerbExample } from '../data/verbs';
@@ -5,7 +6,7 @@ import { conjugateSimple } from '../data/conjugation';
 import { GRAMMAR_DRILLS, type GrammarItem, type GrammarMode } from '../data/grammar';
 import { regularPresent } from './answer';
 
-export type ExKind = 'type' | 'choice' | 'match' | 'build' | 'listen' | 'fix' | 'translate' | 'context' | 'serEstar' | 'grammar';
+export type ExKind = 'type' | 'choice' | 'match' | 'build' | 'listen' | 'fix' | 'translate' | 'context' | 'serEstar' | 'grammar' | 'extend';
 
 export const EX_LABEL: Record<ExKind, string> = {
   type: 'Conjugate',
@@ -18,6 +19,7 @@ export const EX_LABEL: Record<ExKind, string> = {
   context: 'In conversation',
   serEstar: 'Ser or estar?',
   grammar: 'Grammar',
+  extend: 'Grow the sentence',
 };
 
 export interface SerEstarItem {
@@ -77,7 +79,9 @@ export type Exercise =
   | { kind: 'fix'; verb: string; example: VerbExample; wrong: string; options: string[] }
   | { kind: 'translate'; verb: string; example: VerbExample; options: string[] }
   | { kind: 'serEstar'; item: SerEstarItem }
-  | { kind: 'grammar'; mode: Exclude<GrammarMode, 'ser-estar'>; index: number; item: GrammarItem };
+  | { kind: 'grammar'; mode: Exclude<GrammarMode, 'ser-estar'>; index: number; item: GrammarItem }
+  /** One step up a growing sentence: the sentence so far is shown and the student adds the next part. */
+  | { kind: 'extend'; verb: string; tense: Tense; ladder: string; rung: number };
 
 export type Rng = () => number;
 
@@ -168,6 +172,8 @@ export interface PlanInput {
   maxLevel?: Cefr | null;
   /** Gradual release: only these verbs may be picked (null = any). */
   allowed?: Set<string> | null;
+  /** How long sentences get, 1 to 5 (see data/ladders.ts). Follows the student's level unless the teacher sets it. */
+  sentence?: number;
 }
 
 /** Picks which verbs to practise: due → weak → in-progress → new (by frequency, within level). */
@@ -203,7 +209,7 @@ const KIND_PREF: Record<Activity, ExKind[]> = {
 };
 
 /** Builds a varied session. Preferences tilt the mix but every learner sees every kind. */
-export function buildSession({ state, focus, tense, length = 12, now = Date.now(), rng = Math.random, mode, maxLevel = null, allowed = null }: PlanInput): Exercise[] {
+export function buildSession({ state, focus, tense, length = 12, now = Date.now(), rng = Math.random, mode, maxLevel = null, allowed = null, sentence }: PlanInput): Exercise[] {
   const region = state.profile?.region ?? 'spain';
   if (mode === 'ser-estar') {
     const items = shuffle(SER_ESTAR, rng).slice(0, Math.min(length, SER_ESTAR.length));
@@ -215,7 +221,12 @@ export function buildSession({ state, focus, tense, length = 12, now = Date.now(
   }
   if (mode) {
     // The other grammar drills: items within the student's level ceiling, shuffled.
-    const pool = GRAMMAR_DRILLS[mode].map((item, index) => ({ item, index })).filter((x) => withinLevel(x.item.level, maxLevel));
+    const all = GRAMMAR_DRILLS[mode].map((item, index) => ({ item, index })).filter((x) => withinLevel(x.item.level, maxLevel));
+    // Shorter sentences at the lower sentence levels; when there are not enough short ones, the next shortest join in.
+    const words = (x: { item: GrammarItem }) => `${x.item.before} ${x.item.after}`.trim().split(/\s+/).length + 1;
+    const cap = sentence ? [6, 8, 10, 13, 99][Math.max(1, Math.min(5, sentence)) - 1] : 99;
+    const short = all.filter((x) => words(x) <= cap);
+    const pool = short.length >= Math.min(length, all.length) ? short : [...short, ...all.filter((x) => words(x) > cap).sort((a, b) => words(a) - words(b)).slice(0, Math.min(length, all.length) - short.length)];
     return shuffle(pool, rng).slice(0, Math.min(length, pool.length)).map((x) => ({ kind: 'grammar' as const, mode, index: x.index, item: x.item }));
   }
 
@@ -234,7 +245,7 @@ export function buildSession({ state, focus, tense, length = 12, now = Date.now(
   const out: Exercise[] = [];
   let i = 0;
   // Progression within a session: recognition first, production later.
-  const order = (k: ExKind) => ({ match: 0, choice: 1, listen: 2, translate: 3, fix: 4, build: 5, context: 6, type: 7, serEstar: 1, grammar: 1 })[k];
+  const order = (k: ExKind) => ({ match: 0, choice: 1, listen: 2, translate: 3, fix: 4, build: 5, context: 6, type: 7, serEstar: 1, grammar: 1, extend: 8 })[k];
   // Always a full session: when one round of kinds is not enough, deal another.
   let deck = shuffle(kinds, rng);
   while (deck.length < length) deck = [...deck, ...shuffle(kinds, rng)];
@@ -290,6 +301,17 @@ export function buildSession({ state, focus, tense, length = 12, now = Date.now(
         break;
     }
   }
+  // The session ends with a growing sentence in this tense: one step for each sentence level the student is on.
+  // On gradual release, only a sentence whose verb the teacher has released.
+  const ladders = laddersFor(tense).filter((l) => !allowed || allowed.has(l.verb));
+  if (ladders.length && sentence !== 0) {
+    // A sentence built on one of the verbs being practised, when there is one.
+    const mine = ladders.filter((l) => verbs.includes(l.verb));
+    const from = mine.length ? mine : ladders;
+    const ladder = from[Math.floor(rng() * from.length)];
+    const top = Math.max(1, Math.min(ladder.rungs.length, sentence ?? 2));
+    for (let r = 0; r < top; r++) out.push({ kind: 'extend', verb: ladder.verb, tense, ladder: ladder.id, rung: r });
+  }
   return fillPronouns(out, rng);
 }
 
@@ -308,5 +330,6 @@ export function cardKeyFor(e: Exercise): { key: string; person: number; tense: T
     case 'serEstar': return { key: verbKey(e.item.verb, 'present', e.item.person), person: e.item.person, tense: 'present' };
     case 'grammar': return { key: `grammar:${e.mode}|${e.index}`, person: 0, tense: 'present' };
     case 'match': return null;
+    case 'extend': return { key: `ladder:${e.ladder}|${e.rung}`, person: 0, tense: e.tense };
   }
 }

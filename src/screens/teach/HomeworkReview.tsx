@@ -15,6 +15,7 @@ const TAGS = Object.keys(FOCUS_TAG_LABEL) as FocusTag[];
 /** In a sentence, what the student was asked to do, so the teacher can talk it through without opening the exercise. */
 function whatItWas(prompt: string, kind: string): string {
   if (/^Match /.test(prompt)) return 'A matching exercise: tap a pronoun, then tap the verb form that goes with it. Every wrong pairing tried is listed.';
+  if (/^Grow the sentence:/.test(prompt)) return 'A sentence that gets longer step by step. The sentence so far was on screen and they typed the part that is missing: the verb, a time word, or a linking phrase such as pero, porque or sin embargo.';
   if (/^Fill the gap:/.test(prompt)) return 'A Spanish sentence with the verb missing, and its English meaning as the clue. They typed the verb.';
   if (/^Build( the sentence)?:/.test(prompt)) return 'The words of a sentence in a jumbled order. They tapped them into the right order.';
   if (/^Fix the mistake:/.test(prompt)) return 'A Spanish sentence with one wrong verb form. They had to spot it and type the right form.';
