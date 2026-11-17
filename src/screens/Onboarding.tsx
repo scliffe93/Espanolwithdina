@@ -227,8 +227,8 @@ export function Onboarding() {
             <DinaArt size={190} speaking={speaking} title="Dina, your teacher" />
           </div>
 
-          <AnimatePresence mode="wait">
-            <motion.section key={step.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }}>
+          <AnimatePresence>
+            <motion.section key={step.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.25 }}>
               <div className="relative rounded-4xl rounded-tl-lg bg-white p-6 shadow-soft">
                 <p className="font-display text-2xl font-medium leading-snug sm:text-[28px]">{step.es.replace('{name}', profile.name)}</p>
                 <p className="mt-2 text-ink-soft">{step.en}</p>

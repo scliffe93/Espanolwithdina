@@ -145,8 +145,8 @@ export function Assessment() {
           <Bar value={(i + (chosen !== null ? 1 : 0)) / ASSESSMENT.length} />
           <span className="text-sm tabular-nums text-ink-mute">{i + 1}/{ASSESSMENT.length}</span>
         </div>
-        <AnimatePresence mode="wait">
-          <motion.div key={q.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="mt-8">
+        <AnimatePresence>
+          <motion.div key={q.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mt-8">
             <p className="eyebrow">{q.skill} · {q.level}</p>
             {q.listen ? (
               <div className="mt-3 flex items-center gap-4">

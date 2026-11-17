@@ -207,8 +207,8 @@ function Session({ exercises: initial, tense, onExit, onAgain, resume }: { exerc
         <Bar value={(i + (result ? 1 : 0)) / queue.length} color="bg-olive" />
         <span className="text-sm tabular-nums text-ink-mute">{i + 1}/{queue.length}</span>
       </div>
-      <AnimatePresence mode="wait">
-        <motion.div key={i} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
+      <AnimatePresence>
+        <motion.div key={i} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
           <p className="eyebrow">{ex.kind === 'grammar' ? GRAMMAR_MODES.find((m) => m.id === ex.mode)?.[stage >= 2 ? 'es' : 'label'] : t(EX_LABEL[ex.kind])}{verb && <> · <span className="normal-case tracking-normal">{verb.inf} — {verb.en}</span></>}</p>
           <ExerciseView key={i} ex={ex} locked={!!result} onSubmit={submit} onHint={() => setHintUsed(true)} />
         </motion.div>

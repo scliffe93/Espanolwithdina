@@ -124,8 +124,8 @@ function ReviewSession({ items, onDone }: { items: Item[]; onDone: () => void })
         <Bar value={i / items.length} color="bg-azul" />
         <span className="text-sm tabular-nums text-ink-mute">{i + 1}/{items.length}</span>
       </div>
-      <AnimatePresence mode="wait">
-        <motion.div key={`${i}-${phase === 'learn'}`} initial={{ opacity: 0, rotateY: -8 }} animate={{ opacity: 1, rotateY: 0 }} exit={{ opacity: 0 }} className="card p-6">
+      <AnimatePresence>
+        <motion.div key={`${i}-${phase === 'learn'}`} initial={{ opacity: 0, rotateY: -8 }} animate={{ opacity: 1, rotateY: 0 }} className="card p-6">
           {phase === 'learn' ? (
             <>
               <p className="eyebrow">New word</p>

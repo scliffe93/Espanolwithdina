@@ -282,8 +282,8 @@ export default function App() {
       <Toasts />
       <WelcomeBack />
       <Shell route={route.name} routeId={route.id}>
-        <AnimatePresence mode="wait">
-          <motion.div key={route.name + (route.id ?? '')} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+        <AnimatePresence>
+          <motion.div key={route.name + (route.id ?? '')} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
             <ErrorBoundary resetKey={route.name + (route.id ?? '') + route.params.toString()}>{screen}</ErrorBoundary>
           </motion.div>
         </AnimatePresence>

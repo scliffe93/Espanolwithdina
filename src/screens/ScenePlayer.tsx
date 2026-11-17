@@ -332,9 +332,9 @@ export function ScenePlayer({ id }: { id: string }) {
 
       {/* Responses */}
       <div className="mt-4">
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
           {feedback ? (
-            <motion.div key="fb" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`rounded-3xl p-5 ring-1 ${feedback.choice.quality === 'great' ? 'bg-olive-50 ring-olive/30' : feedback.choice.quality === 'ok' ? 'bg-saffron-50 ring-saffron/40' : 'bg-terracotta-50 ring-terracotta/30'}`}>
+            <motion.div key="fb" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`rounded-3xl p-5 ring-1 ${feedback.choice.quality === 'great' ? 'bg-olive-50 ring-olive/30' : feedback.choice.quality === 'ok' ? 'bg-saffron-50 ring-saffron/40' : 'bg-terracotta-50 ring-terracotta/30'}`}>
               <p className="flex items-center gap-2 font-semibold">
                 <Icon name={feedback.choice.quality === 'off' ? 'info' : 'check'} size={18} />
                 {feedback.choice.quality === 'great' ? '¡Muy natural!' : feedback.choice.quality === 'ok' ? 'That works — with a nuance' : 'Not quite — let’s learn from it'}

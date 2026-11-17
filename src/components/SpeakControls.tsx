@@ -95,9 +95,9 @@ export function SpeakControls({
         )}
       </div>
 
-      <AnimatePresence mode="wait">
+      <AnimatePresence>
         {panel !== 'none' && (
-          <motion.div key={panel} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+          <motion.div key={panel} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="overflow-hidden">
             <div className="mt-3 rounded-2xl bg-white/80 p-4 text-[15px] ring-1 ring-ink/5">
               {panel === 'meaning' && <p><span className="eyebrow mr-2">English</span>{en}</p>}
               {panel === 'grammar' && grammar && <p><span className="eyebrow mr-2">Grammar</span>{grammar}</p>}
