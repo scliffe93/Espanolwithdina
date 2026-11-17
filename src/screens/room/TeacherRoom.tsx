@@ -13,7 +13,7 @@ import type { LessonBlock, LessonPlan } from '../../lib/platform/types';
 import { navigate } from '../../lib/router';
 import { useStore } from '../../lib/store';
 import { ErrorText, Loading, useStudents } from '../teach/shared';
-import { BlockView } from './Blocks';
+import { BLOCK_THEME, BlockView, LessonTrail } from './Blocks';
 import { useLesson } from './useLesson';
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -399,6 +399,17 @@ export function TeacherRoom({ id }: { id: string }) {
   useEffect(() => () => { window.clearTimeout(timer.current); if (latest.current && saved !== 'saved') void save(latest.current); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const name = useMemo(() => students.data?.people.find((p) => p.id === plan?.studentId)?.firstName ?? 'your student', [students.data, plan?.studentId]);
+  // The stage can fill the whole screen for sharing on a call, and the arrow keys move through the lesson.
+  const stageRef = useRef<HTMLElement>(null);
+  const [full, setFull] = useState(false);
+  const [autoOpen, setAutoOpen] = useState(false);
+  useEffect(() => { const on = () => setFull(!!document.fullscreenElement); document.addEventListener('fullscreenchange', on); return () => document.removeEventListener('fullscreenchange', on); }, []);
+  const keyNav = useRef<(d: number) => void>(() => undefined);
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => { if ((e.target as HTMLElement | null)?.closest('input,textarea,select')) return; if (e.key === 'ArrowRight') keyNav.current(1); else if (e.key === 'ArrowLeft') keyNav.current(-1); };
+    window.addEventListener('keydown', on); return () => window.removeEventListener('keydown', on);
+  }, []);
+
   if (!loaded || (!plan && !syncError)) return <Loading />;
   if (!plan) return <div className="card p-6"><p>{syncError ?? 'Lesson not found.'}</p><button className="btn-primary mt-3" onClick={() => navigate('teach/room')}>Back to the lesson room</button></div>;
 
@@ -408,6 +419,8 @@ export function TeacherRoom({ id }: { id: string }) {
   const idx = cur ? plan.blocks.indexOf(cur) : -1;
   const go = (b: LessonBlock, alsoOpen = false) => change((p) => ({ ...p, blocks: alsoOpen ? p.blocks.map((x) => (x.id === b.id ? { ...x, open: true } : x)) : p.blocks, live: { ...p.live, current: b.id } }), true);
   const openCount = plan.blocks.filter((b) => b.open).length;
+  const toggleFull = () => { if (document.fullscreenElement) void document.exitFullscreen(); else void stageRef.current?.requestFullscreen?.().catch(() => undefined); };
+  keyNav.current = (d) => { if (tab !== 'present' || idx < 0) return; const b = plan.blocks[idx + d]; if (b) go(b, d > 0 && !!cur?.open && autoOpen); };
 
   return (
     <div data-testid="teacher-room">
@@ -447,8 +460,8 @@ export function TeacherRoom({ id }: { id: string }) {
       )}
 
       {tab === 'present' && (
-        <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
-          <aside className="grid content-start gap-3">
+        <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
+          <aside className="grid min-w-0 content-start gap-3">
             <div className="card p-4">
               {plan.live.on ? (
                 <button type="button" className="btn-ghost w-full justify-center" onClick={() => change((p) => ({ ...p, live: { ...p.live, on: false } }), true)} data-testid="end-lesson"><Icon name="stop" size={16} /> End the lesson</button>
@@ -462,13 +475,13 @@ export function TeacherRoom({ id }: { id: string }) {
               </div>
               <p className="mt-2 text-xs text-ink-mute">{openCount} of {plan.blocks.length} parts open to {name}.</p>
             </div>
-            <ol className="grid gap-1.5" data-testid="block-list">
+            <ol className="grid min-w-0 gap-1.5" data-testid="block-list">
               {plan.blocks.map((b, i) => {
                 const a = work?.answers[b.id];
                 return (
-                  <li key={b.id} className={`flex items-center gap-2 rounded-2xl p-2 ring-1 ${cur?.id === b.id ? 'bg-terracotta-50 ring-terracotta/50' : 'bg-white ring-ink/5'}`}>
+                  <li key={b.id} className={`flex min-w-0 items-center gap-2 overflow-hidden rounded-2xl p-2 ring-1 ${cur?.id === b.id ? 'bg-terracotta-50 ring-terracotta/50' : 'bg-white ring-ink/5'}`}>
                     <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => go(b)} data-testid={`goto-${i}`}>
-                      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-cream-100 text-xs font-bold">{i + 1}</span>
+                      <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold ${BLOCK_THEME[b.type].badge}`}>{i + 1}</span>
                       <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{b.title || BLOCK_LABEL[b.type]}</span><span className="block truncate text-xs text-ink-mute">{BLOCK_LABEL[b.type]}{a ? ` · answered${a.correct === true ? ' ✓' : a.correct === false ? ' ✗' : ''}` : ''}</span></span>
                     </button>
                     <button type="button" className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${b.open ? 'bg-olive text-white' : 'bg-cream-100 text-ink-soft'}`} onClick={() => setBlock(b.id, { open: !b.open }, true)} aria-pressed={!!b.open} aria-label={`${b.open ? 'Close' : 'Open'} part ${i + 1} ${b.open ? 'to' : 'for'} ${name}`} data-testid={`toggle-${i}`}>{b.open ? 'Open' : 'Closed'}</button>
@@ -483,19 +496,25 @@ export function TeacherRoom({ id }: { id: string }) {
             </div>
           </aside>
 
-          <section className="min-w-0" data-testid="stage">
+          <section ref={stageRef} className={`min-w-0 ${full ? 'flex h-full flex-col overflow-y-auto bg-cream p-5 sm:p-8' : ''}`} data-testid="stage">
             {cur ? (
               <>
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-semibold text-ink-mute">Part {idx + 1} of {plan.blocks.length}</span>
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${cur.open ? 'bg-olive text-white' : 'bg-saffron text-ink'}`} data-testid="stage-status">{cur.open ? `${name} can see this` : `Only you can see this`}</span>
-                  {!cur.open && <button type="button" className="btn-primary !py-2" onClick={() => go(cur, true)} data-testid="show-to-student"><Icon name="eye" size={16} /> Show it to {name}</button>}
-                  {(cur.type === 'gap' || cur.type === 'choice') && <button type="button" className="ctrl" onClick={() => setBlock(cur.id, { reveal: !cur.reveal }, true)} aria-pressed={!!cur.reveal} data-testid="reveal">{cur.reveal ? 'Hide the answer' : 'Show the answer'}</button>}
+                <div className="mb-3 rounded-3xl bg-white p-3 shadow-soft ring-1 ring-ink/5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-ink px-3 py-1 text-sm font-bold text-cream">{idx + 1} / {plan.blocks.length}</span>
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${cur.open ? 'bg-olive text-white' : 'bg-saffron text-ink'}`} data-testid="stage-status">{cur.open ? `${name} can see this` : `Only you can see this`}</span>
+                    {!cur.open && <button type="button" className="btn-primary !py-2" onClick={() => go(cur, true)} data-testid="show-to-student"><Icon name="eye" size={16} /> Show it to {name}</button>}
+                    {(cur.type === 'gap' || cur.type === 'choice') && <button type="button" className="ctrl" onClick={() => setBlock(cur.id, { reveal: !cur.reveal }, true)} aria-pressed={!!cur.reveal} data-testid="reveal">{cur.reveal ? 'Hide the answer' : 'Show the answer'}</button>}
+                    <button type="button" className="ctrl ml-auto" onClick={toggleFull} data-testid="stage-full"><Icon name="video" size={14} /> {full ? 'Leave full screen' : 'Full screen to share'}</button>
+                  </div>
+                  <div className="mt-3"><LessonTrail blocks={plan.blocks} answers={work?.answers} current={cur.id} onGo={(bid) => { const b = plan.blocks.find((x) => x.id === bid); if (b) go(b); }} /></div>
                 </div>
-                <BlockView block={cur} mode="present" answer={work?.answers[cur.id]} current />
-                <div className="mt-3 flex gap-2">
+                <div className={full ? 'mx-auto w-full max-w-5xl flex-1' : ''}><BlockView key={cur.id} block={cur} mode="present" answer={work?.answers[cur.id]} current /></div>
+                <div className={`mt-4 flex items-center gap-2 ${full ? 'mx-auto w-full max-w-5xl' : ''}`}>
                   <button type="button" className="btn-ghost" disabled={idx <= 0} onClick={() => go(plan.blocks[idx - 1])}><Icon name="arrowLeft" size={16} /> Back</button>
-                  <button type="button" className="btn-dark" disabled={idx >= plan.blocks.length - 1} onClick={() => go(plan.blocks[idx + 1])} data-testid="next-part">Next <Icon name="arrowRight" size={16} /></button>
+                  <button type="button" className="btn-dark" disabled={idx >= plan.blocks.length - 1} onClick={() => go(plan.blocks[idx + 1], cur.open && autoOpen)} data-testid="next-part">Next <Icon name="arrowRight" size={16} /></button>
+                  <label className="ml-2 flex items-center gap-2 text-sm text-ink-soft"><input type="checkbox" checked={autoOpen} onChange={(e) => setAutoOpen(e.target.checked)} data-testid="auto-open" /> Show each part to {name} as I go</label>
+                  <span className="ml-auto hidden text-xs text-ink-mute sm:inline">← → keys also move</span>
                 </div>
               </>
             ) : <div className="card p-8 text-center text-ink-soft">{plan.blocks.length ? 'Choose a part on the left to put it on the screen.' : 'This lesson has no parts yet. Add some on the Plan tab.'}</div>}

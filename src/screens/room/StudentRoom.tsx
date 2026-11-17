@@ -3,7 +3,7 @@ import { DinaArt } from '../../components/Dina';
 import { Icon } from '../../components/Icon';
 import { usePlatformQuery } from '../../lib/platform/context';
 import { navigate } from '../../lib/router';
-import { BlockView } from './Blocks';
+import { BlockView, LessonTrail } from './Blocks';
 import { useLesson } from './useLesson';
 
 /** The student's side of a lesson: what the teacher has opened, following the part she is on, with their answers. */
@@ -32,6 +32,7 @@ export function StudentRoom({ id }: { id: string }) {
         </div>
       </div>
       {error && <p className="mt-3 rounded-xl bg-saffron-50 px-3 py-2 text-sm" role="status">Reconnecting… ({error})</p>}
+      {plan.blocks.length > 0 && <div className="sticky top-2 z-10 mt-4 rounded-3xl bg-white/95 p-3 shadow-soft ring-1 ring-ink/5 backdrop-blur"><LessonTrail blocks={plan.blocks} answers={work?.answers} current={plan.live.on ? current : null} /></div>}
       <div className="mt-5 grid gap-4">
         {plan.blocks.length === 0 ? (
           <div className="card p-8 text-center text-ink-soft" data-testid="room-waiting">{plan.live.on ? 'Dina will put the first part on your screen in a moment.' : 'When Dina starts the lesson, it appears here by itself.'}</div>
