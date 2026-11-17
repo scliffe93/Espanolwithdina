@@ -1,3 +1,4 @@
+import { useLevelAccess } from '../../lib/platform/useLevelAccess';
 import { NotificationsCard } from '../../components/NotificationsCard';
 import { FocusAreas } from '../../components/FocusAreas';
 import { MovingUp } from '../../components/MovingUp';
@@ -152,11 +153,12 @@ function LatestFeedback({ list, now }: { list: Feedback[]; now: number }) {
   );
 }
 
-function journeyNumbers(state: AppState) {
+function journeyNumbers(state: AppState, level: string) {
   const p = state.profile;
   const idx = p ? SKILLS.map((s) => levelIndex(p.levels[s])).sort((a, b) => a - b) : [];
   return {
-    level: p ? CEFR_LEVELS[idx[Math.floor(idx.length / 2)]] : '—',
+    // The one level shown everywhere: the teacher's when she has set or confirmed it, else the learner's own.
+    level: p ? level || CEFR_LEVELS[idx[Math.floor(idx.length / 2)]] : '—',
     active: formatMinutes(totalActiveSeconds(state)),
     lessons: Object.values(state.days).reduce((a, d) => a + d.lessonsCompleted, 0),
     vocab: Object.values(state.srs).filter((c) => c.key.startsWith('vocab:') && mastery(c) === 'mastered').length,
@@ -164,7 +166,8 @@ function journeyNumbers(state: AppState) {
 }
 
 function Journey({ state }: { state: AppState }) {
-  const n = journeyNumbers(state);
+  const access = useLevelAccess();
+  const n = journeyNumbers(state, access.level);
   const nums = [
     { label: 'Current level', value: n.level },
     { label: 'Active learning', value: n.active },

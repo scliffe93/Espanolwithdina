@@ -1,3 +1,4 @@
+import { useLevelAccess } from '../lib/platform/useLevelAccess';
 import { motion } from 'motion/react';
 import { useState } from 'react';
 import { FocusAreas, FocusDetail } from '../components/FocusAreas';
@@ -126,7 +127,10 @@ export function Journey() {
   const speaking = days.reduce((a, d) => a + d.speakingAttempts, 0);
   const listening = days.reduce((a, d) => a + d.listeningSeconds, 0);
   const levelsSorted = SKILLS.map((s) => levelIndex(p.levels[s])).sort((a, b) => a - b);
-  const overall = CEFR_LEVELS[levelsSorted[Math.floor(levelsSorted.length / 2)]];
+  // The level shown here is the same one used everywhere else: the teacher's when she has set or confirmed it.
+  const access = useLevelAccess();
+  const own = CEFR_LEVELS[levelsSorted[Math.floor(levelsSorted.length / 2)]];
+  const overall = access.levelFrom === 'own' ? own : access.level;
   const weekAch = state.achievements.filter((a) => a.at >= weekStart().getTime()).map((a) => ACHIEVEMENTS.find((x) => x.id === a.id)).filter(Boolean);
   const report = buildTeacherReport(state);
   const analytics = { days: dailySeries(state, 28), c: consistency(state, 28), weekly: weeklyHistory(state, 8), errors: errorBreakdown(state, 28), tenses: tenseMastery(state, p.region) };
@@ -159,13 +163,13 @@ export function Journey() {
           <div className="flex shrink-0 flex-col items-center rounded-3xl bg-cream/10 px-6 py-4 ring-1 ring-cream/15">
             <span className="text-xs uppercase tracking-widest text-cream/70">Current level</span>
             <span className="font-display text-6xl font-semibold text-saffron-light">{overall}</span>
-            <span className="text-xs text-cream/70">{p.levelSource === 'assessment' ? 'from your placement' : p.levelSource === 'zero' ? 'started from zero' : 'self-selected'}</span>
+            <span className="text-xs text-cream/70" data-testid="level-source">{access.levelFrom === 'teacher' ? 'set by Dina' : access.levelFrom === 'confirmed' ? 'confirmed by Dina' : p.levelSource === 'assessment' ? 'from your placement' : p.levelSource === 'zero' ? 'started from zero' : 'self-selected'}</span>
           </div>
         </div>
       </motion.section>
 
-      {/* Skills */}
-      <section className="mt-5 grid grid-cols-3 gap-2 sm:grid-cols-6">
+      {/* Skills: the learner's own estimate. Once the teacher has set the level, hers is the one shown, alone. */}
+      <section className={`mt-5 grid grid-cols-3 gap-2 sm:grid-cols-6 ${access.levelFrom === 'own' ? '' : 'hidden'}`} data-testid="skill-levels">
         {SKILLS.map((s) => (
           <div key={s} className="card p-3 text-center">
             <p className="font-display text-2xl font-semibold text-terracotta">{p.levels[s]}</p>

@@ -16,6 +16,8 @@ export interface LevelAccess {
   packs: Set<string> | null;
   /** The level this person is working at: the teacher's ceiling, else the level she last confirmed, else their own. Games and the app's language follow it. */
   level: Cefr;
+  /** Where that level comes from: the teacher set it, the teacher confirmed a move up, or the learner's own profile. */
+  levelFrom: 'teacher' | 'confirmed' | 'own';
   /** How long sentences get in practice, 1 to 5: the teacher's setting, else what suits the level. */
   sentence: number;
 }
@@ -31,5 +33,5 @@ export function useLevelAccess(): LevelAccess {
   const packs = useMemo(() => allowedPacks(s), [key]); // eslint-disable-line react-hooks/exhaustive-deps
   const { state } = useStore();
   const level = s?.maxLevel ?? s?.verified?.level ?? overallLevel(state.profile?.levels);
-  return { maxLevel: s?.maxLevel ?? null, loading: isStudent && q.loading, settings: q.data, verbs, packs, level, sentence: s?.sentence ?? sentenceLevelFor(level) };
+  return { maxLevel: s?.maxLevel ?? null, loading: isStudent && q.loading, settings: q.data, verbs, packs, level, levelFrom: s?.maxLevel ? 'teacher' : s?.verified?.level ? 'confirmed' : 'own', sentence: s?.sentence ?? sentenceLevelFor(level) };
 }

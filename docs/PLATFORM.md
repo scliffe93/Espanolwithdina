@@ -306,3 +306,7 @@ There is no student picker on the lesson room's front page. Each plan has "Teach
 ### Staying up to date
 
 A tab left open keeps running the version it loaded. `UpdateWatcher` asks the site every five minutes, and whenever the app comes back into view, which version is current; when a newer one is out it says so and loads it the next time the person changes page. The offline worker never stores that check.
+
+### One level for a student, shown the same everywhere
+
+A student sees a single level on every screen: the teacher's once she has set a ceiling or confirmed a move up, otherwise the middle of their own skill levels (`useLevelAccess().level`, with `levelFrom` saying which). The home page, My journey and the next-level card all use it, and My journey says where it comes from ("set by Dina", "confirmed by Dina", "from your placement"). Once the teacher's level applies, the learner's own skill-by-skill estimates are no longer shown beside it. The next-level card reads "You are at A2. The next level is B1". The level a lesson plan is filed under, and the wording chosen for a lesson, are for the teacher only and are never shown to students. Tested by `scripts/level-shown-e2e.cjs`.

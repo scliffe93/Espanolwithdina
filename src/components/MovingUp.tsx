@@ -23,7 +23,7 @@ export function MovingUp({ className = '' }: { className?: string }) {
       <div className="mt-1 flex flex-wrap items-center gap-3">
         <span className="grid h-12 w-12 place-items-center rounded-2xl bg-ink font-display text-xl font-semibold text-saffron-light">{level}</span>
         <div className="min-w-0 flex-1">
-          <h2 className="text-xl font-semibold leading-tight">{justMoved ? `Dina has moved you up to ${level}` : r.ready ? `You look ready for ${r.next}` : `On the way to ${r.next}`}</h2>
+          <h2 className="text-xl font-semibold leading-tight">{justMoved ? `Dina has moved you up to ${level}` : r.ready ? `You are at ${level} and look ready for ${r.next}` : `You are at ${level}. The next level is ${r.next}`}</h2>
           <p className="text-sm text-ink-soft">{justMoved ? `New tenses and games are open. Here is what leads on to ${r.next}.` : r.ready ? 'Dina can see this too. She decides when you move up, so mention it in your next lesson.' : `${r.met} of ${r.checks.length} signs in place. Dina confirms the move when you get there.`}</p>
         </div>
       </div>
