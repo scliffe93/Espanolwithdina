@@ -181,11 +181,15 @@ export function RoomList() {
   const nameOf = (id: string) => people.find((p) => p.id === id)?.firstName ?? 'Student';
 
   // Who the next lesson is taught to. A plan belongs to nobody: it is given to a student, or a group, when it is taught.
-  const [studentId, setStudentId] = useState('');
-  const [more, setMore] = useState<string[]>([]);
-  useEffect(() => { if (!studentId && people[0]) setStudentId(people[0].id); }, [people, studentId]);
-  const classIds = [studentId, ...more.filter((x) => x !== studentId)].filter(Boolean);
-  const className = classIds.length > 1 ? `${nameOf(studentId)} +${classIds.length - 1}` : studentId ? nameOf(studentId) : 'a student';
+  // Nobody is chosen to begin with: she picks one student, several, or a named group.
+  const [classIds, setClassIds] = useState<string[]>([]);
+  const classes = usePlatformQuery((b) => b.studentGroups(), []);
+  const [naming, setNaming] = useState<string | null>(null);
+  const toggle = (sid: string) => setClassIds((ids) => (ids.includes(sid) ? ids.filter((x) => x !== sid) : [...ids, sid]));
+  const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
+  const picked = (classes.data ?? []).find((g) => sameSet(g.studentIds.filter((x) => people.some((p) => p.id === x)), classIds));
+  const className = !classIds.length ? 'a student' : picked ? picked.name : classIds.length > 2 ? `${nameOf(classIds[0])} +${classIds.length - 1}` : classIds.map(nameOf).join(' and ');
+  const groupTagsOf = (sid: string) => (classes.data ?? []).filter((g) => g.studentIds.includes(sid)).map((g) => g.name);
 
   // What is on show: a level folder of plans, or one student's lessons.
   const [view, setView] = useState<{ kind: 'level'; level: Cefr | 'all' } | { kind: 'student'; id: string }>({ kind: 'level', level: 'all' });
@@ -292,7 +296,7 @@ export function RoomList() {
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
         <button type="button" className="ctrl" onClick={() => { setReview({ plan: p, adapted: [] }); window.scrollTo({ top: 0 }); }} data-testid="library-review"><Icon name="edit" size={14} /> {p.status === 'review' ? 'Review' : 'Open'}</button>
-        <button type="button" className={p.status === 'ready' ? 'btn-primary !py-2' : 'ctrl'} disabled={busy || !classIds.length} onClick={() => void teach(p, false)} data-testid="library-use"><Icon name="video" size={14} /> Teach it to {className}</button>
+        <button type="button" className={p.status === 'ready' ? 'btn-primary !py-2' : 'ctrl'} disabled={busy || !classIds.length} title={classIds.length ? undefined : 'Choose who you are teaching at the top first'} onClick={() => void teach(p, false)} data-testid="library-use"><Icon name="video" size={14} /> {classIds.length ? `Teach it to ${className}` : 'Choose who to teach, above'}</button>
       </div>
     </li>
   );
@@ -309,18 +313,40 @@ export function RoomList() {
             <p className="mt-2 max-w-2xl text-cream/80">A plan belongs to no student. File it under its level, then teach it to one student or a group whenever you like, as often as you like.</p>
           </div>
         </div>
-        {/* Who the next lesson is for. Chosen at the moment of teaching, never stored in the plan. */}
-        <div className="relative mt-5 flex flex-wrap items-center gap-2 rounded-3xl bg-cream/10 p-3 ring-1 ring-cream/10" data-testid="room-class">
-          <b className="mr-1">Teaching now:</b>
-          <select className="input !w-44 !py-2 !text-ink" value={studentId} onChange={(e) => setStudentId(e.target.value)} aria-label="Student" data-testid="room-student">{people.map((p) => <option key={p.id} value={p.id}>{p.firstName}</option>)}</select>
-          {more.filter((x) => x !== studentId).map((x) => <button key={x} type="button" className="inline-flex items-center gap-1.5 rounded-full bg-cream px-3 py-1.5 text-sm font-semibold text-ink" onClick={() => setMore(more.filter((y) => y !== x))} data-testid="room-group-member">{nameOf(x)} <Icon name="x" size={13} /></button>)}
-          {people.length > classIds.length && (
-            <select className="input !w-auto !py-2 text-sm !text-ink" value="" onChange={(e) => { if (e.target.value) setMore([...more, e.target.value]); }} aria-label="Add a student to make it a group lesson" data-testid="room-group-add">
-              <option value="">+ Add a student (group lesson)</option>
-              {people.filter((x) => !classIds.includes(x.id)).map((x) => <option key={x.id} value={x.id}>{x.firstName}</option>)}
-            </select>
+        {/* Who the next lesson is for. Chosen at the moment of teaching, never stored in the plan. Nobody to begin with. */}
+        <div className="relative mt-5 rounded-3xl bg-cream/10 p-3.5 ring-1 ring-cream/10" data-testid="room-class">
+          <div className="flex flex-wrap items-center gap-2">
+            <b className="mr-1">Who are you teaching?</b>
+            <span className="text-sm text-cream/75" data-testid="room-class-summary">{classIds.length === 0 ? 'Nobody chosen yet. Tap one student, or several for a group.' : classIds.length === 1 ? `${nameOf(classIds[0])}, one to one` : `${picked ? `${picked.name}: ` : ''}a group of ${classIds.length}`}</span>
+            {classIds.length > 0 && <button type="button" className="ml-auto rounded-full bg-cream/10 px-3 py-1 text-xs font-semibold text-cream ring-1 ring-cream/20" onClick={() => setClassIds([])} data-testid="room-class-clear">Clear</button>}
+          </div>
+          {(classes.data ?? []).length > 0 && (
+            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+              <span className="w-16 text-xs font-bold uppercase tracking-[0.12em] text-cream/60">Groups</span>
+              {(classes.data ?? []).map((g) => { const ids = g.studentIds.filter((x) => people.some((p) => p.id === x)); const on = picked?.id === g.id; return (
+                <span key={g.id} className={`inline-flex items-center overflow-hidden rounded-full text-sm font-semibold ring-1 ${on ? 'bg-saffron text-ink ring-saffron' : 'bg-cream text-ink ring-cream'}`}>
+                  <button type="button" className="px-3 py-1.5" aria-pressed={on} onClick={() => setClassIds(on ? [] : ids)} data-testid="class-chip">{g.name} <span className="opacity-60">{ids.length}</span></button>
+                  <button type="button" className="border-l border-ink/10 px-2 py-1.5 opacity-60 hover:opacity-100" aria-label={`Delete the group ${g.name}`} onClick={() => { if (window.confirm(`Delete the group “${g.name}”? The students and their lessons are kept.`)) void backend?.deleteStudentGroup(g.id).then(() => classes.reload()); }}><Icon name="x" size={12} /></button>
+                </span>
+              ); })}
+            </div>
           )}
-          {classIds.length > 1 && <span className="basis-full text-sm text-cream/80" data-testid="room-group-note"><b className="text-cream">A group lesson for {classIds.map(nameOf).join(', ')}.</b> Each joins on their own device and answers for themselves. Your screen tells you when everyone has.</span>}
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5" role="group" aria-label="Students">
+            <span className="w-16 text-xs font-bold uppercase tracking-[0.12em] text-cream/60">Students</span>
+            {people.length === 0 ? <span className="text-sm text-cream/70">None yet</span> : people.map((p) => { const on = classIds.includes(p.id); return <button key={p.id} type="button" aria-pressed={on} onClick={() => toggle(p.id)} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ring-1 transition ${on ? 'bg-saffron text-ink ring-saffron' : 'bg-cream/10 text-cream ring-cream/25 hover:bg-cream/20'}`} data-testid="class-student" data-on={on || undefined}>{on && <Icon name="check" size={13} />}{p.firstName}</button>; })}
+          </div>
+          {classIds.length > 1 && !picked && (
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+              {naming === null ? <button type="button" className="rounded-full bg-cream/10 px-3 py-1.5 text-sm font-semibold text-cream ring-1 ring-cream/25 hover:bg-cream/20" onClick={() => setNaming('')} data-testid="class-save">Save these {classIds.length} as a named group</button> : (
+                <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); if (!backend || !naming.trim()) return; void backend.saveStudentGroup({ name: naming, studentIds: classIds }).then(() => { classes.reload(); setNaming(null); notify('Group saved', `Pick “${naming.trim()}” next time to choose them all at once.`); }); }}>
+                  <input className="input !w-56 !py-1.5 !text-ink" value={naming} onChange={(e) => setNaming(e.target.value)} placeholder="Name, e.g. Tuesday beginners" maxLength={40} autoFocus data-testid="class-name" />
+                  <button type="submit" className="rounded-full bg-saffron px-4 py-1.5 text-sm font-bold text-ink disabled:opacity-50" disabled={!naming.trim()} data-testid="class-name-save">Save group</button>
+                  <button type="button" className="text-sm text-cream/70" onClick={() => setNaming(null)}>Cancel</button>
+                </form>
+              )}
+            </div>
+          )}
+          {classIds.length > 1 && <p className="mt-2.5 text-sm text-cream/80" data-testid="room-group-note"><b className="text-cream">A group lesson for {classIds.map(nameOf).join(', ')}.</b> Each joins on their own device and answers for themselves. Your screen tells you when everyone has.</p>}
         </div>
       </section>
       {none && <p className="mt-3 rounded-2xl bg-saffron-50 px-4 py-3 text-sm ring-1 ring-saffron/40">Add a student first (Students, Add a student). You can still build and file plans now.</p>}
@@ -328,7 +354,7 @@ export function RoomList() {
       {running.length > 0 && (
         <button type="button" onClick={() => navigate(`teach/room/${running.find((l) => !isMemberCopy(l))?.id ?? running[0].id}`)} className="mt-4 flex w-full items-center gap-4 rounded-3xl bg-olive p-4 text-left text-white shadow-lift" data-testid="room-running">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/20"><Icon name="video" size={22} /></span>
-          <span className="min-w-0 flex-1"><span className="eyebrow !text-white/80">Running now</span><b className="block truncate text-lg">{running[0].title} · {nameOf(running[0].studentId)}</b></span>
+          <span className="min-w-0 flex-1"><span className="eyebrow !text-white/80">Running now</span><b className="block truncate text-lg">{running[0].title} · {running.filter((l) => l.title === running[0].title).map((l) => nameOf(l.studentId)).join(', ')}</b></span>
           <span className="rounded-full bg-white px-4 py-2 font-bold text-ink">Go back in</span>
         </button>
       )}
@@ -342,7 +368,7 @@ export function RoomList() {
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-ink/5 pt-2">
           <span className="mr-1 w-20 text-xs font-bold uppercase tracking-[0.12em] text-ink-mute">Students</span>
-          {people.length === 0 ? <span className="text-sm text-ink-mute">None yet</span> : people.map((p) => { const n = all.filter((l) => l.studentId === p.id).length; const on = view.kind === 'student' && view.id === p.id; return <button key={p.id} type="button" className="chip !py-1.5 text-sm" aria-pressed={on} onClick={() => setView({ kind: 'student', id: p.id })} data-testid="student-tab">{p.firstName} <span className="opacity-60">{n}</span></button>; })}
+          {people.length === 0 ? <span className="text-sm text-ink-mute">None yet</span> : people.map((p) => { const n = all.filter((l) => l.studentId === p.id).length; const on = view.kind === 'student' && view.id === p.id; return <button key={p.id} type="button" className="chip !py-1.5 text-sm" aria-pressed={on} onClick={() => setView({ kind: 'student', id: p.id })} data-testid="student-tab">{p.firstName} <span className="opacity-60">{n}</span>{groupTagsOf(p.id).length ? <span className="ml-1 text-xs opacity-60">· {groupTagsOf(p.id).join(', ')}</span> : null}</button>; })}
         </div>
       </nav>
 
@@ -405,9 +431,9 @@ export function RoomList() {
         return (
           <section className="mt-5" data-testid="student-folder">
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <h2 className="mr-auto text-2xl font-semibold">{nameOf(sid)} <span className="ml-1 rounded-xl bg-azul px-2.5 py-1 align-middle text-sm font-bold text-white" data-testid="student-level">{lv}</span></h2>
+              <h2 className="mr-auto text-2xl font-semibold">{nameOf(sid)} <span className="ml-1 rounded-xl bg-azul px-2.5 py-1 align-middle text-sm font-bold text-white" data-testid="student-level">{lv}</span>{groupTagsOf(sid).map((g) => <span key={g} className="ml-1.5 rounded-xl bg-olive-50 px-2.5 py-1 align-middle text-sm font-bold text-olive" data-testid="student-group-tag">{g}</span>)}</h2>
               <button type="button" className="btn-primary !py-2.5" disabled={busy} onClick={() => void draftFor(sid)} data-testid="room-draft"><Icon name="sparkle" size={16} /> Draft a lesson from their week</button>
-              <button type="button" className="btn-ghost !py-2.5" onClick={() => { setStudentId(sid); setMore([]); setView({ kind: 'level', level: lv }); }} data-testid="student-plans"><Icon name="book" size={16} /> Teach them a {lv} plan</button>
+              <button type="button" className="btn-ghost !py-2.5" onClick={() => { setClassIds([sid]); setView({ kind: 'level', level: lv }); }} data-testid="student-plans"><Icon name="book" size={16} /> Teach them a {lv} plan</button>
               <button type="button" className="btn-ghost !py-2.5" onClick={() => navigate(`teach/student/${sid}`)}><Icon name="user" size={16} /> Their profile</button>
             </div>
             <p className="mb-3 text-sm text-ink-soft">What {nameOf(sid)} has worked on with you: {mine.length} lesson{mine.length === 1 ? '' : 's'}. Open one to see the parts and their answers, or to teach it again.</p>

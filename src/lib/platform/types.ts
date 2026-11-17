@@ -321,6 +321,7 @@ export interface PlatformData {
   lessons?: LessonPlan[];
   library?: LibraryPlan[];
   groups?: LessonGroup[];
+  classes?: StudentGroup[];
   lessonWork?: LessonWork[];
 }
 
@@ -360,6 +361,9 @@ export interface LessonGroup {
   members: { lessonId: string; studentId: string }[];
   createdAt: string;
 }
+
+/** A named group of students the teacher teaches together ("Tuesday beginners"), to pick in one tap. */
+export interface StudentGroup { id: string; teacherId: string; name: string; studentIds: string[]; createdAt: string }
 
 export const DEMO_TEACHER_ID = 'demo-dina';
 export const DEMO_STUDENT_IDS = { sam: 'demo-sam', anneka: 'demo-anneka' } as const;

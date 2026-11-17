@@ -4,7 +4,7 @@ import { migrate } from '../state';
 import { PlatformError, findOverlap, uid, validateBooking, type LessonInput, type LibraryInput, type PlatformBackend, type StudentSettingsInput } from './backend';
 import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, Marking, Person, StudentSettings, TeacherConfig } from './types';
 import { settingsId } from './level';
-import type { LessonGroup, LessonPlan, LessonWork, LibraryPlan } from './types';
+import type { LessonGroup, LessonPlan, LessonWork, LibraryPlan, StudentGroup } from './types';
 import { cleanPlan } from '../../../supabase/functions/_shared/lesson';
 import { DEFAULT_TEACHER_CONFIG } from './types';
 
@@ -292,6 +292,20 @@ class CloudBackend implements PlatformBackend {
     // Settings rows cannot be removed, so the plan is emptied and hidden.
     const now = new Date().toISOString();
     await this.put('config', id, this.actor.id, { id, library: true, deleted: true, title: '', blocks: [], notes: '', updatedAt: now, createdAt: now });
+  }
+  async studentGroups() {
+    if (!this.isTeacher()) return [];
+    const rows = await this.records<StudentGroup & { klass?: boolean; deleted?: boolean }>('config');
+    return rows.filter((r) => r.klass === true && !r.deleted && Array.isArray(r.studentIds)).sort((a, b) => a.name.localeCompare(b.name));
+  }
+  async saveStudentGroup(input: { id?: string; name: string; studentIds: string[] }) {
+    this.assertTeacher();
+    const id = input.id ?? `cls-${uid()}`;
+    return this.put('config', id, this.actor.id, { id, klass: true, teacherId: this.actor.id, name: input.name.trim().slice(0, 40) || 'Group', studentIds: [...new Set(input.studentIds)], createdAt: new Date().toISOString() } as unknown as StudentGroup);
+  }
+  async deleteStudentGroup(id: string) {
+    this.assertTeacher();
+    await this.put('config', id, this.actor.id, { id, klass: true, deleted: true, name: '', studentIds: [] });
   }
   async lessonGroups() {
     if (!this.isTeacher()) return [];

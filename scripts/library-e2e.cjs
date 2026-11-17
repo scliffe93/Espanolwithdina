@@ -12,7 +12,7 @@ const PLAN = ['# Spanish A1 — Lesson 3: Food and Drink', '', 'CEFR Level:\tA1\
   const as = async (who) => { await p.goto(BASE + '#/demo'); await p.waitForTimeout(800); await p.getByTestId('demo-' + who).click(); await p.waitForTimeout(1600); };
   await as('dina');
   await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1500);
-  await p.getByTestId('room-student').selectOption({ label: 'Sam' }); await p.waitForTimeout(600);
+  if (await p.getByTestId('room-class-clear').count()) await p.getByTestId('room-class-clear').click(); await p.getByTestId('class-student').filter({ hasText: 'Sam' }).click(); await p.waitForTimeout(600);
   ok((await p.getByTestId('room-tabs').innerText()).includes('A1') && (await p.getByTestId('student-tab').filter({ hasText: 'Sam' }).count()) === 1, 'the folders are the levels, with a tab for each student beneath');
   ok(await p.getByTestId('library-none').count() === 1, 'the library starts empty');
   await p.getByTestId('room-file').setInputFiles({ name: 'A1 Food and Drink.txt', mimeType: 'text/plain', buffer: Buffer.from(PLAN, 'utf8') });
@@ -61,7 +61,7 @@ const PLAN = ['# Spanish A1 — Lesson 3: Food and Drink', '', 'CEFR Level:\tA1\
   // The same plan is taught again, to someone else: it was never tied to Sam.
   await as('dina');
   await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1500);
-  await p.getByTestId('room-student').selectOption({ label: 'Anneka' }); await p.waitForTimeout(300);
+  if (await p.getByTestId('room-class-clear').count()) await p.getByTestId('room-class-clear').click(); await p.getByTestId('class-student').filter({ hasText: 'Anneka' }).click(); await p.waitForTimeout(300);
   ok(/Teach it to Anneka/.test(await p.getByTestId('library-use').innerText()), 'the same plan can be taught to another student');
   await p.getByTestId('library-use').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(600);
   ok(/Anneka · level/.test(await p.getByTestId('plan-for').innerText()), 'and becomes a lesson for her');

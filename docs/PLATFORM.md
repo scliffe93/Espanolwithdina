@@ -294,3 +294,7 @@ A lesson plan is not tied to a student. Plans live in the library, filed in leve
 During a live lesson the student's device asks for the lesson every second (it was every two), and the teacher's screen reads a group's answers every second and a half.
 
 Tested by `scripts/selfrepair-e2e.cjs`, `scripts/verbs-e2e.cjs`, `scripts/library-e2e.cjs`.
+
+### Choosing who to teach, and named groups
+
+Nobody is chosen when the lesson room opens. Under "Who are you teaching?" the teacher taps one student for a one-to-one lesson or as many as she likes for a group. A selection of two or more can be saved under a name (`StudentGroup`, "Tuesday beginners"); the named group then appears as a chip that picks all its members at once, and its name shows on each member's tab. Named groups are kept in the teacher's own settings rows (ids `cls-…`), like the library. The "Teach it to …" buttons stay off until someone is chosen.

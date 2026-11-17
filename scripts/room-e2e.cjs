@@ -30,7 +30,7 @@ async function until(fn, ms = 9000) { const end = Date.now() + ms; for (;;) { if
   // ── Before the lesson: Dina plans it. ──
   await login(t, 'dina');
   await t.goto(BASE + '#/teach/room'); await t.waitForTimeout(1500);
-  await t.getByTestId('room-student').selectOption({ label: first });
+  if (await t.getByTestId('room-class-clear').count()) await t.getByTestId('room-class-clear').click(); await t.getByTestId('class-student').filter({ hasText: first }).click();
   await t.getByTestId('room-blank').click(); await t.getByTestId('import-review').waitFor({ timeout: 10000 }); await t.getByTestId('review-create').click(); await t.getByTestId('teacher-room').waitFor({ timeout: 10000 });
   await t.getByTestId('room-title').fill('El pretérito: ir y ser');
   await t.getByTestId('room-notes').fill('PRIVATE: Sam mixes up fui and fue. Go slowly.');

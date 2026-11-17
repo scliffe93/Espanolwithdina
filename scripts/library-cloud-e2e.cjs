@@ -21,7 +21,7 @@ const PLAN = ['# Spanish A2 — Lesson 3: Food and Drink', '', 'CEFR Level:\tA2\
   await p.getByRole('button', { name: /^Log in/ }).last().click(); await p.waitForTimeout(2200);
   const cont = p.getByTestId('welcome-continue'); if (await cont.count()) { await cont.click().catch(() => {}); await p.waitForTimeout(500); }
   await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(2000);
-  await p.getByTestId('room-student').selectOption({ label: `Leo${tag}` }); await p.waitForTimeout(600);
+  if (await p.getByTestId('room-class-clear').count()) await p.getByTestId('room-class-clear').click(); await p.getByTestId('class-student').filter({ hasText: `Leo${tag}` }).click(); await p.waitForTimeout(600);
   const before = await p.getByTestId('library-plan').count();
   await p.getByTestId('room-file').setInputFiles({ name: `Food ${tag}.txt`, mimeType: 'text/plain', buffer: Buffer.from(PLAN, 'utf8') });
   await p.getByTestId('import-review').waitFor({ timeout: 15000 });
@@ -30,7 +30,7 @@ const PLAN = ['# Spanish A2 — Lesson 3: Food and Drink', '', 'CEFR Level:\tA2\
   await p.reload(); await p.waitForTimeout(2500);
   const mine = p.getByTestId('library-plan').filter({ hasText: `Food ${tag}.txt` });
   ok((await p.getByTestId('library-plan').count()) === before + 1 && (await mine.getAttribute('data-status')) === 'ready', 'after a reload it is still in the library, marked ready');
-  await p.getByTestId('room-student').selectOption({ label: `Leo${tag}` }); await p.waitForTimeout(600);
+  if (await p.getByTestId('room-class-clear').count()) await p.getByTestId('room-class-clear').click(); await p.getByTestId('class-student').filter({ hasText: `Leo${tag}` }).click(); await p.waitForTimeout(600);
   await mine.getByTestId('library-use').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(800);
   ok(new RegExp(`Leo${tag} · level`).test(await p.getByTestId('plan-for').innerText()) && (await p.getByTestId('block-editor').count()) >= 5, 'and it becomes a lesson for the student');
   await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(2000);

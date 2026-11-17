@@ -16,18 +16,28 @@ async function login(p, user) {
   const cont = p.getByTestId('welcome-continue'); if (await cont.count()) { await cont.click().catch(() => {}); await p.waitForTimeout(500); }
 }
 (async () => {
-  const tag = Date.now().toString(36).slice(-4); const A = `Ana${tag}`, B = `Ben${tag}`;
+  const tag = Date.now().toString(36).slice(-4); const A = `Ana${tag}`, B = `Ben${tag}`, C = `Cai${tag}`;
   await api('register', { username: 'dina', password: PW, firstName: 'Dina', remember: true });
   const d = await api('login', { username: 'dina', password: PW, remember: true });
   await api('platform/students', { username: A.toLowerCase(), firstName: A, password: PW }, d.token);
   await api('platform/students', { username: B.toLowerCase(), firstName: B, password: PW }, d.token);
+  await api('platform/students', { username: C.toLowerCase(), firstName: C, password: PW }, d.token);
   const b = await chromium.launch(); const errors = [];
   const page = async (viewport) => { const p = await (await b.newContext({ viewport })).newPage(); p.on('pageerror', (e) => errors.push(String(e))); return p; };
   const t = await page({ width: 1366, height: 800 }); await login(t, 'dina');
   await t.goto(BASE + '#/teach/room'); await t.waitForTimeout(2000);
-  await t.getByTestId('room-student').selectOption({ label: A }); await t.waitForTimeout(400);
-  await t.getByTestId('room-group-add').selectOption({ label: B }); await t.waitForTimeout(400);
+  if (await t.getByTestId('room-class-clear').count()) await t.getByTestId('room-class-clear').click(); await t.getByTestId('class-student').filter({ hasText: A }).click(); await t.waitForTimeout(400);
+  await t.getByTestId('class-student').filter({ hasText: B }).click(); await t.waitForTimeout(400);
   ok(new RegExp(`A group lesson for ${A}, ${B}`).test(await t.getByTestId('room-group-note').innerText()), 'the teacher picks two students: it is a group lesson');
+  // A third joins the group, and the three are saved under a name to pick in one tap next time.
+  await t.getByTestId('class-student').filter({ hasText: C }).click(); await t.waitForTimeout(300);
+  ok(/a group of 3/.test(await t.getByTestId('room-class-summary').innerText()), 'more than two can be chosen');
+  await t.getByTestId('class-save').click(); await t.getByTestId('class-name').fill(`Martes ${tag}`); await t.getByTestId('class-name-save').click(); await t.waitForTimeout(1500);
+  await t.reload(); await t.waitForTimeout(2500);
+  ok(/Nobody chosen yet/.test(await t.getByTestId('room-class-summary').innerText()), 'nobody is chosen until she chooses');
+  await t.getByTestId('class-chip').filter({ hasText: `Martes ${tag}` }).click(); await t.waitForTimeout(400);
+  ok(new RegExp(`Martes ${tag}: a group of 3`).test(await t.getByTestId('room-class-summary').innerText()) && (await t.locator('[data-testid="class-student"][data-on]').count()) === 3, 'the named group picks all three at once');
+  await t.getByTestId('class-student').filter({ hasText: C }).click(); await t.waitForTimeout(300);
   await t.getByTestId('room-example').click(); await t.getByTestId('import-review').waitFor({ timeout: 15000 }); await t.getByTestId('review-create').click(); await t.getByTestId('teacher-room').waitFor({ timeout: 15000 }); await t.waitForTimeout(1200);
   ok(new RegExp(`${A}, ${B} · a group of 2`).test(await t.getByTestId('plan-for').innerText()), 'the lesson is for both of them');
   await t.getByTestId('to-present').click(); await t.getByTestId('start-lesson').click(); await t.waitForTimeout(500); await t.getByTestId('open-all').click(); await t.waitForTimeout(1500);
