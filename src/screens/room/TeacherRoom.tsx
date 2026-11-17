@@ -6,7 +6,8 @@ import { isPresent } from '../../../supabase/functions/_shared/lesson';
 import { usePlatform, usePlatformQuery } from '../../lib/platform/context';
 import { BLOCK_LABEL, draftLesson, exampleLesson, newBlock } from '../../lib/platform/lessonDraft';
 import { homeworkFromLesson, homeworkItems } from '../../lib/platform/lessonHomework';
-import { describeImport, planFromText, type ImportedPlan } from '../../lib/platform/lessonImport';
+import { adaptPlan, type AdaptedPlan } from '../../lib/platform/lessonAdapt';
+import { describeImport, type ImportedPlan } from '../../lib/platform/lessonImport';
 import { extractText, sourceKindOf } from '../../lib/extractText';
 import type { LessonBlock, LessonPlan } from '../../lib/platform/types';
 import { navigate } from '../../lib/router';
@@ -43,9 +44,10 @@ function PartChips({ blocks }: { blocks: LessonBlock[] }) {
  * on the other. She can retitle it, change what a part is, edit or remove parts and fill in missing answers, and only
  * then create the lesson. Cancelling leaves nothing behind.
  */
-function ImportReview({ source, sourceName, made, studentName, busy, onCreate, onCancel }: { source: string; sourceName: string; made: ImportedPlan; studentName: string; busy: boolean; onCreate: (title: string, blocks: LessonBlock[]) => void; onCancel: () => void }) {
+function ImportReview({ source, sourceName, made, studentName, busy, onCreate, onCancel }: { source: string; sourceName: string; made: AdaptedPlan; studentName: string; busy: boolean; onCreate: (title: string, blocks: LessonBlock[], notes: string) => void; onCancel: () => void }) {
   const [title, setTitle] = useState(made.title);
   const [blocks, setBlocks] = useState<LessonBlock[]>(made.blocks);
+  const [notes, setNotes] = useState(made.notes);
   const [showSource, setShowSource] = useState(true);
   const missing = blocks.filter((b) => (b.type === 'gap' || b.type === 'choice') && !(b.answer ?? '').trim()).length;
   const empty = blocks.filter((b) => b.type !== 'vocab' && !b.body.trim()).length;
@@ -61,7 +63,7 @@ function ImportReview({ source, sourceName, made, studentName, busy, onCreate, o
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" className="rounded-full bg-cream/10 px-5 py-3 font-semibold text-cream ring-1 ring-cream/20 hover:bg-cream/15" onClick={onCancel} data-testid="review-cancel">Cancel</button>
-            <button type="button" className="inline-flex items-center gap-2 rounded-full bg-saffron px-6 py-3 font-bold text-ink shadow-lift transition hover:scale-[1.02] disabled:opacity-60" disabled={busy || blocks.length === 0} onClick={() => onCreate(title.trim() || 'Lesson', blocks)} data-testid="review-create"><Icon name="check" size={18} /> Create the lesson · {blocks.length} part{blocks.length === 1 ? '' : 's'}</button>
+            <button type="button" className="inline-flex items-center gap-2 rounded-full bg-saffron px-6 py-3 font-bold text-ink shadow-lift transition hover:scale-[1.02] disabled:opacity-60" disabled={busy || blocks.length === 0} onClick={() => onCreate(title.trim() || 'Lesson', blocks, notes)} data-testid="review-create"><Icon name="check" size={18} /> Create the lesson · {blocks.length} part{blocks.length === 1 ? '' : 's'}</button>
           </div>
         </div>
         <div className="relative mt-5 grid gap-2 sm:grid-cols-3">
@@ -76,7 +78,7 @@ function ImportReview({ source, sourceName, made, studentName, busy, onCreate, o
           <aside className="lg:sticky lg:top-4 lg:self-start" data-testid="review-source">
             <div className="card overflow-hidden">
               <div className="flex items-center justify-between gap-2 border-b border-ink/5 bg-cream-100 px-4 py-2.5"><p className="eyebrow">Your document</p><button type="button" className="text-xs font-semibold text-ink-mute hover:text-ink" onClick={() => setShowSource(false)}>Hide</button></div>
-              <pre className="max-h-[70vh] overflow-auto whitespace-pre-wrap break-words p-4 font-sans text-[14px] leading-relaxed text-ink-soft" lang="es">{source.replace(/^# /gm, '')}</pre>
+              <pre className="max-h-[70vh] overflow-auto whitespace-pre-wrap break-words p-4 font-sans text-[14px] leading-relaxed text-ink-soft" lang="es">{source.replace(/^# /gm, '').replace(/\t/g, '   ')}</pre>
             </div>
             <p className="mt-2 text-xs text-ink-mute">This is the text read from your file, on this device. In a PDF, headings in larger type start a new part.</p>
           </aside>
@@ -86,6 +88,19 @@ function ImportReview({ source, sourceName, made, studentName, busy, onCreate, o
             <label className="grid min-w-0 flex-1 gap-1 text-sm font-medium">Title of the lesson<input className="input text-lg" value={title} onChange={(e) => setTitle(e.target.value)} data-testid="review-title" /></label>
             {!showSource && <button type="button" className="ctrl" onClick={() => setShowSource(true)}><Icon name="eye" size={14} /> Show my document</button>}
           </div>
+          {made.adapted.length > 0 && (
+            <div className="mb-3 rounded-3xl bg-olive-50 p-4 ring-1 ring-olive/30" data-testid="review-adapted">
+              <p className="font-semibold"><Icon name="sparkle" size={15} className="mr-1 inline" /> Adapted for a lesson on screen</p>
+              <p className="mt-0.5 text-sm text-ink-soft">Your plan was written for a classroom. These parts were turned into things {studentName} does on their own screen:</p>
+              <ul className="mt-2 grid gap-1 text-sm">{made.adapted.map((a) => <li key={a} className="flex gap-2"><Icon name="check" size={15} className="mt-0.5 shrink-0 text-olive" /> <span>{a}</span></li>)}</ul>
+            </div>
+          )}
+          {(made.notes || notes) && (
+            <details className="card mb-3 p-4" data-testid="review-notes">
+              <summary className="cursor-pointer font-semibold">Your own notes <span className="font-normal text-ink-mute">· the timings and steps from your plan, only you see these</span></summary>
+              <textarea className="input mt-3 min-h-[180px] w-full text-sm" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={6000} />
+            </details>
+          )}
           {empty > 0 && <p className="mb-3 rounded-2xl bg-saffron-50 px-4 py-2.5 text-sm ring-1 ring-saffron/40">{empty} part{empty === 1 ? ' is' : 's are'} empty. Remove {empty === 1 ? 'it' : 'them'} or type what should be there.</p>}
           <ol className="grid gap-3">
             {blocks.map((b, i) => (
@@ -98,7 +113,7 @@ function ImportReview({ source, sourceName, made, studentName, busy, onCreate, o
           </ol>
           {blocks.length === 0 && <p className="card p-6 text-center text-ink-soft">Every part has been removed. Cancel, or go back and upload the plan again.</p>}
           <div className="mt-4 flex flex-wrap gap-2">
-            <button type="button" className="btn-primary" disabled={busy || blocks.length === 0} onClick={() => onCreate(title.trim() || 'Lesson', blocks)}><Icon name="check" size={18} /> Create the lesson</button>
+            <button type="button" className="btn-primary" disabled={busy || blocks.length === 0} onClick={() => onCreate(title.trim() || 'Lesson', blocks, notes)}><Icon name="check" size={18} /> Create the lesson</button>
             <button type="button" className="btn-ghost" onClick={onCancel}>Cancel</button>
           </div>
         </div>
@@ -135,9 +150,9 @@ export function RoomList() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [pasting, setPasting] = useState(false);
   const [pasted, setPasted] = useState('');
-  const [review, setReview] = useState<{ source: string; name: string; made: ImportedPlan } | null>(null);
+  const [review, setReview] = useState<{ source: string; name: string; made: AdaptedPlan } | null>(null);
   const read = (text: string, name: string, fallback: string) => {
-    const made = planFromText(text, fallback);
+    const made = adaptPlan(text, fallback);
     if (!made.blocks.length) { setError('Nothing could be read from that. If it is a scanned page or a photo, paste the text instead.'); return; }
     setError(null); setReview({ source: text.trim(), name, made });
     window.scrollTo({ top: 0 });
@@ -153,11 +168,11 @@ export function RoomList() {
     setBusy(false);
     if (fileRef.current) fileRef.current.value = '';
   };
-  const createFromReview = async (title: string, blocks: LessonBlock[]) => {
+  const createFromReview = async (title: string, blocks: LessonBlock[], notes: string) => {
     if (!backend || !studentId) return;
     setBusy(true); setError(null);
     try {
-      const plan = await backend.saveLesson({ studentId, title, date: today(), notes: '', blocks, live: { on: false, current: null } });
+      const plan = await backend.saveLesson({ studentId, title, date: today(), notes, blocks, live: { on: false, current: null } });
       navigate(`teach/room/${plan.id}`);
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not create the lesson.'); setBusy(false); }
   };
@@ -174,7 +189,7 @@ export function RoomList() {
     setBusy(false);
   };
 
-  if (review) return (<><ErrorText error={error} /><ImportReview source={review.source} sourceName={review.name} made={review.made} studentName={nameOf(studentId)} busy={busy} onCreate={(t, b) => void createFromReview(t, b)} onCancel={() => { setReview(null); setError(null); }} /></>);
+  if (review) return (<><ErrorText error={error} /><ImportReview source={review.source} sourceName={review.name} made={review.made} studentName={nameOf(studentId)} busy={busy} onCreate={(t, b, n) => void createFromReview(t, b, n)} onCancel={() => { setReview(null); setError(null); }} /></>);
 
   const none = !!students.data && people.length === 0;
   const running = (lessons.data ?? []).filter((l) => l.live.on);
@@ -241,6 +256,7 @@ export function RoomList() {
             <li><b className="text-ink">A line ending in a question mark</b> becomes an open question.</li>
             <li><b className="text-ink">Lines like</b> <span lang="es">la playa = the beach</span> become a word list.</li>
             <li><b className="text-ink">END OF LESSON</b> on a line of its own ends the lesson. Anything below it is your own notes and is not read.</li>
+            <li><b className="text-ink">A classroom plan with worksheets</b> is adapted: a phrase table becomes a word list, matching and word-box exercises become multiple choice with the answers from your answer key, role-play cards become a role play for two, and the timed steps written for you go into your own notes.</li>
             <li><b className="text-ink">Everything else</b> becomes an explanation. Nothing is invented and nothing is left out.</li>
           </ul>
           <p className="mt-2">The file is read on this device. A scanned page or a photo has no text to read: paste the text instead.</p>

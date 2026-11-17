@@ -1,3 +1,4 @@
+import { layoutPdfItems, type PdfItem } from './pdfLayout';
 // ───────────────────────────────────────────────────────────────
 // Text out of a teacher's document, in the browser: PDF (pdf.js, loaded
 // on demand), Word (.docx: the zip's word/document.xml), plain text and
@@ -28,33 +29,9 @@ async function fromPdf(buf: ArrayBuffer, layout = false): Promise<string> {
     const content = await page.getTextContent();
     let line = '';
     if (layout) {
-      // Keep the shape of the page: a bigger gap between lines is a blank line, and a line set in larger type than
-      // the body is a heading. A lesson plan is read by its shape, so this is what makes a PDF plan come through.
-      type Item = { str?: string; hasEOL?: boolean; height?: number; transform?: number[] };
-      const rows: { text: string; y: number; h: number }[] = [];
-      let y = 0, h = 0;
-      for (const item of content.items as Item[]) {
-        if (typeof item.str !== 'string') continue;
-        if (!line && item.str.trim()) { y = item.transform?.[5] ?? 0; h = item.height ?? 0; }
-        if (item.str.trim()) h = Math.max(h, item.height ?? 0);
-        line += item.str;
-        if (item.hasEOL) { if (line.trim()) rows.push({ text: line.replace(/\s+/g, ' ').trim(), y, h }); line = ''; } else line += ' ';
-      }
-      if (line.trim()) rows.push({ text: line.replace(/\s+/g, ' ').trim(), y, h });
-      const heights = rows.map((r) => r.h).filter((x) => x > 0).sort((a, b) => a - b);
-      const body = heights[Math.floor(heights.length / 2)] || 11;
-      // The usual distance between two lines of body text on this page. Where every line is its own paragraph (a list
-      // of options or words), that distance is large but it is still the normal one, so it must not split them.
-      const isBig = (r: { text: string; h: number }) => r.h >= body * 1.18 && r.text.length <= 90;
-      const gaps = rows.slice(1).map((r, i) => (isBig(r) || isBig(rows[i]) ? 0 : rows[i].y - r.y)).filter((g) => g > 0).sort((x, z) => x - z);
-      const usual = gaps[Math.floor((gaps.length - 1) / 2)] || body * 1.3;
-      rows.forEach((r, i) => {
-        const prev = rows[i - 1];
-        const gap = prev ? prev.y - r.y : 0;
-        const big = isBig(r);
-        if (prev && (gap > usual * 1.4 || gap < 0 || big || isBig(prev))) parts.push('');
-        parts.push(big && !/^#/.test(r.text) ? `# ${r.text}` : r.text);
-      });
+      // Keep the shape of the page (table rows, blanks to fill in, headings): a lesson plan is read by its shape.
+      if (parts.length) parts.push('');
+      parts.push(...layoutPdfItems(content.items as PdfItem[]));
       line = '';
     } else {
       for (const item of content.items as { str?: string; hasEOL?: boolean }[]) {

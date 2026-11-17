@@ -247,3 +247,7 @@ The verb area opens with one start button and the learner's progress, then three
 ### Report a problem
 
 Every screen has a small Report a problem button (`src/components/ReportIssue.tsx`, mounted in `src/main.tsx`). A logged-in person writes what went wrong and it is sent to the administrator's Problems list as a note, with the page and the device type. Someone not logged in gets the note copied to send themselves. It uses the existing `report` route, so the server did not change. Tested by `scripts/report-e2e.cjs`.
+
+### Classroom plans are adapted on upload
+
+A plan written for a class (a phrase table, a timed procedure, worksheets with an answer key, role-play cards) is adapted when it is uploaded (`src/lib/platform/lessonAdapt.ts`). The phrase table becomes a word list; a matching exercise becomes multiple choice with the answers from the key; blanks with a word box become multiple choice from the box, one part for each blank; a personal exercise becomes an open question; questions the teacher is told to ask become speaking prompts; role-play cards become a role play for two; the aims become a goals card; and the timed procedure goes into the teacher's own notes. It follows rules and invents nothing, and the review lists what was adapted. A plan with none of these features is read the plain way. The PDF reader (`src/lib/pdfLayout.ts`) rebuilds table rows and drawn blanks from the positions of the text. `npx tsx scripts/plan-preview.mts <file.pdf>` prints the lesson a PDF would make. Tested by `tests/lesson-adapt.test.ts`.
