@@ -297,6 +297,8 @@ export interface StudentSettings {
   stepped?: boolean;
   /** Released block ids. */
   unlocked?: string[];
+  /** Verbs the teacher has released one by one, from blocks she has not released whole. */
+  verbs?: string[];
   /** The level the teacher last confirmed the student is working at (set when she approves a move up). */
   verified?: { level: Cefr; at: string };
   /** The teacher said "not yet" to the app's suggestion to move up from this level; it is not suggested again for a while. */

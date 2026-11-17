@@ -23,7 +23,7 @@ export function LevelAccess({ studentId, name, state }: { studentId: string; nam
 
   const save = async () => {
     if (!backend) return;
-    const saved = await run(() => backend.saveStudentSettings({ sentence: q.data?.sentence, studentId, maxLevel: level || null, note, stepped: q.data?.stepped, unlocked: q.data?.unlocked, verified: q.data?.verified, notYet: q.data?.notYet }));
+    const saved = await run(() => backend.saveStudentSettings({ sentence: q.data?.sentence, verbs: q.data?.verbs, studentId, maxLevel: level || null, note, stepped: q.data?.stepped, unlocked: q.data?.unlocked, verified: q.data?.verified, notYet: q.data?.notYet }));
     if (saved) {
       q.reload();
       notify('Level access saved', saved.maxLevel ? `${name} can open work up to ${saved.maxLevel}.` : `${name} can open everything.`);
@@ -34,14 +34,14 @@ export function LevelAccess({ studentId, name, state }: { studentId: string; nam
   /** How long the student's practice sentences get. Undefined goes back to following their level. */
   const saveSentence = async (step: number | undefined) => {
     if (!backend) return;
-    const saved = await run(() => backend.saveStudentSettings({ studentId, maxLevel: current, note: q.data?.note, stepped: q.data?.stepped, unlocked: q.data?.unlocked, verified: q.data?.verified, notYet: q.data?.notYet, sentence: step }));
+    const saved = await run(() => backend.saveStudentSettings({ studentId, maxLevel: current, note: q.data?.note, stepped: q.data?.stepped, unlocked: q.data?.unlocked, verified: q.data?.verified, notYet: q.data?.notYet, verbs: q.data?.verbs, sentence: step }));
     if (saved) { q.reload(); notify('Sentence length saved', step ? `${name} now builds sentences up to step ${step}: ${SENTENCE_STEPS[step - 1].label.toLowerCase()}.` : `${name}'s sentences follow their level again.`); }
   };
 
   /** Saves a change to the gradual-release blocks, keeping the ceiling and note as they are. */
-  const saveRelease = async (patch: { stepped: boolean; unlocked: string[] }, message: string) => {
+  const saveRelease = async (patch: { stepped: boolean; unlocked: string[]; verbs?: string[] }, message: string) => {
     if (!backend) return;
-    const saved = await run(() => backend.saveStudentSettings({ sentence: q.data?.sentence, studentId, maxLevel: current, note: q.data?.note, verified: q.data?.verified, notYet: q.data?.notYet, ...patch }));
+    const saved = await run(() => backend.saveStudentSettings({ sentence: q.data?.sentence, verbs: q.data?.verbs, studentId, maxLevel: current, note: q.data?.note, verified: q.data?.verified, notYet: q.data?.notYet, ...patch }));
     if (saved) { notify('Saved', message); q.reload(); }
   };
 
@@ -56,12 +56,12 @@ export function LevelAccess({ studentId, name, state }: { studentId: string; nam
     if (!backend || !ready?.next) return;
     const at = new Date().toISOString();
     // A student with a ceiling has it raised; one without keeps everything open and just has the new level recorded.
-    const saved = await run(() => backend.saveStudentSettings({ sentence: q.data?.sentence, studentId, maxLevel: current ? ready.next : null, note: q.data?.note, stepped: q.data?.stepped, unlocked: q.data?.unlocked, verified: { level: ready.next!, at } }));
+    const saved = await run(() => backend.saveStudentSettings({ sentence: q.data?.sentence, verbs: q.data?.verbs, studentId, maxLevel: current ? ready.next : null, note: q.data?.note, stepped: q.data?.stepped, unlocked: q.data?.unlocked, verified: { level: ready.next!, at } }));
     if (saved) { q.reload(); notify(`${name} moved up to ${ready.next}`, 'They will see it in their app, with the new games and tenses open.'); }
   };
   const notYet = async () => {
     if (!backend || !ready) return;
-    const saved = await run(() => backend.saveStudentSettings({ sentence: q.data?.sentence, studentId, maxLevel: current, note: q.data?.note, stepped: q.data?.stepped, unlocked: q.data?.unlocked, verified: q.data?.verified, notYet: { level: ready.level, at: new Date().toISOString() } }));
+    const saved = await run(() => backend.saveStudentSettings({ sentence: q.data?.sentence, verbs: q.data?.verbs, studentId, maxLevel: current, note: q.data?.note, stepped: q.data?.stepped, unlocked: q.data?.unlocked, verified: q.data?.verified, notYet: { level: ready.level, at: new Date().toISOString() } }));
     if (saved) { q.reload(); notify('Not yet', `The app will not suggest it again for three weeks.`); }
   };
 

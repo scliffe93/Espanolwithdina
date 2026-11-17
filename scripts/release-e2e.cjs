@@ -23,7 +23,15 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
   ok((await p.locator('[data-testid^="pack-learn-"]').count()) === 1, 'Sam sees exactly one word pack');
   // Dina releases the next of each, then picks a specific block.
   await as('dina'); await go('#/teach/student/demo-sam');
-  await p.getByTestId('release-next-verbs').click(); await p.waitForTimeout(1200);
+  // The next verbs are shown first: she ticks the ones she wants and only those are released.
+  await p.getByTestId('release-next-verbs').click(); await p.getByTestId('release-choose-verbs').waitFor();
+  ok(await p.getByTestId('release-ticked').isDisabled() && /12 verbs in 1 of/.test(await p.getByTestId('release-summary').innerText()), 'pressing “Next verbs” releases nothing by itself: it shows the verbs to choose from');
+  const boxes = p.locator('[data-testid^="release-verb-"]');
+  await boxes.nth(0).check(); await boxes.nth(3).check(); await p.getByTestId('release-ticked').click(); await p.waitForTimeout(1200);
+  ok(/14 verbs in 1 of/.test(await p.getByTestId('release-summary').innerText()), `only the two she ticked are released (${(await p.getByTestId('release-summary').innerText()).trim()})`);
+  await p.getByTestId('release-next-verbs').click(); await p.getByTestId('release-choose-verbs').waitFor();
+  ok((await p.locator('[data-testid^="release-verb-"]:disabled').count()) === 2, 'the two already released are shown as released');
+  await p.getByTestId('release-tick-all').click(); await p.getByTestId('release-ticked').click(); await p.waitForTimeout(1200);
   await p.getByTestId('release-next-words').click(); await p.waitForTimeout(1200);
   ok(/24 verbs in 2 of \d+ blocks · 20 words in 2 of 15 packs/.test(await p.getByTestId('release-summary').innerText()), 'next verbs and next words released');
   await p.getByTestId('release-choose').click(); await p.waitForTimeout(400);

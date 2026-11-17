@@ -310,3 +310,15 @@ A tab left open keeps running the version it loaded. `UpdateWatcher` asks the si
 ### One level for a student, shown the same everywhere
 
 A student sees a single level on every screen: the teacher's once she has set a ceiling or confirmed a move up, otherwise the middle of their own skill levels (`useLevelAccess().level`, with `levelFrom` saying which). The home page, My journey and the next-level card all use it, and My journey says where it comes from ("set by Dina", "confirmed by Dina", "from your placement"). Once the teacher's level applies, the learner's own skill-by-skill estimates are no longer shown beside it. The next-level card reads "You are at A2. The next level is B1". The level a lesson plan is filed under, and the wording chosen for a lesson, are for the teacher only and are never shown to students. Tested by `scripts/level-shown-e2e.cjs`.
+
+### Whiteboard, notes and banks in a lesson; verbs released one by one
+
+These extras travel with the lesson as blocks with reserved ids (`sys-…`, see `src/lib/platform/lessonExtras.ts`), so they are saved, mirrored to a group and shown with it, and needed nothing new on the server. They are never listed as parts of the lesson.
+
+- **Whiteboard.** On Present the screen switches between Lesson and Whiteboard. The teacher types text and draws with a mouse, finger or pen (five colours, thick pen, undo, wipe). It is saved with the lesson as she works. When she ends the lesson it is published to the student, who finds it under the lesson's parts; she can also tick a box to let them see it on their device during the lesson. Drawings are stored compactly, about 250 strokes at most; the screen says when the board is full.
+- **The teacher's notes.** "My notes" under the screen on Present is her private notes for the lesson. They are never sent to students.
+- **The student's notes.** Once a lesson has been started, the student has "Mis apuntes · My notes" under the lesson. What they write is saved with the lesson (through the same route as an answer) and is there when they come back to it.
+- **Word and verb banks.** After a lesson, "Add words and verbs to their banks" on the Plan tab offers the lesson's word lists, any "word = meaning" lines typed on the whiteboard, and any verb the app knows that appears there. Nothing is banked until the teacher ticks it; she can add her own. The student sees them under the lesson and, across all lessons, in "My word and verb bank" on their home page, with a button to practise the verbs.
+- **Verbs one by one.** In gradual release, "Next verbs: choose" shows the next block's verbs with their meanings; she ticks the ones to release and only those are released (`StudentSettings.verbs`). A block whose verbs have all been released is recorded as the whole block. Whole blocks can still be released in one tap from "Choose blocks".
+
+Tested by `tests/lesson-extras.test.ts`, `scripts/extras-e2e.cjs` (two logged-in devices) and `scripts/release-e2e.cjs`.

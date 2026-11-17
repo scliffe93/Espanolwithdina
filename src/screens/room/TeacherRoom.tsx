@@ -17,6 +17,9 @@ import { useStore } from '../../lib/store';
 import { ErrorText, Loading, useStudents } from '../teach/shared';
 import { BLOCK_THEME, BlockView, LessonClock, LessonTrail } from './Blocks';
 import { useGroupWork, useLesson } from './useLesson';
+import { Whiteboard } from './Whiteboard';
+import { bankCandidates, bankOf, boardOf, isSystem, partsOf, withBank, withBoard, withNotes, type BankItem } from '../../lib/platform/lessonExtras';
+import { VERB_BY_INF } from '../../data/verbs';
 import { sfx } from '../../lib/fx';
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -32,7 +35,8 @@ export const TYPE_STYLE: Record<LessonBlock['type'], { icon: IconName; tile: str
 };
 
 /** A small row of chips: how many of each kind of part a lesson has. */
-function PartChips({ blocks }: { blocks: LessonBlock[] }) {
+function PartChips({ blocks: every }: { blocks: LessonBlock[] }) {
+  const blocks = partsOf(every); // the extras (whiteboard, notes, banks) are not parts
   return (
     <span className="flex flex-wrap gap-1">
       {TYPES.filter((t) => blocks.some((b) => b.type === t)).map((t) => (
@@ -539,6 +543,59 @@ function BlockEditor({ b, i, n, onChange, onMove, onDelete, onDuplicate, flag }:
   );
 }
 
+/**
+ * After a lesson: the words and verbs worth keeping. The teacher sees everything the lesson offers (its word lists,
+ * the "word = meaning" lines on the whiteboard, any verb the app knows), ticks what she wants, adds her own, and
+ * saves. The student then finds them in their word bank and verb bank.
+ */
+function LessonBank({ blocks, name, onSave }: { blocks: LessonBlock[]; name: string; onSave: (bank: { words: BankItem[]; verbs: BankItem[] }) => void }) {
+  const saved = bankOf(blocks);
+  const offer = bankCandidates(blocks);
+  const [open, setOpen] = useState(false);
+  const [words, setWords] = useState<BankItem[]>(saved.words);
+  const [verbs, setVerbs] = useState<BankItem[]>(saved.verbs);
+  const [extra, setExtra] = useState('');
+  const has = (list: BankItem[], x: BankItem) => list.some((y) => y.es.toLowerCase() === x.es.toLowerCase());
+  const flip = (list: BankItem[], set: (l: BankItem[]) => void, x: BankItem) => set(has(list, x) ? list.filter((y) => y.es.toLowerCase() !== x.es.toLowerCase()) : [...list, x]);
+  const allWords = [...offer.words, ...saved.words.filter((x) => !has(offer.words, x)), ...words.filter((x) => !has(offer.words, x) && !has(saved.words, x))];
+  const allVerbs = [...offer.verbs, ...saved.verbs.filter((x) => !has(offer.verbs, x)), ...verbs.filter((x) => !has(offer.verbs, x) && !has(saved.verbs, x))];
+  const add = () => {
+    const m = extra.match(/^\s*(.{1,48}?)\s*(?:=|→|–|—)\s*(.{1,70})\s*$/); const es = (m ? m[1] : extra).trim(); if (!es) return;
+    const known = VERB_BY_INF[es.toLowerCase()];
+    if (known) setVerbs((l) => (has(l, { es, en: '' }) ? l : [...l, { es: es.toLowerCase(), en: known.en.split(' (')[0] }]));
+    else setWords((l) => (has(l, { es, en: '' }) ? l : [...l, { es, en: m ? m[2].trim() : '' }]));
+    setExtra('');
+  };
+  const Tick = ({ x, on, onClick, testid }: { x: BankItem; on: boolean; onClick: () => void; testid: string }) => (
+    <button type="button" aria-pressed={on} onClick={onClick} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm ring-1 transition ${on ? 'bg-ink text-cream ring-ink' : 'bg-white text-ink ring-ink/15 hover:ring-ink/40'}`} data-testid={testid} data-on={on || undefined}>{on && <Icon name="check" size={13} />}<b lang="es">{x.es}</b>{x.en && <span className={on ? 'text-cream/70' : 'text-ink-mute'}>{x.en}</span>}</button>
+  );
+  return (
+    <section className="card p-4" data-testid="lesson-bank">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-rosa-50 text-ink"><Icon name="translate" size={18} /></span>
+        <div className="min-w-0 flex-1 basis-56">
+          <b className="block">Add words and verbs to {name}’s banks</b>
+          <span className="text-sm text-ink-soft" data-testid="lesson-bank-count">{saved.words.length + saved.verbs.length ? `${saved.words.length} word${saved.words.length === 1 ? '' : 's'} and ${saved.verbs.length} verb${saved.verbs.length === 1 ? '' : 's'} banked from this lesson.` : `This lesson offers ${offer.words.length} word${offer.words.length === 1 ? '' : 's'} and ${offer.verbs.length} verb${offer.verbs.length === 1 ? '' : 's'}. Nothing is banked until you choose.`}</span>
+        </div>
+        <button type="button" className="btn-soft" onClick={() => { setWords(saved.words); setVerbs(saved.verbs); setOpen(!open); }} data-testid="lesson-bank-open">{open ? 'Close' : 'Choose'}</button>
+      </div>
+      {open && (
+        <div className="mt-3 border-t border-ink/5 pt-3">
+          <p className="eyebrow mb-1.5">Words · {words.length} chosen <button type="button" className="ml-2 normal-case tracking-normal text-ink-mute underline" onClick={() => setWords(allWords)}>tick all</button></p>
+          <div className="flex flex-wrap gap-1.5">{allWords.length ? allWords.map((x) => <Tick key={x.es} x={x} on={has(words, x)} onClick={() => flip(words, setWords, x)} testid="bank-word" />) : <span className="text-sm text-ink-mute">No words found in this lesson. Add your own below.</span>}</div>
+          <p className="eyebrow mb-1.5 mt-3">Verbs · {verbs.length} chosen <button type="button" className="ml-2 normal-case tracking-normal text-ink-mute underline" onClick={() => setVerbs(allVerbs)}>tick all</button></p>
+          <div className="flex flex-wrap gap-1.5">{allVerbs.length ? allVerbs.map((x) => <Tick key={x.es} x={x} on={has(verbs, x)} onClick={() => flip(verbs, setVerbs, x)} testid="bank-verb" />) : <span className="text-sm text-ink-mute">No verbs found in this lesson. Add your own below.</span>}</div>
+          <form className="mt-3 flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); add(); }}>
+            <input className="input min-w-0 flex-1" value={extra} onChange={(e) => setExtra(e.target.value)} placeholder="Add your own: la playa = the beach, or a verb such as volver" lang="es" data-testid="bank-add" />
+            <button type="submit" className="ctrl" disabled={!extra.trim()} data-testid="bank-add-go"><Icon name="plus" size={14} /> Add</button>
+          </form>
+          <button type="button" className="btn-primary mt-3" onClick={() => { onSave({ words, verbs }); setOpen(false); }} data-testid="lesson-bank-save">Save {words.length} word{words.length === 1 ? '' : 's'} and {verbs.length} verb{verbs.length === 1 ? '' : 's'}</button>
+        </div>
+      )}
+    </section>
+  );
+}
+
 /** Send the tasks of a lesson to the student as homework, to do on their own afterwards. */
 function SendHomework({ plan, name, studentIds }: { plan: LessonPlan; name: string; studentIds: string[] }) {
   const { backend, bump } = usePlatform();
@@ -592,7 +649,6 @@ export function TeacherRoom({ id }: { id: string }) {
   const [tab, setTab] = useState<'plan' | 'present'>('plan');
   const [saved, setSaved] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   const [error, setError] = useState<string | null>(null);
-  const [showNotes, setShowNotes] = useState(false);
   const timer = useRef<number>();
   const latest = useRef<LessonPlan | null>(null);
   // The teacher's copy is the one that counts: it is loaded once and then only she changes it.
@@ -619,7 +675,9 @@ export function TeacherRoom({ id }: { id: string }) {
   /** Changes the plan. Typing is saved a moment after the last key; anything the student should see at once (`now`) is saved straight away. */
   const change = (fn: (p: LessonPlan) => LessonPlan, immediate = false) => {
     if (!plan) return;
-    const next = fn(plan);
+    const made = fn(plan);
+    // The extras always sit after the teaching parts, so a part's place in the list is its place in the lesson.
+    const next = { ...made, blocks: [...partsOf(made.blocks), ...made.blocks.filter(isSystem)] };
     setPlan(next); latest.current = next; setSaved('unsaved');
     window.clearTimeout(timer.current);
     if (immediate) void save(next); else timer.current = window.setTimeout(() => void save(next), 700);
@@ -634,6 +692,8 @@ export function TeacherRoom({ id }: { id: string }) {
   const [full, setFull] = useState(false);
   const [autoOpen, setAutoOpen] = useState(false);
   const [hideNames, setHideNames] = useState(false);
+  const [screen, setScreen] = useState<'lesson' | 'board'>('lesson');
+  const [boardFull, setBoardFull] = useState(false);
   useEffect(() => { const on = () => setFull(!!document.fullscreenElement); document.addEventListener('fullscreenchange', on); return () => document.removeEventListener('fullscreenchange', on); }, []);
   const keyNav = useRef<(d: number) => void>(() => undefined);
   useEffect(() => {
@@ -644,6 +704,9 @@ export function TeacherRoom({ id }: { id: string }) {
   if (!loaded || (!plan && !syncError)) return <Loading />;
   if (!plan) return <div className="card p-6"><p>{syncError ?? 'Lesson not found.'}</p><button className="btn-primary mt-3" onClick={() => navigate('teach/room')}>Back to the lesson room</button></div>;
 
+  // The teaching parts, without the extras (whiteboard, the student's notes, the banks), which are never listed.
+  const parts = partsOf(plan.blocks);
+  const board = boardOf(plan.blocks);
   const here = isPresent(work, now);
   // Everyone in the lesson, with their answers: one person, or the whole group.
   const firstName = (sid: string) => students.data?.people.find((x) => x.id === sid)?.firstName ?? 'Student';
@@ -652,23 +715,23 @@ export function TeacherRoom({ id }: { id: string }) {
   const answeredBy = (bid: string) => everyone.filter((e) => e.work?.answers[bid]);
   // What the trail shows for a group: a part counts as answered when everyone has, and right when everyone was right.
   const merged: Record<string, LessonAnswer> = {};
-  if (isGroup) for (const b of plan.blocks) { const got = answeredBy(b.id); if (got.length === everyone.length) merged[b.id] = { value: '', at: '', ...(got.every((e) => e.work!.answers[b.id].correct !== undefined) ? { correct: got.every((e) => e.work!.answers[b.id].correct === true) } : {}) }; }
+  if (isGroup) for (const b of parts) { const got = answeredBy(b.id); if (got.length === everyone.length) merged[b.id] = { value: '', at: '', ...(got.every((e) => e.work!.answers[b.id].correct !== undefined) ? { correct: got.every((e) => e.work!.answers[b.id].correct === true) } : {}) }; }
   const setBlock = (bid: string, patch: Partial<LessonBlock>, immediate = false) => change((p) => ({ ...p, blocks: p.blocks.map((b) => (b.id === bid ? { ...b, ...patch } : b)) }), immediate);
-  const cur = plan.blocks.find((b) => b.id === plan.live.current) ?? null;
-  const idx = cur ? plan.blocks.indexOf(cur) : -1;
+  const cur = parts.find((b) => b.id === plan.live.current) ?? null;
+  const idx = cur ? parts.indexOf(cur) : -1;
   const go = (b: LessonBlock, alsoOpen = false) => change((p) => ({ ...p, blocks: alsoOpen ? p.blocks.map((x) => (x.id === b.id ? { ...x, open: true } : x)) : p.blocks, live: { ...p.live, current: b.id } }), true);
-  const openCount = plan.blocks.filter((b) => b.open).length;
+  const openCount = parts.filter((b) => b.open).length;
   // Tell the teacher, once for each part, when the whole group has answered it.
   if (isGroup && cur && (cur.type !== 'text' && cur.type !== 'vocab') && answeredBy(cur.id).length === everyone.length && !doneFor.current.has(cur.id)) {
     doneFor.current.add(cur.id);
     window.setTimeout(() => { sfx.win(); notify('Everyone has answered', `All ${everyone.length} are in for part ${idx + 1}.`); }, 0);
   }
   const studentLevel = levelOf(settingsQ.data, students.data?.progress[plan.studentId]);
-  const wording = detectWording(plan.blocks);
-  const planStages = stagesOf(plan.blocks);
+  const wording = detectWording(parts);
+  const planStages = stagesOf(parts);
   const plannedMinutes = planStages.reduce((n, st) => n + st.minutes, 0);
   const toggleFull = () => { if (document.fullscreenElement) void document.exitFullscreen(); else void stageRef.current?.requestFullscreen?.().catch(() => undefined); };
-  keyNav.current = (d) => { if (tab !== 'present' || idx < 0) return; const b = plan.blocks[idx + d]; if (b) go(b, d > 0 && !!cur?.open && autoOpen); };
+  keyNav.current = (d) => { if (tab !== 'present' || idx < 0) return; const b = parts[idx + d]; if (b) go(b, d > 0 && !!cur?.open && autoOpen); };
 
   return (
     <div data-testid="teacher-room">
@@ -686,7 +749,7 @@ export function TeacherRoom({ id }: { id: string }) {
             ['For', <span key="f" data-testid="plan-for">{isGroup ? `${everyone.map((e) => e.name).join(', ')} · a group of ${everyone.length}` : `${name} · level ${studentLevel}`}</span>],
             ['Instructions written in', <select key="w" className="input !py-1.5" defaultValue={wording} onChange={(e) => change((p) => ({ ...p, blocks: reword(p.blocks, e.target.value as Wording) }))} data-testid="plan-wording">{(['en', 'both', 'es'] as Wording[]).map((x) => <option key={x} value={x}>{WORDING_LABEL[x]}</option>)}</select>],
             ['Planned time', plannedMinutes ? `${plannedMinutes} minutes · ${planStages.length} stages` : 'No timings'],
-            ['Parts', `${plan.blocks.length}, ${plan.blocks.filter((b) => b.type === 'gap' || b.type === 'choice').length} marked by the app`],
+            ['Parts', `${parts.length}, ${parts.filter((b) => b.type === 'gap' || b.type === 'choice').length} marked by the app`],
           ]} />
           <section className="card grid gap-3 p-5 sm:grid-cols-[1fr_auto]">
             <label className="grid gap-1 text-sm font-medium">Title<input className="input text-lg" value={plan.title} onChange={(e) => change((p) => ({ ...p, title: e.target.value }))} data-testid="room-title" /></label>
@@ -694,8 +757,8 @@ export function TeacherRoom({ id }: { id: string }) {
             <label className="grid gap-1 text-sm font-medium sm:col-span-2">Your own notes <span className="font-normal text-ink-mute">(only you see these: they are never sent to {name}, and they stay hidden on the Present screen unless you open them)</span><textarea className="input min-h-[70px]" value={plan.notes ?? ''} onChange={(e) => change((p) => ({ ...p, notes: e.target.value }))} data-testid="room-notes" /></label>
           </section>
           <ol className="grid gap-3">
-            {plan.blocks.map((b, i) => (
-              <BlockEditor key={b.id} b={b} i={i} n={plan.blocks.length} onChange={(nb) => change((p) => ({ ...p, blocks: p.blocks.map((x) => (x.id === b.id ? nb : x)) }))}
+            {parts.map((b, i) => (
+              <BlockEditor key={b.id} b={b} i={i} n={parts.length} onChange={(nb) => change((p) => ({ ...p, blocks: p.blocks.map((x) => (x.id === b.id ? nb : x)) }))}
                 onMove={(d) => change((p) => { const arr = [...p.blocks]; const j = i + d; [arr[i], arr[j]] = [arr[j], arr[i]]; return { ...p, blocks: arr }; })}
                 onDelete={() => change((p) => ({ ...p, blocks: p.blocks.filter((x) => x.id !== b.id), live: { ...p.live, current: p.live.current === b.id ? null : p.live.current } }))}
                 onDuplicate={() => change((p) => { const arr = [...p.blocks]; arr.splice(i + 1, 0, { ...b, id: newBlock(b.type).id, open: false, reveal: false }); return { ...p, blocks: arr }; })} />
@@ -703,11 +766,12 @@ export function TeacherRoom({ id }: { id: string }) {
           </ol>
           <div className="card flex flex-wrap items-center gap-2 p-4">
             <span className="mr-1 text-sm font-semibold">Add a part:</span>
-            {TYPES.map((t) => <button key={t} type="button" className="ctrl" onClick={() => change((p) => ({ ...p, blocks: [...p.blocks, newBlock(t)] }))} data-testid={`add-${t}`}><Icon name="plus" size={14} /> {BLOCK_LABEL[t]}</button>)}
+            {TYPES.map((t) => <button key={t} type="button" className="ctrl" onClick={() => change((p) => ({ ...p, blocks: [...partsOf(p.blocks), newBlock(t), ...p.blocks.filter(isSystem)] }))} data-testid={`add-${t}`}><Icon name="plus" size={14} /> {BLOCK_LABEL[t]}</button>)}
           </div>
+          <LessonBank blocks={plan.blocks} name={isGroup ? 'the group' : name} onSave={(bank) => { change((p) => ({ ...p, blocks: withBank(p.blocks, bank) }), true); notify('Saved to their banks', `${bank.words.length} word${bank.words.length === 1 ? '' : 's'} and ${bank.verbs.length} verb${bank.verbs.length === 1 ? '' : 's'} from this lesson.`); }} />
           <SendHomework plan={plan} name={isGroup ? 'the group' : name} studentIds={everyone.map((e) => e.studentId)} />
           <div className="flex flex-wrap gap-2">
-            <button type="button" className="btn-ghost" onClick={async () => { if (!backend) return; await backend.saveLibraryPlan({ title: plan.title, topic: topicFrom(plan.title), level: studentLevel, status: 'ready', blocks: plan.blocks.map((b) => ({ ...b, open: false, reveal: false })), notes: plan.notes ?? '', minutes: plannedMinutes || undefined, wording }); notify('Saved to your plans', `Filed under ${studentLevel}. You can teach it to anyone from there.`); }} data-testid="save-as-plan"><Icon name="book" size={16} /> Save as a plan to reuse</button>
+            <button type="button" className="btn-ghost" onClick={async () => { if (!backend) return; await backend.saveLibraryPlan({ title: plan.title, topic: topicFrom(plan.title), level: studentLevel, status: 'ready', blocks: parts.map((b) => ({ ...b, open: false, reveal: false })), notes: plan.notes ?? '', minutes: plannedMinutes || undefined, wording }); notify('Saved to your plans', `Filed under ${studentLevel}. You can teach it to anyone from there.`); }} data-testid="save-as-plan"><Icon name="book" size={16} /> Save as a plan to reuse</button>
             <button type="button" className="btn-primary" onClick={() => setTab('present')} data-testid="to-present"><Icon name="video" size={18} /> Go to the Present screen</button>
             <button type="button" className="btn-ghost" onClick={async () => { if (!backend || !window.confirm('Delete this lesson and the answers given in it?')) return; await backend.deleteLesson(plan.id); await Promise.all(others.map((m) => backend.deleteLesson(m.lessonId))); if (group) await backend.deleteLessonGroup(group.id); notify('Lesson deleted'); navigate('teach/room'); }}><Icon name="trash" size={16} /> Delete this lesson</button>
           </div>
@@ -719,19 +783,19 @@ export function TeacherRoom({ id }: { id: string }) {
           <aside className="grid min-w-0 content-start gap-3">
             <div className="card p-4">
               {plan.live.on ? (
-                <button type="button" className="btn-ghost w-full justify-center" onClick={() => change((p) => ({ ...p, live: { ...p.live, on: false } }), true)} data-testid="end-lesson"><Icon name="stop" size={16} /> End the lesson</button>
+                <button type="button" className="btn-ghost w-full justify-center" onClick={() => change((p) => ({ ...p, blocks: withBoard(p.blocks, { ...boardOf(p.blocks), open: true }).blocks, live: { ...p.live, on: false } }), true)} data-testid="end-lesson"><Icon name="stop" size={16} /> End the lesson</button>
               ) : (
-                <button type="button" className="btn-primary w-full justify-center" onClick={() => change((p) => ({ ...p, live: { on: true, current: p.live.current ?? p.blocks[0]?.id ?? null, startedAt: new Date().toISOString() } }), true)} data-testid="start-lesson"><Icon name="video" size={18} /> Start the lesson</button>
+                <button type="button" className="btn-primary w-full justify-center" onClick={() => change((p) => ({ ...p, blocks: withNotes(p.blocks), live: { on: true, current: p.live.current ?? p.blocks[0]?.id ?? null, startedAt: new Date().toISOString() } }), true)} data-testid="start-lesson"><Icon name="video" size={18} /> Start the lesson</button>
               )}
               <p className="mt-2 text-xs text-ink-mute">{plan.live.on ? `${name}’s phone is told the lesson is open. They join from their home page.` : `Starting tells ${name}’s phone the lesson is open. Nothing is shown to them until you open a part.`}</p>
               <div className="mt-3 flex flex-wrap gap-1.5">
-                <button type="button" className="ctrl" onClick={() => change((p) => ({ ...p, blocks: p.blocks.map((b) => ({ ...b, open: true })) }), true)} data-testid="open-all">Open all</button>
-                <button type="button" className="ctrl" onClick={() => change((p) => ({ ...p, blocks: p.blocks.map((b) => ({ ...b, open: false })) }), true)}>Close all</button>
+                <button type="button" className="ctrl" onClick={() => change((p) => ({ ...p, blocks: p.blocks.map((b) => (isSystem(b) ? b : { ...b, open: true })) }), true)} data-testid="open-all">Open all</button>
+                <button type="button" className="ctrl" onClick={() => change((p) => ({ ...p, blocks: p.blocks.map((b) => (isSystem(b) ? b : { ...b, open: false })) }), true)}>Close all</button>
               </div>
-              <p className="mt-2 text-xs text-ink-mute">{openCount} of {plan.blocks.length} parts open to {name}.</p>
+              <p className="mt-2 text-xs text-ink-mute">{openCount} of {parts.length} parts open to {name}.</p>
             </div>
             <ol className="grid min-w-0 gap-1.5" data-testid="block-list">
-              {plan.blocks.map((b, i) => {
+              {parts.map((b, i) => {
                 const a = isGroup ? undefined : work?.answers[b.id];
                 const got = isGroup ? answeredBy(b.id).length : 0;
                 return (
@@ -745,26 +809,35 @@ export function TeacherRoom({ id }: { id: string }) {
                 );
               })}
             </ol>
-            <div className="card p-4">
-              <button type="button" className="ctrl" onClick={() => setShowNotes(!showNotes)} aria-expanded={showNotes}><Icon name="eye" size={14} /> {showNotes ? 'Hide my notes' : 'My notes'}</button>
-              {showNotes && <p className="mt-2 whitespace-pre-wrap text-sm text-ink-soft">{plan.notes?.trim() || 'No notes for this lesson.'}</p>}
-              <p className="mt-2 text-xs text-ink-mute">If you are sharing your whole screen, your notes are visible while open.</p>
-            </div>
           </aside>
 
           <section ref={stageRef} className={`min-w-0 ${full ? 'flex h-full flex-col overflow-y-auto bg-cream p-5 sm:p-8' : ''}`} data-testid="stage">
-            {cur ? (
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <Segmented label="On the screen" value={screen} onChange={setScreen} options={[{ value: 'lesson', label: 'Lesson' }, { value: 'board', label: 'Whiteboard' }]} />
+              {screen === 'board' && <>
+                <label className="flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-sm ring-1 ring-ink/10"><input type="checkbox" checked={board.open} onChange={(e) => change((p) => ({ ...p, blocks: withBoard(p.blocks, { ...boardOf(p.blocks), open: e.target.checked }).blocks }), true)} data-testid="board-share" /> {isGroup ? 'Everyone' : name} can see it on their device now</label>
+                <span className="ml-auto"><LessonClock startedAt={plan.live.on ? plan.live.startedAt : undefined} blocks={parts} current={cur?.id} compact /></span>
+                <button type="button" className="ctrl" onClick={toggleFull}><Icon name="video" size={14} /> {full ? 'Leave full screen' : 'Full screen to share'}</button>
+              </>}
+            </div>
+            {screen === 'board' ? (
+              <div className={full ? 'mx-auto w-full max-w-6xl' : ''}>
+                <Whiteboard board={board} full={full} onChange={(b) => { const made = withBoard(plan.blocks, b); setBoardFull(made.dropped > 0); change((p) => ({ ...p, blocks: withBoard(p.blocks, b).blocks })); }} />
+                {boardFull && <p className="mt-2 rounded-2xl bg-saffron-50 px-4 py-2 text-sm ring-1 ring-saffron/40" role="status">The board is full: the newest lines are not being saved. Wipe some of it to carry on.</p>}
+                <p className="mt-2 text-xs text-ink-mute">The whiteboard is saved with this lesson and given to {isGroup ? 'the group' : name} to look back at when you end the lesson. On a call they see it now through your shared screen.</p>
+              </div>
+            ) : cur ? (
               <>
                 <div className="mb-3 rounded-3xl bg-white p-3 shadow-soft ring-1 ring-ink/5">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-ink px-3 py-1 text-sm font-bold text-cream">{idx + 1} / {plan.blocks.length}</span>
+                    <span className="rounded-full bg-ink px-3 py-1 text-sm font-bold text-cream">{idx + 1} / {parts.length}</span>
                     <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${cur.open ? 'bg-olive text-white' : 'bg-saffron text-ink'}`} data-testid="stage-status">{cur.open ? `${isGroup ? 'Everyone' : name} can see this` : `Only you can see this`}</span>
                     {!cur.open && <button type="button" className="btn-primary !py-2" onClick={() => go(cur, true)} data-testid="show-to-student"><Icon name="eye" size={16} /> Show it to {isGroup ? 'everyone' : name}</button>}
                     {(cur.type === 'gap' || cur.type === 'choice') && <button type="button" className="ctrl" onClick={() => setBlock(cur.id, { reveal: !cur.reveal }, true)} aria-pressed={!!cur.reveal} data-testid="reveal">{cur.reveal ? 'Hide the answer' : 'Show the answer'}</button>}
-                    <span className="ml-auto"><LessonClock startedAt={plan.live.on ? plan.live.startedAt : undefined} blocks={plan.blocks} current={cur.id} /></span>
+                    <span className="ml-auto"><LessonClock startedAt={plan.live.on ? plan.live.startedAt : undefined} blocks={parts} current={cur.id} /></span>
                     <button type="button" className="ctrl" onClick={toggleFull} data-testid="stage-full"><Icon name="video" size={14} /> {full ? 'Leave full screen' : 'Full screen to share'}</button>
                   </div>
-                  <div className="mt-3"><LessonTrail blocks={plan.blocks} answers={isGroup ? merged : work?.answers} current={cur.id} onGo={(bid) => { const b = plan.blocks.find((x) => x.id === bid); if (b) go(b); }} /></div>
+                  <div className="mt-3"><LessonTrail blocks={parts} answers={isGroup ? merged : work?.answers} current={cur.id} onGo={(bid) => { const b = parts.find((x) => x.id === bid); if (b) go(b); }} /></div>
                 </div>
                 <div className={full ? 'mx-auto w-full max-w-5xl flex-1' : ''}><BlockView key={cur.id} block={cur} mode="present" answer={isGroup ? undefined : work?.answers[cur.id]} current wording={wording} />
                   {isGroup && cur.type !== 'text' && cur.type !== 'vocab' && (() => {
@@ -791,14 +864,19 @@ export function TeacherRoom({ id }: { id: string }) {
                   })()}
                 </div>
                 <div className={`mt-4 flex items-center gap-2 ${full ? 'mx-auto w-full max-w-5xl' : ''}`}>
-                  <button type="button" className="btn-ghost" disabled={idx <= 0} onClick={() => go(plan.blocks[idx - 1])}><Icon name="arrowLeft" size={16} /> Back</button>
-                  <button type="button" className="btn-dark" disabled={idx >= plan.blocks.length - 1} onClick={() => go(plan.blocks[idx + 1], cur.open && autoOpen)} data-testid="next-part">Next <Icon name="arrowRight" size={16} /></button>
+                  <button type="button" className="btn-ghost" disabled={idx <= 0} onClick={() => go(parts[idx - 1])}><Icon name="arrowLeft" size={16} /> Back</button>
+                  <button type="button" className="btn-dark" disabled={idx >= parts.length - 1} onClick={() => go(parts[idx + 1], cur.open && autoOpen)} data-testid="next-part">Next <Icon name="arrowRight" size={16} /></button>
                   <label className="ml-2 flex items-center gap-2 text-sm text-ink-soft"><input type="checkbox" checked={autoOpen} onChange={(e) => setAutoOpen(e.target.checked)} data-testid="auto-open" /> Show each part to {isGroup ? 'everyone' : name} as I go</label>
                   <span className="ml-auto hidden text-xs text-ink-mute sm:inline">← → keys also move</span>
                 </div>
               </>
-            ) : <div className="card p-8 text-center text-ink-soft">{plan.blocks.length ? 'Choose a part on the left to put it on the screen.' : 'This lesson has no parts yet. Add some on the Plan tab.'}</div>}
+            ) : <div className="card p-8 text-center text-ink-soft">{parts.length ? 'Choose a part on the left to put it on the screen.' : 'This lesson has no parts yet. Add some on the Plan tab.'}</div>}
           </section>
+          <details className="card p-4 lg:col-start-2" data-testid="present-notes">
+            <summary className="cursor-pointer font-semibold">My notes <span className="font-normal text-ink-mute">· only you see these. They are not on the whiteboard and are never sent to {isGroup ? 'the group' : name}.</span></summary>
+            <textarea className="input mt-3 min-h-[110px] w-full" value={plan.notes ?? ''} onChange={(e) => change((p) => ({ ...p, notes: e.target.value }))} maxLength={6000} placeholder="Things to remember, what to come back to next time…" data-testid="present-notes-text" />
+            <p className="mt-1 text-xs text-ink-mute">If you are sharing your whole screen, keep this closed while you share.</p>
+          </details>
         </div>
       )}
     </div>

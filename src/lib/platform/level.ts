@@ -33,13 +33,14 @@ export const settingsId = (studentId: string) => `student-${studentId}`;
 // never restricted.
 // ───────────────────────────────────────────────────────────────
 
-export interface ReleaseSettings { stepped?: boolean; unlocked?: string[] }
+export interface ReleaseSettings { stepped?: boolean; unlocked?: string[]; /** Verbs released one by one, from blocks not yet released whole. */ verbs?: string[] }
 
 /** The verbs a student may practise on their own: null = no restriction. Never empty, so practice always has something to offer. */
 export function allowedVerbs(s: ReleaseSettings | null | undefined): Set<string> | null {
   if (!s?.stepped) return null;
   const blocks = (s.unlocked ?? []).map((id) => BLOCK_BY_ID[id]).filter((b) => b?.kind === 'verbs');
-  return new Set((blocks.length ? blocks : [VERB_BLOCKS[0]]).flatMap((b) => b.items));
+  const one = (s.verbs ?? []).filter(Boolean);
+  return new Set([...(blocks.length || one.length ? blocks : [VERB_BLOCKS[0]]).flatMap((b) => b.items), ...one]);
 }
 
 /** The word packs a student may add on their own: null = no restriction. */
