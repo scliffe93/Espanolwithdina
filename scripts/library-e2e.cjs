@@ -13,7 +13,7 @@ const PLAN = ['# Spanish A1 — Lesson 3: Food and Drink', '', 'CEFR Level:\tA1\
   await as('dina');
   await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1500);
   await p.getByTestId('room-student').selectOption({ label: 'Sam' }); await p.waitForTimeout(600);
-  ok(/Level [ABC][12]/.test(await p.getByTestId('room-student-level').innerText()), `the student’s level and wording are shown (${(await p.getByTestId('room-student-level').innerText()).trim()})`);
+  ok((await p.getByTestId('room-tabs').innerText()).includes('A1') && (await p.getByTestId('student-tab').filter({ hasText: 'Sam' }).count()) === 1, 'the folders are the levels, with a tab for each student beneath');
   ok(await p.getByTestId('library-none').count() === 1, 'the library starts empty');
   await p.getByTestId('room-file').setInputFiles({ name: 'A1 Food and Drink.txt', mimeType: 'text/plain', buffer: Buffer.from(PLAN, 'utf8') });
   await p.getByTestId('import-review').waitFor({ timeout: 15000 });
@@ -22,11 +22,13 @@ const PLAN = ['# Spanish A1 — Lesson 3: Food and Drink', '', 'CEFR Level:\tA1\
   ok(/Every gap and choice has its answer/.test(await p.getByTestId('review-missing').innerText()), 'every answer was found');
   ok((await p.getByTestId('review-adapted').locator('li').count()) >= 4, 'it lists what was built from the plan');
   const bodies = () => p.getByTestId('block-body').evaluateAll((els) => els.map((e) => e.value));
-  ok((await bodies()).some((x) => x === '¿Qué quieres?\nStart with: Quiero...'), 'a speaking turn has the words to start the answer');
+  ok((await p.getByTestId('review-wording').inputValue()) === 'both' && (await bodies()).some((x) => x === '¿Qué quieres?\nEmpieza con: · Start with: Quiero...'), 'the wording starts in both languages, not set by the level, and a speaking turn has the words to start the answer');
+  ok(/belongs to no student/.test(await p.getByTestId('review-for').innerText()), 'the plan belongs to no student');
   ok((await bodies()).every((x) => !/Board Setup|Agua takes el/.test(x)), 'nothing written for the teacher is in the lesson');
   await p.getByTestId('review-wording').selectOption('es'); await p.waitForTimeout(300);
   ok((await bodies()).some((x) => x === '¿Qué quieres?\nEmpieza con: Quiero...'), 'changing the wording rewrites the instructions in Spanish');
   await p.getByTestId('review-wording').selectOption('en'); await p.waitForTimeout(300);
+  ok((await bodies()).some((x) => x === '¿Qué quieres?\nStart with: Quiero...'), 'or in English alone: the teacher chooses');
   await p.screenshot({ path: OUT + '/library-review.png', fullPage: true });
   await p.getByTestId('review-cancel').click(); await p.getByTestId('room-list').waitFor(); await p.waitForTimeout(800);
   ok((await p.getByTestId('library-plan').count()) === 1 && (await p.getByTestId('library-plan').getAttribute('data-status')) === 'review' && /1 to review/.test(await p.getByTestId('library-waiting').innerText()), 'the plan is filed in the library as “To review”');
@@ -40,7 +42,7 @@ const PLAN = ['# Spanish A1 — Lesson 3: Food and Drink', '', 'CEFR Level:\tA1\
   ok((await p.getByTestId('library-plan').getAttribute('data-status')) === 'ready' && await p.getByTestId('library-waiting').count() === 0, 'she marks it ready');
   await p.screenshot({ path: OUT + '/library-list.png', fullPage: true });
   await p.getByTestId('library-use').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(800);
-  ok(/Sam · level/.test(await p.getByTestId('plan-for').innerText()) && /25 minutes/.test(await p.getByTestId('plan-facts').innerText()), 'the lesson has its table at the top: who it is for, their level, the wording, the time');
+  ok(/Sam · level/.test(await p.getByTestId('plan-for').innerText()) && /25 minutes/.test(await p.getByTestId('plan-facts').innerText()) && (await p.getByTestId('plan-wording').inputValue()) === 'en', 'taught to Sam, the lesson keeps the wording the teacher chose and shows who it is for and the time');
   await p.screenshot({ path: OUT + '/library-plan-tab.png' });
   await p.getByTestId('to-present').click(); await p.getByTestId('start-lesson').click(); await p.waitForTimeout(2300);
   const t1 = await p.getByTestId('lesson-elapsed').innerText(); await p.waitForTimeout(2200); const t2 = await p.getByTestId('lesson-elapsed').innerText();
@@ -56,6 +58,20 @@ const PLAN = ['# Spanish A1 — Lesson 3: Food and Drink', '', 'CEFR Level:\tA1\
   const tile = p.locator('[data-type="choice"]').filter({ hasText: 'el pan' }).filter({ has: p.locator('[data-testid^="option-"]', { hasText: 'bread' }) }).first(); await tile.scrollIntoViewIfNeeded();
   await tile.locator('[data-testid^="option-"]').filter({ hasText: 'bread' }).first().click(); await p.waitForTimeout(900);
   ok(/Correcto/.test(await tile.innerText()), 'and can answer from their own screen');
+  // The same plan is taught again, to someone else: it was never tied to Sam.
+  await as('dina');
+  await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1500);
+  await p.getByTestId('room-student').selectOption({ label: 'Anneka' }); await p.waitForTimeout(300);
+  ok(/Teach it to Anneka/.test(await p.getByTestId('library-use').innerText()), 'the same plan can be taught to another student');
+  await p.getByTestId('library-use').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(600);
+  ok(/Anneka · level/.test(await p.getByTestId('plan-for').innerText()), 'and becomes a lesson for her');
+  await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1500);
+  ok((await p.getByTestId('library-plan').count()) === 1, 'the plan is still in the library, once');
+  await p.getByTestId('student-tab').filter({ hasText: 'Sam' }).click(); await p.waitForTimeout(600);
+  ok((await p.getByTestId('room-open').count()) === 1 && /Food and Drink/.test(await p.getByTestId('student-folder').innerText()), 'Sam’s tab shows what he has worked on');
+  await p.getByTestId('student-tab').filter({ hasText: 'Anneka' }).click(); await p.waitForTimeout(600);
+  ok((await p.getByTestId('room-open').count()) === 1, 'and Anneka’s tab shows hers');
+  await p.screenshot({ path: OUT + '/library-student-tab.png', fullPage: true });
   await p.setViewportSize({ width: 820, height: 1100 }); await p.waitForTimeout(300);
   await p.screenshot({ path: OUT + '/library-student.png' });
   ok(errors.length === 0, `no page errors${errors.length ? ': ' + errors[0] : ''}`);

@@ -30,7 +30,7 @@ import type { Cefr } from '../../types';
 /** The language of the instructions: English, Spanish with English beside it, or Spanish alone. */
 export type Wording = 'en' | 'both' | 'es';
 export const WORDING_LABEL: Record<Wording, string> = { en: 'English', both: 'Spanish with English beside it', es: 'Spanish only' };
-/** The wording that suits a level: beginners read English, A2 sees both, B1 and above work in Spanish. */
+/** A wording to suggest for a level (beginners English, A2 both, B1 and above Spanish). Only ever a suggestion: the teacher chooses. */
 export const wordingFor = (level: Cefr | null | undefined): Wording => (!level || level === 'A1' ? 'en' : level === 'A2' ? 'both' : 'es');
 
 // Every instruction the builder adds, in both languages. The Spanish is plain and addressed to one person (tú).
@@ -74,6 +74,15 @@ export function reword(blocks: LessonBlock[], to: Wording): LessonBlock[] {
     return out.replace(/\u0001(\d+)\u0002/g, (_, n) => done[Number(n)]);
   };
   return blocks.map((b) => ({ ...b, title: swap(b.title), body: swap(b.body) }));
+}
+
+/** The wording a lesson's instructions are written in, read back from the lesson itself (both, when it cannot tell). */
+export function detectWording(blocks: LessonBlock[]): Wording {
+  const text = blocks.map((b) => `${b.title}\n${b.body}`).join('\n');
+  const keys = Object.keys(P) as PhraseKey[];
+  if (keys.some((k) => text.includes(render(k, 'both')))) return 'both';
+  const en = keys.filter((k) => text.includes(P[k][0])).length, es = keys.filter((k) => text.includes(P[k][1])).length;
+  return en > es ? 'en' : es > en ? 'es' : 'both';
 }
 
 export interface PlanStage { title: string; minutes: number; parts: number }
@@ -141,7 +150,7 @@ interface Stage { no: number; title: string; minutes: number; lines: string[]; q
 
 export function adaptPlan(raw: string, fallbackTitle = 'Lesson', wording?: Wording): AdaptedPlan {
   const text = raw.replace(/\r\n?/g, '\n').split(/^[ \t#=*-]*(?:end of (?:the )?lesson|fin de (?:la )?clase)[ \t=*-]*$/im)[0];
-  if (!looksLikeClassPlan(text)) { const p = planFromText(raw, fallbackTitle); return { ...p, notes: '', adapted: [], stages: [], wording: wording ?? 'en' }; }
+  if (!looksLikeClassPlan(text)) { const p = planFromText(raw, fallbackTitle); return { ...p, notes: '', adapted: [], stages: [], wording: wording ?? 'both' }; }
 
   const lines = text.split('\n').map((l) => l.replace(/[ ]+$/, ''));
   const notes: string[] = [];
@@ -294,7 +303,7 @@ export function adaptPlan(raw: string, fallbackTitle = 'Lesson', wording?: Wordi
   }
 
   // ── 2. Compose the lesson, stage by stage, in the chosen wording. ──
-  const w: Wording = wording ?? wordingFor(level);
+  const w: Wording = wording ?? 'both';
   const T = (k: PhraseKey) => render(k, w);
   const blocks: LessonBlock[] = [];
   const flow: Stage[] = stages.length ? stages : [{ no: 1, title: title || 'Lesson', minutes: 0, lines: [], questions: [], models: [], grammar: [], board: [], uses: [], wrap: false, play: cards.length > 0 }];

@@ -12,7 +12,7 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
   await as('dina');
   await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1500);
   await p.getByTestId('room-student').selectOption({ label: 'Sam' });
-  await p.getByTestId('room-draft').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(600);
+  await p.getByTestId('student-tab').filter({ hasText: 'Sam' }).click(); await p.waitForTimeout(500); await p.getByTestId('room-draft').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(600);
   const parts = await p.getByTestId('block-editor').count();
   ok(parts >= 5, `“Draft it from their week” writes a lesson from Sam’s own mistakes (${parts} parts)`);
   const bodies = await p.getByTestId('block-body').evaluateAll((els) => els.map((e) => e.value));
@@ -28,11 +28,11 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
   await gap.fill('zzz'); await p.getByTestId(`send-${gid}`).click(); await p.waitForTimeout(1500);
   ok(/Not quite/.test(await p.getByTestId(`verdict-${gid}`).innerText()), 'his answer is checked');
   await as('dina');
-  await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1200); await p.getByTestId('room-open').first().click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(2500);
+  await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1200); await p.getByTestId('student-tab').filter({ hasText: 'Sam' }).click(); await p.waitForTimeout(500); await p.getByTestId('room-open').first().click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(2500);
   ok(/answered ✗/.test(await p.getByTestId('block-list').innerText()), 'and Dina sees it on her side');
   // The ready-made example lesson.
   await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1200);
-  await p.getByTestId('room-student').selectOption({ label: 'Sam' }); await p.getByTestId('room-example').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(600);
+  await p.getByTestId('room-student').selectOption({ label: 'Sam' }); await p.getByTestId('room-example').click(); await p.getByTestId('import-review').waitFor({ timeout: 10000 }); await p.getByTestId('review-create').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(600);
   ok((await p.getByTestId('block-editor').count()) === 7 && /Example lesson/.test(await p.getByTestId('room-title').inputValue()), '“Open an example lesson” makes a finished seven-part lesson to try');
   // A lesson made from the teacher's own plan: pasted, then uploaded as a text file and as a Word document.
   const PLAN = 'El pretérito: ir y ser\n\nCalentamiento\n¿Qué hiciste el fin de semana?\n\nEXPLICACIÓN\nIr and ser have the same forms in the preterite.\n\nPráctica:\n1. Ayer yo ___ (ir) al mercado. [fui]\n2. La película ___ (ser) muy buena.\nAnswers: fue\n\n¿Ir o ser?\nEl sábado fuimos a la playa.\na) ir *\nb) ser\n\nVocabulario\nayer = yesterday\nanoche = last night\n';
@@ -48,7 +48,8 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
   ok(answers.join(',') === 'fui,fue', `the answers were read from the plan (${answers.join(', ')})`);
   await p.screenshot({ path: OUT + '/room-review.png', fullPage: true });
   // Cancelling leaves no lesson behind.
-  const before = await (async () => { await p.getByTestId('review-cancel').click(); await p.getByTestId('room-list').waitFor(); await p.waitForTimeout(800); return p.getByTestId('room-open').count(); })();
+  const lessonCount = async () => { await p.getByTestId('student-tab').filter({ hasText: 'Sam' }).click(); await p.waitForTimeout(500); const n = await p.getByTestId('room-open').count(); await p.getByTestId('library-all').click(); await p.waitForTimeout(300); return n; };
+  const before = await (async () => { await p.getByTestId('review-cancel').click(); await p.getByTestId('room-list').waitFor(); await p.waitForTimeout(800); return lessonCount(); })();
   // A plan with a missing answer is flagged; she fixes it in the review, edits the title, removes a part, then creates.
   if (!(await p.getByTestId('room-paste').count())) await p.getByTestId('room-paste-toggle').click();
   await p.getByTestId('room-paste').fill(PLAN.replace('Answers: fue\n', '')); await p.getByTestId('room-paste-go').click();
@@ -62,7 +63,7 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
   await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(600);
   ok((await p.getByTestId('room-title').inputValue()) === 'Mi clase revisada' && (await p.getByTestId('block-editor').count()) === 5, 'the lesson is created as she left it in the review');
   await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1200);
-  ok((await p.getByTestId('room-open').count()) === before + 1, 'cancelling a review made no lesson; creating made one');
+  ok((await lessonCount()) === before + 1, 'saving a plan for later made no lesson; teaching it made one');
   await p.screenshot({ path: OUT + '/room-list.png', fullPage: true });
   const upload = async (file, label, min) => {
     if (await p.getByTestId('review-cancel').count()) await p.getByTestId('review-cancel').click();

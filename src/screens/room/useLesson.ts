@@ -14,17 +14,19 @@ export function useLesson(id: string | undefined) {
   const [now, setNow] = useState(() => Date.now());
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  /** Check-ins that have failed in a row. The lesson keeps trying; the screens say so and report it if it goes on. */
+  const [fails, setFails] = useState(0);
   const live = useRef(false);
   // One request at a time, in order: a check-in and an answer never overlap.
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   const waiting = useRef(0);
 
-  const take = useCallback((r: { plan: LessonPlan; work: LessonWork | null; now: string }) => { setPlan(r.plan); setWork(r.work); setNow(Date.parse(r.now) || Date.now()); live.current = r.plan.live.on; setError(null); setLoaded(true); }, []);
+  const take = useCallback((r: { plan: LessonPlan; work: LessonWork | null; now: string }) => { setPlan(r.plan); setWork(r.work); setNow(Date.parse(r.now) || Date.now()); live.current = r.plan.live.on; setError(null); setFails(0); setLoaded(true); }, []);
   const sync = useCallback(async () => {
     if (!backend || !id || waiting.current > 0) return; // something is already on its way: no need to ask again
     waiting.current++;
     const run = queue.current.then(async () => {
-      try { take(await backend.syncLesson(id)); } catch (e) { setError(e instanceof Error ? e.message : 'Could not reach the lesson.'); setLoaded(true); } finally { waiting.current--; }
+      try { take(await backend.syncLesson(id)); } catch (e) { setError(e instanceof Error ? e.message : 'Could not reach the lesson.'); setFails((n) => n + 1); setLoaded(true); } finally { waiting.current--; }
     });
     queue.current = run;
     await run;
@@ -36,7 +38,7 @@ export function useLesson(id: string | undefined) {
     const loop = async () => {
       if (stop) return;
       if (document.visibilityState === 'visible') await sync();
-      timer = window.setTimeout(loop, live.current ? 2000 : 5000);
+      timer = window.setTimeout(loop, live.current ? 1000 : 4000); // every second while the lesson is on
     };
     void loop();
     const wake = () => { if (document.visibilityState === 'visible') void sync(); };
@@ -56,7 +58,7 @@ export function useLesson(id: string | undefined) {
     await run;
   }, [backend, id, take]);
 
-  return { plan, work, now, error, loaded, answer, sync };
+  return { plan, work, now, error, loaded, answer, sync, fails };
 }
 
 /**
@@ -76,7 +78,7 @@ export function useGroupWork(lessonIds: string[], active: boolean) {
         const got = await Promise.all(lessonIds.map((id) => backend.syncLesson(id).then((r) => [id, { work: r.work, now: Date.parse(r.now) || Date.now() }] as const).catch(() => null)));
         if (!stop) setWorks((w) => ({ ...w, ...Object.fromEntries(got.filter(Boolean) as [string, { work: LessonWork | null; now: number }][]) }));
       }
-      timer = window.setTimeout(loop, active ? 2500 : 6000);
+      timer = window.setTimeout(loop, active ? 1500 : 6000);
     };
     void loop();
     return () => { stop = true; window.clearTimeout(timer); };

@@ -6,7 +6,7 @@ import { isPresent } from '../../../supabase/functions/_shared/lesson';
 import { usePlatform, usePlatformQuery } from '../../lib/platform/context';
 import { BLOCK_LABEL, draftLesson, exampleLesson, newBlock } from '../../lib/platform/lessonDraft';
 import { homeworkFromLesson, homeworkItems } from '../../lib/platform/lessonHomework';
-import { WORDING_LABEL, adaptPlan, reword, stageOf, wordingFor, type Wording } from '../../lib/platform/lessonAdapt';
+import { WORDING_LABEL, adaptPlan, detectWording, reword, stageOf, type Wording } from '../../lib/platform/lessonAdapt';
 import { overallLevel } from '../../lib/platform/level';
 import { describeImport, type ImportedPlan } from '../../lib/platform/lessonImport';
 import { extractText, sourceKindOf } from '../../lib/extractText';
@@ -70,7 +70,7 @@ type Draft = Omit<LibraryPlan, 'teacherId' | 'createdAt' | 'updatedAt'>;
  * A plan from the library, open for review: the facts at the top, what was adapted, the parts to edit. An uploaded
  * plan arrives here "to review". The teacher marks it ready when she is happy, and uses it for a student whenever.
  */
-function PlanReview({ plan, source, sourceName, adapted, student, topics, busy, onSave, onUse, onClose, onDelete }: { plan: Draft; topics: string[]; source?: string; sourceName?: string; adapted: string[]; student: { name: string; level: Cefr } | null; busy: boolean; onSave: (d: Draft, then: 'stay' | 'close') => void; onUse: (d: Draft) => void; onClose: () => void; onDelete: () => void }) {
+function PlanReview({ plan, source, sourceName, adapted, teachWith, topics, busy, onSave, onUse, onClose, onDelete }: { plan: Draft; topics: string[]; source?: string; sourceName?: string; adapted: string[]; teachWith: string | null; busy: boolean; onSave: (d: Draft, then: 'stay' | 'close') => void; onUse: (d: Draft) => void; onClose: () => void; onDelete: () => void }) {
   const [d, setD] = useState<Draft>(plan);
   const [showSource, setShowSource] = useState(!!source);
   const blocks = d.blocks;
@@ -86,12 +86,12 @@ function PlanReview({ plan, source, sourceName, adapted, student, topics, busy, 
           <div className="min-w-0 flex-1 basis-72">
             <p className="eyebrow !text-saffron-light">Revisa tu clase · {d.status === 'ready' ? 'Ready to teach' : 'To review'}</p>
             <h1 className="mt-1 font-display text-3xl font-semibold leading-tight sm:text-4xl">{d.title || 'Lesson plan'}</h1>
-            <p className="mt-2 max-w-2xl text-cream/80">{sourceName ? <>Made from <b className="text-cream">{sourceName}</b> and filed in your plans under {d.level}. </> : null}Check it, change anything, then mark it ready. It can be used for any student, as often as you like.</p>
+            <p className="mt-2 max-w-2xl text-cream/80">{sourceName ? <>Made from <b className="text-cream">{sourceName}</b> and filed in your plans under {d.level}. </> : null}Check it, change anything, then mark it ready. It can be taught to any student or group, as often as you like.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" className="rounded-full bg-cream/10 px-5 py-3 font-semibold text-cream ring-1 ring-cream/20 hover:bg-cream/15" disabled={busy} onClick={() => onSave({ ...d, status: 'review' }, 'close')} data-testid="review-cancel">Save, review later</button>
             <button type="button" className={`inline-flex items-center gap-2 rounded-full px-5 py-3 font-bold transition ${d.status === 'ready' ? 'bg-olive text-white' : 'bg-cream text-ink hover:scale-[1.02]'}`} disabled={busy || blocks.length === 0} onClick={() => { setD((x) => ({ ...x, status: 'ready' })); onSave({ ...d, status: 'ready' }, 'stay'); }} data-testid="review-ready"><Icon name="check" size={18} /> {d.status === 'ready' ? 'Ready' : 'Mark as ready'}</button>
-            {student && <button type="button" className="inline-flex items-center gap-2 rounded-full bg-saffron px-6 py-3 font-bold text-ink shadow-lift transition hover:scale-[1.02] disabled:opacity-60" disabled={busy || blocks.length === 0} onClick={() => onUse(d)} data-testid="review-create"><Icon name="video" size={18} /> Use it for {student.name}</button>}
+            {teachWith && <button type="button" className="inline-flex items-center gap-2 rounded-full bg-saffron px-6 py-3 font-bold text-ink shadow-lift transition hover:scale-[1.02] disabled:opacity-60" disabled={busy || blocks.length === 0} onClick={() => onUse(d)} data-testid="review-create"><Icon name="video" size={18} /> Teach it to {teachWith}</button>}
           </div>
         </div>
       </section>
@@ -105,7 +105,7 @@ function PlanReview({ plan, source, sourceName, adapted, student, topics, busy, 
         ]} />
         <datalist id="plan-topics">{topics.map((t) => <option key={t} value={t} />)}</datalist>
         <p className="mt-2 text-sm text-ink-soft"><b data-testid="review-summary">{describeImport({ title: d.title, blocks, counts, needAnswers: missing })}</b></p>
-        {student && <p className="mt-2 text-sm text-ink-soft" data-testid="review-for">Used for <b>{student.name}</b> ({student.level}), the instructions are rewritten in <b>{WORDING_LABEL[wordingFor(student.level)].toLowerCase()}</b>: less English as the level rises. The Spanish of your plan is never changed.</p>}
+        <p className="mt-2 text-sm text-ink-soft" data-testid="review-for">This plan belongs to no student. The level is only the folder it is filed in, and the wording is yours to choose: it is not set by anyone’s level.</p>
       </div>
 
       {stages.length > 1 && (
@@ -151,7 +151,10 @@ function PlanReview({ plan, source, sourceName, adapted, student, topics, busy, 
                 onDuplicate={() => setBlocks((bs) => { const arr = [...bs]; arr.splice(i + 1, 0, { ...b, id: newBlock(b.type).id }); return arr; })} />
             ))}
           </ol>
-          {blocks.length === 0 && <p className="card p-6 text-center text-ink-soft">Every part has been removed.</p>}
+          <div className="card mt-3 flex flex-wrap items-center gap-2 p-4">
+            <span className="mr-1 text-sm font-semibold">Add a part:</span>
+            {TYPES.map((t) => <button key={t} type="button" className="ctrl" onClick={() => setBlocks((bs) => [...bs, newBlock(t)])} data-testid={`review-add-${t}`}><Icon name="plus" size={14} /> {BLOCK_LABEL[t]}</button>)}
+          </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <button type="button" className="btn-primary" disabled={busy || blocks.length === 0} onClick={() => onSave({ ...d, status: 'ready' }, 'close')}><Icon name="check" size={18} /> Save as ready</button>
             <button type="button" className="btn-ghost" disabled={busy} onClick={() => onSave({ ...d, status: 'review' }, 'close')}>Save, review later</button>
@@ -164,57 +167,51 @@ function PlanReview({ plan, source, sourceName, adapted, student, topics, busy, 
   );
 }
 
-/** One way of starting a lesson, as a card. */
-function StartCard({ icon, tone, title, text, onClick, disabled, testid, primary }: { icon: IconName; tone: string; title: string; text: string; onClick: () => void; disabled?: boolean; testid: string; primary?: boolean }) {
-  return (
-    <button type="button" onClick={onClick} disabled={disabled} data-testid={testid}
-      className={`group flex items-start gap-3 rounded-3xl p-4 text-left ring-1 transition disabled:opacity-50 ${primary ? 'bg-terracotta text-white shadow-lift ring-terracotta hover:-translate-y-0.5' : 'bg-white ring-ink/10 hover:-translate-y-0.5 hover:shadow-soft hover:ring-ink/20'}`}>
-      <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${primary ? 'bg-white/20 text-white' : tone}`}><Icon name={icon} size={20} /></span>
-      <span className="min-w-0"><b className="block text-[16px] leading-tight">{title}</b><span className={`mt-1 block text-sm leading-snug ${primary ? 'text-white/85' : 'text-ink-soft'}`}>{text}</span></span>
-    </button>
-  );
-}
-
-/** The teacher's lesson room: start a lesson, her library of plans by level, and the lessons she has made. */
+/** The teacher's lesson room: her plans in level folders, a tab for each student, and who she is teaching now. */
 export function RoomList() {
   const { backend } = usePlatform();
+  const { notify } = useStore();
   const students = useStudents();
   const lessons = usePlatformQuery((b) => b.lessons(), []);
   const library = usePlatformQuery((b) => b.libraryPlans(), []);
-  const [studentId, setStudentId] = useState('');
-  const settings = usePlatformQuery((b) => (studentId ? b.studentSettings(studentId) : Promise.resolve(null)), [studentId]);
+  const groups = usePlatformQuery((b) => b.lessonGroups(), []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const people = students.data?.people ?? [];
   const nameOf = (id: string) => people.find((p) => p.id === id)?.firstName ?? 'Student';
-  useEffect(() => { if (!studentId && people[0]) setStudentId(people[0].id); }, [people, studentId]);
-  const studentLevel = levelOf(settings.data, students.data?.progress[studentId]);
-  // More students make it a group lesson: each gets their own copy, taught together.
+
+  // Who the next lesson is taught to. A plan belongs to nobody: it is given to a student, or a group, when it is taught.
+  const [studentId, setStudentId] = useState('');
   const [more, setMore] = useState<string[]>([]);
-  const groupIds = [studentId, ...more.filter((x) => x !== studentId)].filter(Boolean);
-  const groups = usePlatformQuery((b) => b.lessonGroups(), []);
-  const student = studentId ? { name: groupIds.length > 1 ? `${nameOf(studentId)} +${groupIds.length - 1}` : nameOf(studentId), level: studentLevel } : null;
-  /** One lesson, or the same lesson for each student in the group (same parts, same ids) kept together as a group. */
-  const makeLesson = async (input: { title: string; notes: string; blocks: LessonBlock[] }) => {
+  useEffect(() => { if (!studentId && people[0]) setStudentId(people[0].id); }, [people, studentId]);
+  const classIds = [studentId, ...more.filter((x) => x !== studentId)].filter(Boolean);
+  const className = classIds.length > 1 ? `${nameOf(studentId)} +${classIds.length - 1}` : studentId ? nameOf(studentId) : 'a student';
+
+  // What is on show: a level folder of plans, or one student's lessons.
+  const [view, setView] = useState<{ kind: 'level'; level: Cefr | 'all' } | { kind: 'student'; id: string }>({ kind: 'level', level: 'all' });
+  const [topic, setTopic] = useState('');
+  const settings = usePlatformQuery((b) => (view.kind === 'student' ? b.studentSettings(view.id) : Promise.resolve(null)), [view.kind === 'student' ? view.id : '']);
+
+  /** One lesson, or the same lesson for each student in the class (same parts, same ids) kept together as a group. */
+  const makeLesson = async (ids: string[], input: { title: string; notes: string; blocks: LessonBlock[] }) => {
     const made: LessonPlan[] = [];
-    for (const sid of groupIds) made.push(await backend!.saveLesson({ studentId: sid, title: input.title, date: today(), notes: input.notes, blocks: input.blocks, live: { on: false, current: null } }));
+    for (const sid of ids) made.push(await backend!.saveLesson({ studentId: sid, title: input.title, date: today(), notes: input.notes, blocks: input.blocks, live: { on: false, current: null } }));
     if (made.length > 1) { await backend!.saveLessonGroup(made.map((m) => ({ lessonId: m.id, studentId: m.studentId }))); groups.reload(); }
     return made[0];
   };
 
-  // A plan the teacher uploads or pastes is filed in her library as "to review", then opened for her to check.
+  // A plan the teacher uploads, pastes or starts is filed in her library, then opened for her to work on.
   const fileRef = useRef<HTMLInputElement>(null);
   const [pasting, setPasting] = useState(false);
   const [pasted, setPasted] = useState('');
-  const [filter, setFilter] = useState<Cefr | 'all'>('all');
-  const [topic, setTopic] = useState('');
   const [review, setReview] = useState<{ plan: Draft; source?: string; name?: string; adapted: string[] } | null>(null);
+  const folder: Cefr = view.kind === 'level' && view.level !== 'all' ? view.level : 'A1';
   const file = async (text: string, name: string, fallback: string) => {
     if (!backend) return;
     const made = adaptPlan(text, fallback);
     if (!made.blocks.length) { setError('Nothing could be read from that. If it is a scanned page or a photo, paste the text instead.'); return; }
     setError(null);
-    const saved = await backend.saveLibraryPlan({ title: made.title, topic: topicFrom(made.title), level: made.level ?? studentLevel, status: 'review', blocks: made.blocks, notes: made.notes, minutes: made.minutes, wording: made.wording, source: name });
+    const saved = await backend.saveLibraryPlan({ title: made.title, topic: topicFrom(made.title), level: made.level ?? folder, status: 'review', blocks: made.blocks, notes: made.notes, minutes: made.minutes, wording: made.wording, source: name });
     library.reload();
     setReview({ plan: saved, source: text.trim(), name, adapted: made.adapted });
     window.scrollTo({ top: 0 });
@@ -230,6 +227,18 @@ export function RoomList() {
     setBusy(false);
     if (fileRef.current) fileRef.current.value = '';
   };
+  /** A new plan written in the app: blank, or the worked example. It belongs to no student. */
+  const newPlan = async (kind: 'blank' | 'example') => {
+    if (!backend) return;
+    setBusy(true); setError(null);
+    try {
+      const saved = await backend.saveLibraryPlan(kind === 'example'
+        ? { title: 'Example lesson: el pretérito de ir y ser', topic: 'El pretérito', level: 'A2', status: 'ready', blocks: exampleLesson('your student'), notes: '', wording: 'both' }
+        : { title: 'New lesson', topic: '', level: folder, status: 'review', blocks: [newBlock('question')], notes: '', wording: 'both' });
+      library.reload(); setReview({ plan: saved, adapted: [] }); window.scrollTo({ top: 0 });
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not create the plan.'); }
+    setBusy(false);
+  };
   const savePlan = async (d: Draft, then: 'stay' | 'close') => {
     if (!backend) return;
     setBusy(true); setError(null);
@@ -237,173 +246,192 @@ export function RoomList() {
     catch (e) { setError(e instanceof Error ? e.message : 'Could not save the plan.'); }
     setBusy(false);
   };
-  /** A lesson for the chosen student from a plan, with the instructions in the wording that suits their level. */
-  const usePlan = async (d: Draft, save = true) => {
-    if (!backend || !studentId) return;
+  /** Teach a plan: a lesson is made from it for whoever is chosen now. The plan stays in the library for next time. */
+  const teach = async (d: Draft, save = true) => {
+    if (!backend || !classIds.length) return;
     setBusy(true); setError(null);
     try {
       if (save) { await backend.saveLibraryPlan(d); library.reload(); }
-      const plan = await makeLesson({ title: d.title.trim() || 'Lesson', notes: d.notes, blocks: reword(d.blocks, wordingFor(studentLevel)).map((b) => ({ ...b, id: newBlock(b.type).id, open: false, reveal: false })) });
+      const plan = await makeLesson(classIds, { title: d.title.trim() || 'Lesson', notes: d.notes, blocks: d.blocks.map((b) => ({ ...b, open: false, reveal: false })) });
       navigate(`teach/room/${plan.id}`);
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not create the lesson.'); setBusy(false); }
   };
-
-  const create = async (kind: 'draft' | 'blank' | 'example') => {
-    if (!backend || !studentId) return;
+  /** The one kind of lesson that is about a single student from the start: built from their own week. */
+  const draftFor = async (sid: string) => {
+    if (!backend) return;
     setBusy(true); setError(null);
-    try {
-      const name = nameOf(studentId);
-      const blocks = kind === 'draft' ? draftLesson(students.data?.progress[studentId] ?? null, name) : kind === 'example' ? exampleLesson(name) : [newBlock('question')];
-      const plan = await makeLesson({ title: kind === 'example' ? 'Example lesson: el pretérito de ir y ser' : groupIds.length > 1 ? `Group lesson: ${groupIds.map(nameOf).join(', ')}` : `Lesson with ${name}`, notes: '', blocks });
-      navigate(`teach/room/${plan.id}`);
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not create the lesson.'); }
+    try { const plan = await makeLesson([sid], { title: `Lesson with ${nameOf(sid)}`, notes: '', blocks: draftLesson(students.data?.progress[sid] ?? null, nameOf(sid)) }); navigate(`teach/room/${plan.id}`); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Could not create the lesson.'); }
     setBusy(false);
   };
 
-  if (review) return (<><ErrorText error={error} /><PlanReview key={review.plan.id} topics={[...new Set((library.data ?? []).map((x) => x.topic ?? '').filter(Boolean))].sort()} plan={review.plan} source={review.source} sourceName={review.name} adapted={review.adapted} student={student} busy={busy} onSave={(d, then) => void savePlan(d, then)} onUse={(d) => void usePlan(d)} onClose={() => { setReview(null); setError(null); }} onDelete={() => { void backend?.deleteLibraryPlan(review.plan.id).then(() => { library.reload(); setReview(null); }); }} /></>);
+  if (review) return (<><ErrorText error={error} /><PlanReview key={review.plan.id} topics={[...new Set((library.data ?? []).map((x) => x.topic ?? '').filter(Boolean))].sort()} plan={review.plan} source={review.source} sourceName={review.name} adapted={review.adapted} teachWith={classIds.length ? className : null} busy={busy} onSave={(d, then) => void savePlan(d, then)} onUse={(d) => void teach(d)} onClose={() => { setReview(null); setError(null); }} onDelete={() => { void backend?.deleteLibraryPlan(review.plan.id).then(() => { library.reload(); setReview(null); notify('Plan deleted'); }); }} /></>);
 
   const none = !!students.data && people.length === 0;
-  const running = (lessons.data ?? []).filter((l) => l.live.on);
+  const all = lessons.data ?? [];
+  const running = all.filter((l) => l.live.on);
   const plans = library.data ?? [];
-  const shown = plans.filter((p) => (filter === 'all' || p.level === filter) && (!topic || (p.topic ?? '') === topic));
+  const level = view.kind === 'level' ? view.level : 'all';
+  const shown = plans.filter((p) => (level === 'all' || p.level === level) && (!topic || (p.topic ?? '') === topic));
   const allTopics = [...new Set(plans.map((p) => p.topic ?? '').filter(Boolean))].sort();
   const waiting = plans.filter((p) => p.status === 'review').length;
+  const isMemberCopy = (l: LessonPlan) => (groups.data ?? []).some((g) => g.members.slice(1).some((m) => m.lessonId === l.id));
+  const groupOf = (l: LessonPlan) => (groups.data ?? []).find((g) => g.members.some((m) => m.lessonId === l.id));
+  const day = (l: LessonPlan) => new Date(`${l.date || l.createdAt.slice(0, 10)}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+
+  const PlanCard = ({ p }: { p: LibraryPlan }) => (
+    <li className={`rounded-3xl bg-white p-4 ring-1 ${p.status === 'review' ? 'ring-2 ring-saffron/70' : 'ring-ink/10'}`} data-testid="library-plan" data-status={p.status}>
+      <div className="flex items-start gap-3">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-azul-50 font-display text-lg font-semibold text-azul">{p.level}</span>
+        <div className="min-w-0 flex-1">
+          <b className="block truncate text-[16px]">{p.title}</b>
+          <span className="block text-sm text-ink-mute">{p.topic ? <span className="mr-1 rounded-full bg-cream-100 px-2 py-0.5 text-xs font-semibold text-ink-soft">{p.topic}</span> : null}{p.minutes ? `${p.minutes} min · ` : ''}{p.blocks.length} parts{p.source ? ` · from ${p.source}` : ''}</span>
+          <span className="mt-1.5 block"><PartChips blocks={p.blocks} /></span>
+        </div>
+        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${p.status === 'review' ? 'bg-saffron text-ink' : 'bg-olive text-white'}`}>{p.status === 'review' ? 'To review' : 'Ready'}</span>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button type="button" className="ctrl" onClick={() => { setReview({ plan: p, adapted: [] }); window.scrollTo({ top: 0 }); }} data-testid="library-review"><Icon name="edit" size={14} /> {p.status === 'review' ? 'Review' : 'Open'}</button>
+        <button type="button" className={p.status === 'ready' ? 'btn-primary !py-2' : 'ctrl'} disabled={busy || !classIds.length} onClick={() => void teach(p, false)} data-testid="library-use"><Icon name="video" size={14} /> Teach it to {className}</button>
+      </div>
+    </li>
+  );
+
   return (
     <div data-testid="room-list">
-      <section className="relative overflow-hidden rounded-4xl bg-ink p-6 text-cream shadow-lift sm:p-8">
+      <section className="relative overflow-hidden rounded-4xl bg-ink p-6 text-cream shadow-lift sm:p-7">
         <div className="absolute -right-10 -top-12 h-52 w-52 rounded-full bg-terracotta/40 blur-2xl" />
         <div className="relative flex flex-wrap items-center gap-5">
-          <div className="shrink-0"><DinaArt size={104} expression="beam" /></div>
+          <div className="shrink-0"><DinaArt size={88} expression="beam" /></div>
           <div className="min-w-0 flex-1 basis-72">
             <p className="eyebrow !text-saffron-light">Aula · Lesson room</p>
-            <h1 className="mt-1 font-display text-4xl font-semibold leading-tight sm:text-5xl">Teach on one shared screen</h1>
-            <p className="mt-2 max-w-xl text-cream/80">Your student follows on their own phone or tablet, and answers there.</p>
+            <h1 className="mt-1 font-display text-3xl font-semibold leading-tight sm:text-4xl">Your plans, ready to teach to anyone</h1>
+            <p className="mt-2 max-w-2xl text-cream/80">A plan belongs to no student. File it under its level, then teach it to one student or a group whenever you like, as often as you like.</p>
           </div>
         </div>
-        <ol className="relative mt-6 grid gap-2 sm:grid-cols-3">
-          {[['Plan', 'Keep your plans in the library, filed by level. Upload the ones you already have.'], ['Share your screen', 'Open Present on your call and start the lesson. A clock shows how long you have been going.'], ['Open each part', 'They see a part only when you show it. Their answers come to you.']].map(([t, dsc], i) => (
-            <li key={t} className="flex items-start gap-3 rounded-2xl bg-cream/10 p-3 ring-1 ring-cream/10"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-saffron text-sm font-bold text-ink">{i + 1}</span><span><b className="block">{t}</b><span className="text-sm text-cream/75">{dsc}</span></span></li>
-          ))}
-        </ol>
+        {/* Who the next lesson is for. Chosen at the moment of teaching, never stored in the plan. */}
+        <div className="relative mt-5 flex flex-wrap items-center gap-2 rounded-3xl bg-cream/10 p-3 ring-1 ring-cream/10" data-testid="room-class">
+          <b className="mr-1">Teaching now:</b>
+          <select className="input !w-44 !py-2 !text-ink" value={studentId} onChange={(e) => setStudentId(e.target.value)} aria-label="Student" data-testid="room-student">{people.map((p) => <option key={p.id} value={p.id}>{p.firstName}</option>)}</select>
+          {more.filter((x) => x !== studentId).map((x) => <button key={x} type="button" className="inline-flex items-center gap-1.5 rounded-full bg-cream px-3 py-1.5 text-sm font-semibold text-ink" onClick={() => setMore(more.filter((y) => y !== x))} data-testid="room-group-member">{nameOf(x)} <Icon name="x" size={13} /></button>)}
+          {people.length > classIds.length && (
+            <select className="input !w-auto !py-2 text-sm !text-ink" value="" onChange={(e) => { if (e.target.value) setMore([...more, e.target.value]); }} aria-label="Add a student to make it a group lesson" data-testid="room-group-add">
+              <option value="">+ Add a student (group lesson)</option>
+              {people.filter((x) => !classIds.includes(x.id)).map((x) => <option key={x.id} value={x.id}>{x.firstName}</option>)}
+            </select>
+          )}
+          {classIds.length > 1 && <span className="basis-full text-sm text-cream/80" data-testid="room-group-note"><b className="text-cream">A group lesson for {classIds.map(nameOf).join(', ')}.</b> Each joins on their own device and answers for themselves. Your screen tells you when everyone has.</span>}
+        </div>
       </section>
+      {none && <p className="mt-3 rounded-2xl bg-saffron-50 px-4 py-3 text-sm ring-1 ring-saffron/40">Add a student first (Students, Add a student). You can still build and file plans now.</p>}
 
       {running.length > 0 && (
-        <button type="button" onClick={() => navigate(`teach/room/${running[0].id}`)} className="mt-4 flex w-full items-center gap-4 rounded-3xl bg-olive p-4 text-left text-white shadow-lift" data-testid="room-running">
+        <button type="button" onClick={() => navigate(`teach/room/${running.find((l) => !isMemberCopy(l))?.id ?? running[0].id}`)} className="mt-4 flex w-full items-center gap-4 rounded-3xl bg-olive p-4 text-left text-white shadow-lift" data-testid="room-running">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/20"><Icon name="video" size={22} /></span>
           <span className="min-w-0 flex-1"><span className="eyebrow !text-white/80">Running now</span><b className="block truncate text-lg">{running[0].title} · {nameOf(running[0].studentId)}</b></span>
           <span className="rounded-full bg-white px-4 py-2 font-bold text-ink">Go back in</span>
         </button>
       )}
 
-      <section className="mt-6" data-testid="room-start">
-        <div className="mb-3 flex flex-wrap items-center gap-3">
-          <h2 className="text-2xl font-semibold">A lesson for</h2>
-          <select className="input !w-48 !py-2" value={studentId} onChange={(e) => setStudentId(e.target.value)} aria-label="Student" data-testid="room-student">{people.map((p) => <option key={p.id} value={p.id}>{p.firstName}</option>)}</select>
-          {more.filter((x) => x !== studentId).map((x) => <button key={x} type="button" className="chip !py-1.5" aria-pressed onClick={() => setMore(more.filter((y) => y !== x))} data-testid="room-group-member">{nameOf(x)} <Icon name="x" size={13} /></button>)}
-          {people.length > groupIds.length && (
-            <select className="input !w-auto !py-2 text-sm" value="" onChange={(e) => { if (e.target.value) setMore([...more, e.target.value]); }} aria-label="Add a student to make it a group lesson" data-testid="room-group-add">
-              <option value="">+ Add a student (group lesson)</option>
-              {people.filter((x) => !groupIds.includes(x.id)).map((x) => <option key={x.id} value={x.id}>{x.firstName}</option>)}
-            </select>
+      {/* The folders: levels across the top, the students beneath. */}
+      <nav className="mt-6 rounded-3xl bg-white p-3 shadow-soft ring-1 ring-ink/5" aria-label="Plans and students" data-testid="room-tabs">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 w-20 text-xs font-bold uppercase tracking-[0.12em] text-ink-mute">Levels</span>
+          {(['all', ...LEVELS] as (Cefr | 'all')[]).map((l) => { const n = l === 'all' ? plans.length : plans.filter((p) => p.level === l).length; const on = view.kind === 'level' && view.level === l; return <button key={l} type="button" className="chip !py-1.5 text-sm" aria-pressed={on} onClick={() => setView({ kind: 'level', level: l })} data-testid={`library-${l}`}>{l === 'all' ? 'All levels' : l} <span className="opacity-60">{n}</span></button>; })}
+          {waiting > 0 && <span className="ml-auto rounded-full bg-saffron px-2.5 py-1 text-xs font-bold text-ink" data-testid="library-waiting">{waiting} to review</span>}
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-ink/5 pt-2">
+          <span className="mr-1 w-20 text-xs font-bold uppercase tracking-[0.12em] text-ink-mute">Students</span>
+          {people.length === 0 ? <span className="text-sm text-ink-mute">None yet</span> : people.map((p) => { const n = all.filter((l) => l.studentId === p.id).length; const on = view.kind === 'student' && view.id === p.id; return <button key={p.id} type="button" className="chip !py-1.5 text-sm" aria-pressed={on} onClick={() => setView({ kind: 'student', id: p.id })} data-testid="student-tab">{p.firstName} <span className="opacity-60">{n}</span></button>; })}
+        </div>
+      </nav>
+
+      {view.kind === 'level' ? (
+        <section className="mt-5" data-testid="room-library">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <h2 className="mr-auto text-2xl font-semibold">{level === 'all' ? 'All my lesson plans' : `${level} lesson plans`}</h2>
+            <input ref={fileRef} type="file" accept=".pdf,.docx,.txt,.md,application/pdf,text/plain" className="sr-only" onChange={(e) => void onFile(e.target.files?.[0])} data-testid="room-file" />
+            <button type="button" className="btn-primary !py-2.5" disabled={busy} onClick={() => fileRef.current?.click()} data-testid="room-upload"><Icon name="upload" size={16} /> {busy ? 'Working…' : 'Upload a plan'}</button>
+            <button type="button" className="btn-ghost !py-2.5" disabled={busy} onClick={() => setPasting(!pasting)} data-testid="room-paste-toggle"><Icon name="copy" size={16} /> Paste</button>
+            <button type="button" className="btn-ghost !py-2.5" disabled={busy} onClick={() => void newPlan('blank')} data-testid="room-blank"><Icon name="plus" size={16} /> New plan</button>
+            <button type="button" className="btn-ghost !py-2.5" disabled={busy} onClick={() => void newPlan('example')} data-testid="room-example"><Icon name="eye" size={16} /> Add the example</button>
+          </div>
+          {pasting && (
+            <div className="card mb-3 p-4" data-testid="room-import">
+              <label className="font-semibold" htmlFor="room-paste">Paste your lesson plan</label>
+              <textarea id="room-paste" className="input mt-2 min-h-[180px] w-full" value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder={'El pretérito: ir y ser\n\nCalentamiento\n¿Qué hiciste el fin de semana?\n\nPráctica:\nAyer yo ___ (ir) al mercado. [fui]\n\nVocabulario\nayer = yesterday\nanoche = last night'} data-testid="room-paste" />
+              <button type="button" className="btn-primary mt-2" disabled={busy || !pasted.trim()} onClick={() => void file(pasted, 'your pasted plan', 'Lesson')} data-testid="room-paste-go"><Icon name="eye" size={16} /> Review it</button>
+            </div>
           )}
-          {student && <span className="rounded-full bg-white px-3 py-1.5 text-sm ring-1 ring-ink/10" data-testid="room-student-level">Level <b>{student.level}</b> · instructions in <b>{WORDING_LABEL[wordingFor(student.level)].toLowerCase()}</b></span>}
-        </div>
-        {none && <p className="mb-3 rounded-2xl bg-saffron-50 px-4 py-3 text-sm ring-1 ring-saffron/40">Add a student first (Students, Add a student). A lesson is always for one student, even a practice one.</p>}
-        <div className="grid gap-3 sm:grid-cols-3">
-          <StartCard primary icon="sparkle" tone="" title="Draft it from their week" text="A warm-up, their hardest point with their own mistakes, the exact forms they missed, a wrap-up." onClick={() => void create('draft')} disabled={busy || !studentId} testid="room-draft" />
-          <StartCard icon="eye" tone="bg-saffron-50 text-ink" title="Open an example lesson" text="A finished seven-part lesson on the preterite of ir and ser, to try the room with." onClick={() => void create('example')} disabled={busy || !studentId} testid="room-example" />
-          <StartCard icon="edit" tone="bg-cream-100 text-ink-soft" title="Start blank" text="An empty lesson. Add the parts yourself." onClick={() => void create('blank')} disabled={busy || !studentId} testid="room-blank" />
-        </div>
-        {groupIds.length > 1 && <p className="mt-2 rounded-2xl bg-olive-50 px-4 py-2.5 text-sm ring-1 ring-olive/30" data-testid="room-group-note"><b>A group lesson for {groupIds.map(nameOf).join(', ')}.</b> Each of them joins on their own device and answers for themselves. Your screen shows who has answered, and tells you when everyone has.</p>}
-        <p className="mt-2 text-sm text-ink-mute">Or use one of your plans below: press “Use for {student?.name ?? 'your student'}”.</p>
-      </section>
-
-      <section className="mt-8" data-testid="room-library">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <h2 className="mr-auto text-2xl font-semibold">My lesson plans{waiting > 0 && <span className="ml-2 rounded-full bg-saffron px-2.5 py-1 align-middle text-xs font-bold text-ink" data-testid="library-waiting">{waiting} to review</span>}</h2>
-          <input ref={fileRef} type="file" accept=".pdf,.docx,.txt,.md,application/pdf,text/plain" className="sr-only" onChange={(e) => void onFile(e.target.files?.[0])} data-testid="room-file" />
-          <button type="button" className="btn-primary !py-2.5" disabled={busy} onClick={() => fileRef.current?.click()} data-testid="room-upload"><Icon name="upload" size={16} /> {busy ? 'Reading your plan…' : 'Upload a plan'}</button>
-          <button type="button" className="btn-ghost !py-2.5" disabled={busy} onClick={() => setPasting(!pasting)} data-testid="room-paste-toggle"><Icon name="copy" size={16} /> Paste a plan</button>
-        </div>
-        {pasting && (
-          <div className="card mb-3 p-4" data-testid="room-import">
-            <label className="font-semibold" htmlFor="room-paste">Paste your lesson plan</label>
-            <textarea id="room-paste" className="input mt-2 min-h-[180px] w-full" value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder={'El pretérito: ir y ser\n\nCalentamiento\n¿Qué hiciste el fin de semana?\n\nPráctica:\nAyer yo ___ (ir) al mercado. [fui]\n\nVocabulario\nayer = yesterday\nanoche = last night'} data-testid="room-paste" />
-            <button type="button" className="btn-primary mt-2" disabled={busy || !pasted.trim()} onClick={() => void file(pasted, 'your pasted plan', 'Lesson')} data-testid="room-paste-go"><Icon name="eye" size={16} /> Review it</button>
+          {allTopics.length > 0 && (
+            <div className="mb-3 flex flex-wrap items-center gap-1.5" role="group" aria-label="Topic">
+              <span className="mr-1 text-sm font-semibold text-ink-soft">Topic</span>
+              <button type="button" className="chip !py-1.5 text-sm" aria-pressed={!topic} onClick={() => setTopic('')}>All</button>
+              {allTopics.map((t) => <button key={t} type="button" className="chip !py-1.5 text-sm" aria-pressed={topic === t} onClick={() => setTopic(topic === t ? '' : t)} data-testid="library-topic">{t} <span className="opacity-60">{plans.filter((p) => p.topic === t).length}</span></button>)}
+            </div>
+          )}
+          {!library.data ? <Loading /> : shown.length === 0 ? (
+            <p className="card p-6 text-center text-ink-soft" data-testid="library-none">{plans.length === 0 ? 'No plans yet. Upload one you already have, start a new one, or add the example. Each is filed under its level and can be taught to any student.' : 'No plans here yet for that level and topic.'}</p>
+          ) : level === 'all' ? (
+            LEVELS.filter((l) => shown.some((p) => p.level === l)).map((l) => (
+              <div key={l} className="mb-5" data-testid={`folder-${l}`}>
+                <p className="mb-2 flex items-center gap-2"><span className="rounded-xl bg-azul px-2.5 py-1 text-sm font-bold text-white">{l}</span><span className="text-sm text-ink-mute">{shown.filter((p) => p.level === l).length} plan{shown.filter((p) => p.level === l).length === 1 ? '' : 's'}</span></p>
+                <ul className="grid gap-3 sm:grid-cols-2">{shown.filter((p) => p.level === l).map((p) => <PlanCard key={p.id} p={p} />)}</ul>
+              </div>
+            ))
+          ) : <ul className="grid gap-3 sm:grid-cols-2">{shown.map((p) => <PlanCard key={p.id} p={p} />)}</ul>}
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <a href={`${import.meta.env.BASE_URL}guides/lesson-plan-template.docx`} download className="flex items-center gap-3 rounded-2xl bg-azul-50 px-4 py-3 text-sm ring-1 ring-azul/20 transition hover:ring-azul/50" data-testid="room-template">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-azul"><Icon name="download" size={17} /></span>
+              <span className="min-w-0 flex-1"><b className="block text-ink">Download the Word template</b><span className="text-ink-soft">A plan laid out the right way, with a page explaining what you can write.</span></span>
+            </a>
+            <details className="rounded-2xl bg-white px-4 py-3 text-sm text-ink-soft ring-1 ring-ink/5">
+              <summary className="cursor-pointer font-semibold text-ink">How a plan is built into a lesson</summary>
+              <ul className="mt-2 grid gap-1.5">
+                <li><b className="text-ink">Timed stages</b> (“0–8 mins, Stage 1”) set the order and how much each stage holds.</li>
+                <li><b className="text-ink">A table of phrases</b> becomes cards to hear, then quick checks made from those phrases.</li>
+                <li><b className="text-ink">Questions you are told to ask</b> become speaking turns, each with the words to start the answer.</li>
+                <li><b className="text-ink">Worksheet exercises</b> go where your procedure uses them, marked from your answer key.</li>
+                <li><b className="text-ink">Writing tasks and role-play cards</b> are released a step or a round at a time.</li>
+                <li><b className="text-ink">Timings, board work and pronunciation points</b> go to your own notes.</li>
+                <li><b className="text-ink">A simpler plan</b> is read line by line: ___ is a gap, a) b) c) is a choice, a question mark is a question, “word = meaning” is a word list.</li>
+              </ul>
+            </details>
           </div>
-        )}
-        <div className="mb-3 flex flex-wrap gap-1.5" role="group" aria-label="Level">
-          {(['all', ...LEVELS] as (Cefr | 'all')[]).map((l) => { const n = l === 'all' ? plans.length : plans.filter((p) => p.level === l).length; return <button key={l} type="button" className="chip !py-1.5 text-sm" aria-pressed={filter === l} onClick={() => setFilter(l)} data-testid={`library-${l}`}>{l === 'all' ? 'All levels' : l} <span className="opacity-60">{n}</span>{l === student?.level ? <span className="ml-1 text-xs opacity-70">· {student.name}</span> : null}</button>; })}
-        </div>
-        {allTopics.length > 0 && (
-          <div className="mb-3 flex flex-wrap items-center gap-1.5" role="group" aria-label="Topic">
-            <span className="mr-1 text-sm font-semibold text-ink-soft">Topic</span>
-            <button type="button" className="chip !py-1.5 text-sm" aria-pressed={!topic} onClick={() => setTopic('')}>All</button>
-            {allTopics.map((t) => <button key={t} type="button" className="chip !py-1.5 text-sm" aria-pressed={topic === t} onClick={() => setTopic(topic === t ? '' : t)} data-testid="library-topic">{t} <span className="opacity-60">{plans.filter((p) => p.topic === t).length}</span></button>)}
-          </div>
-        )}
-        {!library.data ? <Loading /> : shown.length === 0 ? (
-          <p className="card p-6 text-center text-ink-soft" data-testid="library-none">{plans.length === 0 ? 'No plans yet. Upload one you already have: it is built into a lesson, filed under its level and waits here for you to review.' : 'No plans match that level and topic.'}</p>
-        ) : (
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {shown.map((p) => (
-              <li key={p.id} className={`rounded-3xl bg-white p-4 ring-1 ${p.status === 'review' ? 'ring-2 ring-saffron/70' : 'ring-ink/10'}`} data-testid="library-plan" data-status={p.status}>
-                <div className="flex items-start gap-3">
-                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-azul-50 font-display text-lg font-semibold text-azul">{p.level}</span>
-                  <div className="min-w-0 flex-1">
-                    <b className="block truncate text-[16px]">{p.title}</b>
-                    <span className="block text-sm text-ink-mute">{p.topic ? <span className="mr-1 rounded-full bg-cream-100 px-2 py-0.5 text-xs font-semibold text-ink-soft">{p.topic}</span> : null}{p.minutes ? `${p.minutes} min · ` : ''}{p.blocks.length} parts{p.source ? ` · from ${p.source}` : ''}</span>
-                    <span className="mt-1.5 block"><PartChips blocks={p.blocks} /></span>
-                  </div>
-                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${p.status === 'review' ? 'bg-saffron text-ink' : 'bg-olive text-white'}`}>{p.status === 'review' ? 'To review' : 'Ready'}</span>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button type="button" className="ctrl" onClick={() => { setReview({ plan: p, adapted: [] }); window.scrollTo({ top: 0 }); }} data-testid="library-review"><Icon name="edit" size={14} /> {p.status === 'review' ? 'Review' : 'Open'}</button>
-                  <button type="button" className={p.status === 'ready' ? 'btn-primary !py-2' : 'ctrl'} disabled={busy || !studentId} onClick={() => void usePlan(p, false)} data-testid="library-use"><Icon name="video" size={14} /> Use for {student?.name ?? 'student'}</button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <a href={`${import.meta.env.BASE_URL}guides/lesson-plan-template.docx`} download className="flex items-center gap-3 rounded-2xl bg-azul-50 px-4 py-3 text-sm ring-1 ring-azul/20 transition hover:ring-azul/50" data-testid="room-template">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-azul"><Icon name="download" size={17} /></span>
-            <span className="min-w-0 flex-1"><b className="block text-ink">Download the Word template</b><span className="text-ink-soft">A plan laid out the right way, with a page explaining what you can write.</span></span>
-          </a>
-          <details className="rounded-2xl bg-white px-4 py-3 text-sm text-ink-soft ring-1 ring-ink/5">
-            <summary className="cursor-pointer font-semibold text-ink">How a plan is built into a lesson</summary>
-            <ul className="mt-2 grid gap-1.5">
-              <li><b className="text-ink">Timed stages</b> (“0–8 mins, Stage 1”) set the order and how much each stage holds.</li>
-              <li><b className="text-ink">A table of phrases</b> becomes cards to hear, then quick checks made from those phrases.</li>
-              <li><b className="text-ink">Questions you are told to ask</b> become speaking turns, each with the words to start the answer.</li>
-              <li><b className="text-ink">Worksheet exercises</b> go where your procedure uses them, marked from your answer key.</li>
-              <li><b className="text-ink">Writing tasks and role-play cards</b> are released a step or a round at a time.</li>
-              <li><b className="text-ink">Timings, board work and pronunciation points</b> go to your own notes.</li>
-              <li><b className="text-ink">A simpler plan</b> is read line by line: ___ is a gap, a) b) c) is a choice, a question mark is a question, “word = meaning” is a word list.</li>
-            </ul>
-          </details>
-        </div>
-        <ErrorText error={error} />
-      </section>
-
-      <h2 className="mb-3 mt-8 text-2xl font-semibold">Your lessons</h2>
-      {!lessons.data ? <Loading /> : lessons.data.length === 0 ? <p className="card p-6 text-center text-ink-soft" data-testid="room-none">No lessons yet. Start one above: the example lesson is the quickest way to see how the room works.</p> : (
-        <ul className="grid gap-3 sm:grid-cols-2">
-          {lessons.data.filter((l) => !(groups.data ?? []).some((g) => g.members.slice(1).some((m) => m.lessonId === l.id))).map((l) => { const g = (groups.data ?? []).find((x) => x.members[0]?.lessonId === l.id); const who = g ? g.members.map((m) => nameOf(m.studentId)).join(', ') : nameOf(l.studentId); return (
-            <li key={l.id}>
-              <button type="button" onClick={() => navigate(`teach/room/${l.id}`)} className={`flex w-full items-center gap-3 rounded-3xl bg-white p-4 text-left ring-1 transition hover:-translate-y-0.5 hover:shadow-soft ${l.live.on ? 'ring-2 ring-olive' : 'ring-ink/10'}`} data-testid="room-open">
-                <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${l.live.on ? 'bg-olive text-white' : 'bg-cream-100 text-ink-soft'}`}><Icon name={l.live.on ? 'video' : 'book'} size={22} /></span>
-                <span className="min-w-0 flex-1">
-                  <b className="block truncate text-[16px]">{l.title}</b>
-                  <span className="block text-sm text-ink-mute">{g ? <span className="mr-1 rounded-full bg-olive-50 px-2 py-0.5 text-xs font-bold text-olive">Group</span> : null}{who} · {new Date(`${l.date || l.createdAt.slice(0, 10)}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}{l.live.on ? ' · running now' : ''}</span>
-                  <span className="mt-1.5 block"><PartChips blocks={l.blocks} /></span>
-                </span>
-                <Icon name="arrowRight" size={16} className="shrink-0 text-ink-mute" />
-              </button>
-            </li>
-          ); })}
-        </ul>
-      )}
+        </section>
+      ) : (() => {
+        const sid = view.id; const mine = all.filter((l) => l.studentId === sid);
+        const lv = levelOf(settings.data, students.data?.progress[sid]);
+        return (
+          <section className="mt-5" data-testid="student-folder">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <h2 className="mr-auto text-2xl font-semibold">{nameOf(sid)} <span className="ml-1 rounded-xl bg-azul px-2.5 py-1 align-middle text-sm font-bold text-white" data-testid="student-level">{lv}</span></h2>
+              <button type="button" className="btn-primary !py-2.5" disabled={busy} onClick={() => void draftFor(sid)} data-testid="room-draft"><Icon name="sparkle" size={16} /> Draft a lesson from their week</button>
+              <button type="button" className="btn-ghost !py-2.5" onClick={() => { setStudentId(sid); setMore([]); setView({ kind: 'level', level: lv }); }} data-testid="student-plans"><Icon name="book" size={16} /> Teach them a {lv} plan</button>
+              <button type="button" className="btn-ghost !py-2.5" onClick={() => navigate(`teach/student/${sid}`)}><Icon name="user" size={16} /> Their profile</button>
+            </div>
+            <p className="mb-3 text-sm text-ink-soft">What {nameOf(sid)} has worked on with you: {mine.length} lesson{mine.length === 1 ? '' : 's'}. Open one to see the parts and their answers, or to teach it again.</p>
+            {!lessons.data ? <Loading /> : mine.length === 0 ? <p className="card p-6 text-center text-ink-soft" data-testid="room-none">No lessons with {nameOf(sid)} yet. Draft one from their week, or teach them a plan from the {lv} folder.</p> : (
+              <ul className="grid gap-3 sm:grid-cols-2">
+                {mine.map((l) => { const g = groupOf(l); const lead = g?.members[0]?.lessonId ?? l.id; return (
+                  <li key={l.id}>
+                    <button type="button" onClick={() => navigate(`teach/room/${lead}`)} className={`flex w-full items-center gap-3 rounded-3xl bg-white p-4 text-left ring-1 transition hover:-translate-y-0.5 hover:shadow-soft ${l.live.on ? 'ring-2 ring-olive' : 'ring-ink/10'}`} data-testid="room-open">
+                      <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${l.live.on ? 'bg-olive text-white' : 'bg-cream-100 text-ink-soft'}`}><Icon name={l.live.on ? 'video' : 'book'} size={22} /></span>
+                      <span className="min-w-0 flex-1">
+                        <b className="block truncate text-[16px]">{l.title}</b>
+                        <span className="block text-sm text-ink-mute">{g ? <span className="mr-1 rounded-full bg-olive-50 px-2 py-0.5 text-xs font-bold text-olive">Group</span> : null}{g ? `with ${g.members.filter((m) => m.studentId !== sid).map((m) => nameOf(m.studentId)).join(', ')} · ` : ''}{day(l)}{l.live.on ? ' · running now' : ''}</span>
+                        <span className="mt-1.5 block"><PartChips blocks={l.blocks} /></span>
+                      </span>
+                      <Icon name="arrowRight" size={16} className="shrink-0 text-ink-mute" />
+                    </button>
+                  </li>
+                ); })}
+              </ul>
+            )}
+          </section>
+        );
+      })()}
+      <ErrorText error={error} />
     </div>
   );
 }
@@ -570,7 +598,7 @@ export function TeacherRoom({ id }: { id: string }) {
     window.setTimeout(() => { sfx.win(); notify('Everyone has answered', `All ${everyone.length} are in for part ${idx + 1}.`); }, 0);
   }
   const studentLevel = levelOf(settingsQ.data, students.data?.progress[plan.studentId]);
-  const wording = wordingFor(studentLevel);
+  const wording = detectWording(plan.blocks);
   const planStages = stagesOf(plan.blocks);
   const plannedMinutes = planStages.reduce((n, st) => n + st.minutes, 0);
   const toggleFull = () => { if (document.fullscreenElement) void document.exitFullscreen(); else void stageRef.current?.requestFullscreen?.().catch(() => undefined); };
@@ -590,7 +618,7 @@ export function TeacherRoom({ id }: { id: string }) {
         <div className="grid gap-4">
           <PlanFacts rows={[
             ['For', <span key="f" data-testid="plan-for">{isGroup ? `${everyone.map((e) => e.name).join(', ')} · a group of ${everyone.length}` : `${name} · level ${studentLevel}`}</span>],
-            ['Instructions written in', <select key="w" className="input !py-1.5" defaultValue={wording} onChange={(e) => change((p) => ({ ...p, blocks: reword(p.blocks, e.target.value as Wording) }))} data-testid="plan-wording">{(['en', 'both', 'es'] as Wording[]).map((x) => <option key={x} value={x}>{WORDING_LABEL[x]}{x === wording ? ` (suits ${studentLevel})` : ''}</option>)}</select>],
+            ['Instructions written in', <select key="w" className="input !py-1.5" defaultValue={wording} onChange={(e) => change((p) => ({ ...p, blocks: reword(p.blocks, e.target.value as Wording) }))} data-testid="plan-wording">{(['en', 'both', 'es'] as Wording[]).map((x) => <option key={x} value={x}>{WORDING_LABEL[x]}</option>)}</select>],
             ['Planned time', plannedMinutes ? `${plannedMinutes} minutes · ${planStages.length} stages` : 'No timings'],
             ['Parts', `${plan.blocks.length}, ${plan.blocks.filter((b) => b.type === 'gap' || b.type === 'choice').length} marked by the app`],
           ]} />
@@ -613,6 +641,7 @@ export function TeacherRoom({ id }: { id: string }) {
           </div>
           <SendHomework plan={plan} name={isGroup ? 'the group' : name} studentIds={everyone.map((e) => e.studentId)} />
           <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn-ghost" onClick={async () => { if (!backend) return; await backend.saveLibraryPlan({ title: plan.title, topic: topicFrom(plan.title), level: studentLevel, status: 'ready', blocks: plan.blocks.map((b) => ({ ...b, open: false, reveal: false })), notes: plan.notes ?? '', minutes: plannedMinutes || undefined, wording }); notify('Saved to your plans', `Filed under ${studentLevel}. You can teach it to anyone from there.`); }} data-testid="save-as-plan"><Icon name="book" size={16} /> Save as a plan to reuse</button>
             <button type="button" className="btn-primary" onClick={() => setTab('present')} data-testid="to-present"><Icon name="video" size={18} /> Go to the Present screen</button>
             <button type="button" className="btn-ghost" onClick={async () => { if (!backend || !window.confirm('Delete this lesson and the answers given in it?')) return; await backend.deleteLesson(plan.id); await Promise.all(others.map((m) => backend.deleteLesson(m.lessonId))); if (group) await backend.deleteLessonGroup(group.id); notify('Lesson deleted'); navigate('teach/room'); }}><Icon name="trash" size={16} /> Delete this lesson</button>
           </div>

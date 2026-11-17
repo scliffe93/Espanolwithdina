@@ -96,8 +96,14 @@ async function playThrough(p, label) {
   // A page that fails shows the recovery screen, and the problem is listed in Settings.
   await p.evaluate(() => sessionStorage.setItem('lwd-verb-session', JSON.stringify({ queue: [{ kind: 'fix', verb: 'ser' }], i: 0, log: [], tense: 'present', at: Date.now() })));
   await p.goto(BASE + '#/world'); await p.waitForTimeout(400); await p.reload(); await p.waitForTimeout(1200); await p.goto(BASE + '#/verbs'); await p.waitForTimeout(1000);
-  await p.getByRole('button', { name: /Carry on/ }).click(); await p.waitForTimeout(800);
-  ok(await p.getByTestId('error-screen').count() === 1, 'a broken page shows "This page hit a problem" instead of a blank screen');
+  // The app first tries to put it right by itself, a step at a time, before the learner is asked to do anything.
+  await p.getByRole('button', { name: /Carry on/ }).click(); await p.waitForTimeout(1500);
+  ok(await p.getByTestId('error-screen').count() === 0 && await p.getByRole('button', { name: /Carry on/ }).count() === 1, 'a page that fails is drawn again by itself: no error screen');
+  await p.getByRole('button', { name: /Carry on/ }).click(); await p.waitForTimeout(3500);
+  ok(await p.getByTestId('error-screen').count() === 0 && (await p.evaluate(() => sessionStorage.getItem('lwd-auto-refresh'))) === 'verbs', 'if it fails again the app refreshes its saved copy and reloads, by itself');
+  await p.goto(BASE + '#/verbs'); await p.waitForTimeout(1200);
+  await p.getByRole('button', { name: /Carry on/ }).click(); await p.waitForTimeout(1500);
+  ok(await p.getByTestId('error-screen').count() === 1 && /already tried to fix this by itself/.test(await p.getByTestId('error-screen').innerText()), 'only when neither cures it does the recovery screen appear, saying what was tried');
   await p.screenshot({ path: OUT + '/verbs-error.png' });
   await p.evaluate(() => sessionStorage.removeItem('lwd-verb-session'));
   await p.getByTestId('error-retry').click(); await p.waitForTimeout(600);

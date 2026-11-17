@@ -87,6 +87,14 @@ export function installDiagnostics(): void {
   });
 }
 
+/**
+ * Something failed and the app could not put it right by itself. This records what failed, every step the app tried
+ * and why that was not enough, and sends it to the administrator (who is also notified on their phone).
+ */
+export function reportFailure(what: string, tried: string[], error: string): void {
+  logIssue('crash', `${what}: ${error}`.slice(0, 300), `What the app tried by itself:\n${tried.map((t) => `- ${t}`).join('\n')}\n\nIt still failed with: ${error}`);
+}
+
 /** Clears the offline copy of the app and reloads, so a stale or half-updated copy cannot keep causing trouble. Progress is kept. */
 export async function refreshApp(): Promise<void> {
   try {

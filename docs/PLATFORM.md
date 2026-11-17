@@ -277,3 +277,20 @@ Tested by `tests/lesson-adapt.test.ts`, `tests/lesson-api.test.ts`, `scripts/lib
 **Lesson notes for students.** The student's home page lists every past lesson with its date, words and tasks. Opening one shows the parts the teacher opened, the student's answers and the right ones.
 
 Tested by `scripts/group-e2e.cjs` (three logged-in devices).
+
+### Plans that belong to no student, level folders and student tabs
+
+A lesson plan is not tied to a student. Plans live in the library, filed in level folders (A1 to C2, with topics); "Teaching now" at the top of the lesson room is who the next lesson is for, one student or a group, chosen at the moment of teaching. "Teach it to …" makes a lesson from a plan and leaves the plan in the library to be taught again. New plans (blank, the example, uploaded or pasted) all go to the library; a taught lesson can be saved back with "Save as a plan to reuse". Beneath the levels there is a tab for each student showing the lessons they have had, with "Draft a lesson from their week", the one kind of lesson that is about a single student from the start.
+
+**Wording is the teacher's choice.** A new plan is written in Spanish with English beside it, whatever its level; the teacher switches it to English or Spanish alone in the table at the top. It is no longer set by a student's level. The small words on the lesson screens follow the wording of the lesson (`detectWording`).
+
+### Self-repair and reporting what was tried
+
+- **Requests** that read data, and the lesson check-in, are tried three times before anything is shown (`request` in `src/lib/cloud.ts`).
+- **A lesson that will not open** keeps asking every few seconds and tells the student so. After four failed rounds it reports "A lesson would not open" to the administrator with every step tried, and still opens by itself when the fault clears (`StudentRoom`, `reportFailure`).
+- **A page that fails to draw** is drawn again, then the app's saved copy is refreshed and reloaded, and only then is the recovery screen shown, with the report sent (`ErrorBoundary`).
+- Reports of this kind are sent as page failures, so the administrator's phone is notified (at most once an hour) and the detail lists what the app tried.
+
+During a live lesson the student's device asks for the lesson every second (it was every two), and the teacher's screen reads a group's answers every second and a half.
+
+Tested by `scripts/selfrepair-e2e.cjs`, `scripts/verbs-e2e.cjs`, `scripts/library-e2e.cjs`.

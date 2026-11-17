@@ -3,16 +3,25 @@ import { DinaArt } from '../../components/Dina';
 import { Icon } from '../../components/Icon';
 import { usePlatformQuery } from '../../lib/platform/context';
 import { navigate } from '../../lib/router';
-import { wordingFor } from '../../lib/platform/lessonAdapt';
+import { detectWording, wordingFor } from '../../lib/platform/lessonAdapt';
 import { useLevelAccess } from '../../lib/platform/useLevelAccess';
+import { reportFailure } from '../../lib/diagnostics';
 import { BlockView, LessonClock, LessonTrail } from './Blocks';
 import { useLesson } from './useLesson';
 
 /** The student's side of a lesson: what the teacher has opened, following the part she is on, with their answers. */
 export function StudentRoom({ id }: { id: string }) {
-  const { plan, work, error, loaded, answer } = useLesson(id);
+  const { plan, work, error, loaded, answer, fails, sync } = useLesson(id);
+  // If the lesson will not open, the app keeps trying by itself. After several tries it tells the team what it tried.
+  const told = useRef(false);
+  useEffect(() => {
+    if (plan || fails < 4 || told.current) return;
+    told.current = true;
+    reportFailure('A lesson would not open', ['Asked for the lesson three times in a row, each time it was requested', `Kept asking every few seconds (${fails} rounds so far)`], error ?? 'no answer from the server');
+  }, [plan, fails, error]);
   const current = plan?.live.current ?? null;
-  const wording = wordingFor(useLevelAccess().level);
+  // The small words on screen follow the wording the teacher chose for this lesson.
+  const mine = wordingFor(useLevelAccess().level);
   const last = useRef<string | null>(null);
   // When the teacher moves on, the student's screen moves with her.
   useEffect(() => {
@@ -22,7 +31,19 @@ export function StudentRoom({ id }: { id: string }) {
   }, [current]);
 
   if (!loaded) return <p className="text-sm text-ink-mute">Opening your lesson…</p>;
-  if (!plan) return <div className="card p-6"><p>{error ?? 'This lesson is not available.'}</p><button className="btn-primary mt-3" onClick={() => navigate('student')}>Back to my lessons</button></div>;
+  const wording = plan && plan.blocks.length ? detectWording(plan.blocks) : mine;
+  if (!plan) return (
+    <div className="card p-6" data-testid="room-trouble">
+      {fails < 4 ? (
+        <><p className="font-semibold">Opening your lesson…</p><p className="mt-1 text-sm text-ink-soft">It did not open first time, so the app is trying again by itself{fails > 1 ? ` (try ${fails + 1})` : ''}. You do not need to do anything.</p></>
+      ) : (
+        <><p className="font-semibold">Your lesson will not open yet.</p>
+          <p className="mt-1 text-sm text-ink-soft">The app has tried {fails} times and is still trying every few seconds. The team has been told what happened and what was tried, so you do not need to report it. Tell Dina you are waiting; the lesson will appear here by itself as soon as it can.</p>
+          <p className="mt-2 text-xs text-ink-mute">What came back: {error ?? 'no answer'}</p></>
+      )}
+      <div className="mt-4 flex flex-wrap gap-2"><button className="btn-primary" onClick={() => void sync()} data-testid="room-retry">Try now</button><button className="btn-ghost" onClick={() => navigate('student')}>Back to my lessons</button></div>
+    </div>
+  );
   return (
     <div className="mx-auto max-w-3xl" data-testid="student-room">
       <button type="button" className="ctrl mb-4" onClick={() => navigate('student')}><Icon name="arrowLeft" size={14} /> My lessons</button>

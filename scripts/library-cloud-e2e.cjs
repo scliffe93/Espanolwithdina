@@ -37,7 +37,7 @@ const PLAN = ['# Spanish A2 — Lesson 3: Food and Drink', '', 'CEFR Level:\tA2\
   await p.getByTestId('library-plan').filter({ hasText: `Food ${tag}.txt` }).getByTestId('library-review').click(); await p.getByTestId('import-review').waitFor();
   p.once('dialog', (dlg) => void dlg.accept()); await p.getByTestId('review-delete').click(); await p.waitForTimeout(1500);
   await p.reload(); await p.waitForTimeout(2500);
-  ok((await p.getByTestId('library-plan').filter({ hasText: `Food ${tag}.txt` }).count()) === 0 && (await p.getByTestId('room-open').count()) >= 1, 'deleting the plan removes it from the library and keeps the lesson made from it');
+  ok((await p.getByTestId('library-plan').filter({ hasText: `Food ${tag}.txt` }).count()) === 0 && (await (async () => { await p.getByTestId('student-tab').filter({ hasText: `Leo${tag}` }).click(); await p.waitForTimeout(600); return p.getByTestId('room-open').count(); })()) >= 1, 'deleting the plan removes it from the library and keeps the lesson made from it');
   ok(errors.length === 0, `no page errors${errors.length ? ': ' + errors[0] : ''}`);
   await b.close();
 })();

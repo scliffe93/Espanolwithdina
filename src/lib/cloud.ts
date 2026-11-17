@@ -64,18 +64,25 @@ export function deviceId(): string {
 
 async function request<T>(path: string, opts: { method?: string; body?: unknown; token?: string; keepalive?: boolean } = {}): Promise<T> {
   if (!cloudConfigured) throw new ApiError(0, 'not_configured', 'Online accounts aren’t set up for this copy of the app yet.');
-  let res: Response;
-  try {
-    res = await fetch(`${API_URL}/${path}`, {
-      method: opts.method ?? (opts.body ? 'POST' : 'GET'),
-      headers: { 'content-type': 'application/json', ...(opts.token ? { authorization: `Bearer ${opts.token}` } : {}) },
-      body: opts.body ? JSON.stringify(opts.body) : undefined,
-      keepalive: opts.keepalive,
-      cache: 'no-store',
-    });
-  } catch {
-    throw new ApiError(0, 'offline', 'You appear to be offline. Your progress is saved on this device and will sync when you reconnect.');
+  const method = opts.method ?? (opts.body ? 'POST' : 'GET');
+  // Reading, and a lesson check-in, are safe to repeat: on a dropped connection or a server error the app tries
+  // twice more by itself before anyone is told.
+  const repeatable = method === 'GET' || path === 'platform/lessons/sync';
+  let res: Response | undefined;
+  for (let attempt = 0; attempt < (repeatable ? 3 : 1); attempt++) {
+    if (attempt) await new Promise((r) => setTimeout(r, attempt === 1 ? 500 : 1300));
+    try {
+      res = await fetch(`${API_URL}/${path}`, {
+        method,
+        headers: { 'content-type': 'application/json', ...(opts.token ? { authorization: `Bearer ${opts.token}` } : {}) },
+        body: opts.body ? JSON.stringify(opts.body) : undefined,
+        keepalive: opts.keepalive,
+        cache: 'no-store',
+      });
+      if (res.status < 500) break;
+    } catch { res = undefined; }
   }
+  if (!res) throw new ApiError(0, 'offline', 'You appear to be offline. Your progress is saved on this device and will sync when you reconnect.');
   if (res.status === 204) return undefined as T;
   let json: Record<string, unknown> = {};
   try { json = await res.json(); } catch { /* empty */ }

@@ -28,7 +28,7 @@ async function login(p, user) {
   await t.getByTestId('room-student').selectOption({ label: A }); await t.waitForTimeout(400);
   await t.getByTestId('room-group-add').selectOption({ label: B }); await t.waitForTimeout(400);
   ok(new RegExp(`A group lesson for ${A}, ${B}`).test(await t.getByTestId('room-group-note').innerText()), 'the teacher picks two students: it is a group lesson');
-  await t.getByTestId('room-example').click(); await t.getByTestId('teacher-room').waitFor({ timeout: 15000 }); await t.waitForTimeout(1200);
+  await t.getByTestId('room-example').click(); await t.getByTestId('import-review').waitFor({ timeout: 15000 }); await t.getByTestId('review-create').click(); await t.getByTestId('teacher-room').waitFor({ timeout: 15000 }); await t.waitForTimeout(1200);
   ok(new RegExp(`${A}, ${B} · a group of 2`).test(await t.getByTestId('plan-for').innerText()), 'the lesson is for both of them');
   await t.getByTestId('to-present').click(); await t.getByTestId('start-lesson').click(); await t.waitForTimeout(500); await t.getByTestId('open-all').click(); await t.waitForTimeout(1500);
   // Each student joins on their own device.
@@ -54,8 +54,9 @@ async function login(p, user) {
   // One student never sees the other's answer.
   ok(!/zzz/.test(await sa.getByTestId('student-room').innerText()), 'a student does not see another student’s answer');
   await t.goto(BASE + '#/teach/room'); await t.waitForTimeout(2500);
-  const rows = t.getByTestId('room-open').filter({ hasText: A });
-  ok((await rows.count()) === 1 && /Group/.test(await rows.first().innerText()) && new RegExp(B).test(await rows.first().innerText()), 'her list shows the group lesson once, with both names');
+  await t.getByTestId('student-tab').filter({ hasText: A }).click(); await t.waitForTimeout(600);
+  const rows = t.getByTestId('room-open');
+  ok((await rows.count()) === 1 && /Group/.test(await rows.first().innerText()) && new RegExp(B).test(await rows.first().innerText()), 'each student’s tab shows the group lesson, with who it was with');
   ok(errors.length === 0, `no page errors${errors.length ? ': ' + errors[0] : ''}`);
   await b.close();
 })();

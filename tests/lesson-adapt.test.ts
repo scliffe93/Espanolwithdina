@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adaptPlan, looksLikeClassPlan, reword, stageOf, wordingFor } from '../src/lib/platform/lessonAdapt';
+import { adaptPlan, detectWording, looksLikeClassPlan, reword, stageOf, wordingFor } from '../src/lib/platform/lessonAdapt';
 import { layoutPdfItems } from '../src/lib/pdfLayout';
 
 // A classroom plan as the PDF reader gives it: table cells and blanks arrive as tabs.
@@ -66,7 +66,7 @@ const PLAN = [
 ].join('\n');
 
 describe('building a lesson from a classroom plan', () => {
-  const p = adaptPlan(PLAN);
+  const p = adaptPlan(PLAN, 'Lesson', 'en');
   const of = (type: string) => p.blocks.filter((b) => b.type === type);
   const inStage = (n: number) => p.blocks.filter((b) => stageOf(b.title)?.no === n);
   it('recognises a class plan and leaves an ordinary one to the plain reader', () => {
@@ -78,6 +78,8 @@ describe('building a lesson from a classroom plan', () => {
   it('reads the title, the level and the timings, and opens with a summary', () => {
     expect(p.title).toBe('Spanish A1 — Lesson 3: Food and Drink');
     expect(p.level).toBe('A1'); expect(p.wording).toBe('en');
+    // Left to itself a new plan is written in both languages, whatever its level: the teacher chooses.
+    expect(adaptPlan(PLAN).wording).toBe('both');
     expect(p.minutes).toBe(25);
     expect(p.stages.map((s) => [s.title, s.minutes])).toEqual([['Warm-Up', 5], ['Presentation', 15], ['Wrap-Up', 5]]);
     expect(p.blocks[0]).toMatchObject({ type: 'text', title: 'Lesson summary' });
@@ -152,6 +154,7 @@ describe('building a lesson from a classroom plan', () => {
     const strip = (bs: typeof p.blocks) => bs.map((b) => [b.type, b.title, b.body, b.answer, b.options]);
     expect(strip(reword(p.blocks, 'es'))).toEqual(strip(es.blocks));
     expect(strip(reword(reword(p.blocks, 'both'), 'en'))).toEqual(strip(p.blocks));
+    expect(detectWording(p.blocks)).toBe('en'); expect(detectWording(es.blocks)).toBe('es'); expect(detectWording(both.blocks)).toBe('both'); expect(detectWording([])).toBe('both');
     expect(wordingFor('A1')).toBe('en'); expect(wordingFor('A2')).toBe('both'); expect(wordingFor('B1')).toBe('es'); expect(wordingFor(null)).toBe('en');
   });
 });
