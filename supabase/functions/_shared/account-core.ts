@@ -718,7 +718,10 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
       // The student's row is changed in place, one field at a time, never rewritten whole: a check-in ("I am here")
       // that crosses with an answer in flight must not be able to wipe that answer.
       const blank = emptyWork(lid, user.id, iso(now()));
-      await db.query("insert into public.lwd_platform (id, kind, teacher_id, student_id, data, updated_at) values ($1, 'lessonwork', $2, $3, $4::jsonb, $5) on conflict (id) do nothing", [blank.id, plan.teacherId, user.id, JSON.stringify(blank), iso(now())]);
+      // The row is written as a real JSON object (the text is cast inside the statement). The database driver in
+      // production encodes a value passed straight as jsonb a second time, which stores a JSON *string*; a string
+      // cannot be edited in place, so the updates below also unwrap any row that was stored that way.
+      await db.query("insert into public.lwd_platform (id, kind, teacher_id, student_id, data, updated_at) values ($1, 'lessonwork', $2, $3, ($4::text)::jsonb, $5) on conflict (id) do nothing", [blank.id, plan.teacherId, user.id, JSON.stringify(blank), iso(now())]);
       const blockId = str(b.blockId);
       if (blockId) {
         const block = plan.blocks.find((x) => x.id === blockId);
@@ -726,9 +729,9 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
         const value = str(b.value).slice(0, 2000);
         const correct = checkBlock(block, value);
         const answer = { value, at: iso(now()), ...(correct === undefined ? {} : { correct }) };
-        await db.query("update public.lwd_platform set data = jsonb_set(jsonb_set(jsonb_set(data, '{seenAt}', to_jsonb($2::text)), '{updatedAt}', to_jsonb($2::text)), array['answers', $3::text], $4::jsonb, true), updated_at = $5 where id = $1 and kind = 'lessonwork' and student_id = $6", [blank.id, iso(now()), blockId, JSON.stringify(answer), iso(now()), user.id]);
+        await db.query("update public.lwd_platform set data = jsonb_set(jsonb_set(jsonb_set(jsonb_set((case when jsonb_typeof(data) = 'string' then (data #>> '{}')::jsonb else data end), '{answers}', coalesce((case when jsonb_typeof(data) = 'string' then (data #>> '{}')::jsonb else data end) -> 'answers', '{}'::jsonb), true), '{seenAt}', to_jsonb($2::text)), '{updatedAt}', to_jsonb($2::text)), array['answers', $3::text], ($4::text)::jsonb, true), updated_at = $5 where id = $1 and kind = 'lessonwork' and student_id = $6", [blank.id, iso(now()), blockId, JSON.stringify(answer), iso(now()), user.id]);
       } else {
-        await db.query("update public.lwd_platform set data = jsonb_set(data, '{seenAt}', to_jsonb($2::text)) where id = $1 and kind = 'lessonwork' and student_id = $3", [blank.id, iso(now()), user.id]);
+        await db.query("update public.lwd_platform set data = jsonb_set((case when jsonb_typeof(data) = 'string' then (data #>> '{}')::jsonb else data end), '{seenAt}', to_jsonb($2::text)) where id = $1 and kind = 'lessonwork' and student_id = $3", [blank.id, iso(now()), user.id]);
       }
       const after = await db.query<{ data: unknown }>("select data from public.lwd_platform where id = $1 and kind = 'lessonwork'", [blank.id]);
       work = after[0] ? (parseRow(after[0]) as unknown as LessonWork) : blank;

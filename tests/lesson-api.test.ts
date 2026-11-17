@@ -149,3 +149,41 @@ describe('the plan library', () => {
     expect((await call('platform/records', { method: 'PUT', token: sam.token, body: { kind: 'config', id: 'lib-aaaaaaaaaaaaaaaa', studentId: sam.id, data: plan } })).status).toBe(403);
   });
 });
+
+describe('the lesson room on the production database driver', () => {
+  // postgres.js encodes a value bound to a jsonb parameter itself. The server passes JSON text, so a parameter written
+  // "$n::jsonb" is stored as a JSON string, not an object. This adapter does the same, to keep that case tested.
+  it('lets a student join and answer when records are stored the way production stores them', async () => {
+    const made = await createPgliteDb();
+    const likeProduction = { query: (q: string, params: unknown[] = []) => {
+      const direct = new Set([...q.matchAll(/(?<!\()\$(\d+)::jsonb/g)].map((m) => Number(m[1])));
+      return made.db.query(q, params.map((v, i) => (direct.has(i + 1) && typeof v === 'string' ? JSON.stringify(v) : v)));
+    } };
+    handle = createHandler(likeProduction as never, argon2Hasher(hashwasm), { allowedOrigins: [ORIGIN], now: () => clock, teacherUsernames: ['Dina'] });
+    const dina = await register('dina', 'Dina'); const sam = await register('sam', 'Sam');
+    const id = 'lesson-0123456789abcdef';
+    const put = await call('platform/records', { method: 'PUT', token: dina.token, body: { kind: 'lesson', id, studentId: sam.id, data: { title: 'Ir y ser', blocks: blocks({ gap1: { open: true }, warm: { open: true } }), live: { on: true, current: 'gap1' } } } });
+    expect(put.status).toBe(200);
+    // The stored plan really is a JSON string here, as in production.
+    expect((await made.db.query<{ t: string }>("select jsonb_typeof(data) as t from public.lwd_platform where id = $1", [id]))[0].t).toBe('string');
+    const joined = await sync(sam.token, id);
+    expect(joined.status).toBe(200);
+    expect(joined.json.plan.blocks.map((b: LessonBlock) => b.id)).toEqual(['warm', 'gap1']);
+    const again = await sync(sam.token, id);
+    expect(again.status).toBe(200);
+    const right = await sync(sam.token, id, { blockId: 'gap1', value: 'fui' });
+    expect(right.status).toBe(200);
+    expect(right.json.work.answers.gap1).toMatchObject({ value: 'fui', correct: true });
+    const open = await sync(sam.token, id, { blockId: 'warm', value: 'Fui al cine.' });
+    expect(open.json.work.answers).toMatchObject({ gap1: { value: 'fui', correct: true }, warm: { value: 'Fui al cine.' } });
+    // The teacher sees both answers, and the student's own list of lessons still loads.
+    const seen = await sync(dina.token, id);
+    expect(Object.keys(seen.json.work.answers).sort()).toEqual(['gap1', 'warm']);
+    expect((await call('platform/records?kind=lesson', { token: sam.token })).status).toBe(200);
+    // An answer row left behind in the old form (a JSON string) is repaired, not failed on.
+    await made.db.query("update public.lwd_platform set data = to_jsonb(data::text) where kind = 'lessonwork'");
+    const repaired = await sync(sam.token, id, { blockId: 'gap1', value: 'fue' });
+    expect(repaired.status).toBe(200);
+    expect(repaired.json.work.answers).toMatchObject({ gap1: { value: 'fue', correct: false }, warm: { value: 'Fui al cine.' } });
+  });
+});
