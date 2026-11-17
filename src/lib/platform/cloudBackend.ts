@@ -4,7 +4,7 @@ import { migrate } from '../state';
 import { PlatformError, findOverlap, uid, validateBooking, type LessonInput, type LibraryInput, type PlatformBackend, type StudentSettingsInput } from './backend';
 import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, Marking, Person, StudentSettings, TeacherConfig } from './types';
 import { settingsId } from './level';
-import type { LessonPlan, LessonWork, LibraryPlan } from './types';
+import type { LessonGroup, LessonPlan, LessonWork, LibraryPlan } from './types';
 import { cleanPlan } from '../../../supabase/functions/_shared/lesson';
 import { DEFAULT_TEACHER_CONFIG } from './types';
 
@@ -292,6 +292,20 @@ class CloudBackend implements PlatformBackend {
     // Settings rows cannot be removed, so the plan is emptied and hidden.
     const now = new Date().toISOString();
     await this.put('config', id, this.actor.id, { id, library: true, deleted: true, title: '', blocks: [], notes: '', updatedAt: now, createdAt: now });
+  }
+  async lessonGroups() {
+    if (!this.isTeacher()) return [];
+    const rows = await this.records<LessonGroup & { group?: boolean; deleted?: boolean }>('config');
+    return rows.filter((r) => r.group === true && !r.deleted && Array.isArray(r.members));
+  }
+  async saveLessonGroup(members: LessonGroup['members']) {
+    this.assertTeacher();
+    const id = `grp-${uid()}`;
+    return this.put('config', id, this.actor.id, { id, group: true, teacherId: this.actor.id, members, createdAt: new Date().toISOString() } as unknown as LessonGroup);
+  }
+  async deleteLessonGroup(id: string) {
+    this.assertTeacher();
+    await this.put('config', id, this.actor.id, { id, group: true, deleted: true, members: [] });
   }
   async saveLesson(input: LessonInput) {
     this.assertTeacher();

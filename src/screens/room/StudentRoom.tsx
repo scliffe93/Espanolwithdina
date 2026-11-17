@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DinaArt } from '../../components/Dina';
 import { Icon } from '../../components/Icon';
 import { usePlatformQuery } from '../../lib/platform/context';
@@ -54,7 +54,11 @@ export function RoomCard() {
   useEffect(() => { const iv = setInterval(() => { if (document.visibilityState === 'visible') reload.current(); }, 5000); return () => clearInterval(iv); }, []);
   const lessons = q.data ?? [];
   const live = lessons.find((l) => l.live.on);
-  const past = lessons.filter((l) => !l.live.on && l.blocks.length > 0).slice(0, 3);
+  const all = lessons.filter((l) => !l.live.on && l.blocks.length > 0);
+  const [showAll, setShowAll] = useState(false);
+  const past = showAll ? all : all.slice(0, 3);
+  const dayOf = (l: (typeof all)[number]) => new Date(`${l.date || l.createdAt.slice(0, 10)}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+  const wordsOf = (l: (typeof all)[number]) => l.blocks.filter((b) => b.type === 'vocab').reduce((n, b) => n + (b.pairs?.length ?? 0), 0);
   if (!live && past.length === 0) return null;
   return (
     <section className="mb-4" data-testid="room-card">
@@ -67,8 +71,20 @@ export function RoomCard() {
       )}
       {past.length > 0 && (
         <div className={`card p-4 ${live ? 'mt-3' : ''}`}>
-          <p className="eyebrow mb-2">Apuntes de clase · Notes from your lessons</p>
-          <ul className="grid gap-1.5">{past.map((l) => <li key={l.id}><button type="button" className="flex w-full items-center justify-between gap-3 rounded-xl bg-cream-100 px-3 py-2.5 text-left hover:bg-cream-200" onClick={() => navigate(`student/room/${l.id}`)}><span className="min-w-0 truncate font-semibold">{l.title}</span><span className="shrink-0 text-sm text-ink-mute">{l.date || l.createdAt.slice(0, 10)} <Icon name="arrowRight" size={14} className="inline" /></span></button></li>)}</ul>
+          <p className="eyebrow">Apuntes de clase · Notes from your lessons</p>
+          <p className="mb-3 mt-0.5 text-sm text-ink-soft">Go back over any lesson: the words, the questions, your answers and the right ones.</p>
+          <ul className="grid gap-2 sm:grid-cols-2" data-testid="lesson-notes">
+            {past.map((l) => { const tasks = l.blocks.filter((b) => b.type === 'gap' || b.type === 'choice' || b.type === 'question').length; const words = wordsOf(l); return (
+              <li key={l.id}>
+                <button type="button" className="flex w-full items-center gap-3 rounded-2xl bg-cream-100 px-3 py-3 text-left transition hover:bg-cream-200" onClick={() => navigate(`student/room/${l.id}`)} data-testid="lesson-note">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-azul"><Icon name="book" size={18} /></span>
+                  <span className="min-w-0 flex-1"><b className="block truncate">{l.title}</b><span className="block text-sm text-ink-mute">{dayOf(l)}{words ? ` · ${words} words` : ''}{tasks ? ` · ${tasks} tasks` : ''}</span></span>
+                  <Icon name="arrowRight" size={14} className="shrink-0 text-ink-mute" />
+                </button>
+              </li>
+            ); })}
+          </ul>
+          {all.length > 3 && <button type="button" className="ctrl mt-3" onClick={() => setShowAll(!showAll)} data-testid="lesson-notes-all">{showAll ? 'Show fewer' : `Show all ${all.length} lessons`}</button>}
         </div>
       )}
     </section>

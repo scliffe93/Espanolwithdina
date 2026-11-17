@@ -1,6 +1,6 @@
 import { DEMO_TEACHER_ID } from './types';
 import type { AppState } from '../../types';
-import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, Marking, PlatformData, Person, StudentSettings, TeacherConfig, LibraryPlan } from './types';
+import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, Marking, PlatformData, Person, StudentSettings, TeacherConfig, LibraryPlan, LessonGroup } from './types';
 import { settingsId } from './level';
 import { DEFAULT_TEACHER_CONFIG } from './types';
 import { overlaps } from './time';
@@ -75,6 +75,10 @@ export interface PlatformBackend {
   libraryPlans(): Promise<LibraryPlan[]>;
   saveLibraryPlan(input: LibraryInput): Promise<LibraryPlan>;
   deleteLibraryPlan(id: string): Promise<void>;
+  /** Lessons taught to a group: which copies belong together. */
+  lessonGroups(): Promise<LessonGroup[]>;
+  saveLessonGroup(members: LessonGroup['members']): Promise<LessonGroup>;
+  deleteLessonGroup(id: string): Promise<void>;
   /** The teacher's plans (all, or one student's); for a student, their own lessons as far as they have been opened. */
   lessons(studentId?: string): Promise<LessonPlan[]>;
   saveLesson(input: LessonInput): Promise<LessonPlan>;
@@ -380,6 +384,20 @@ export class DemoBackend implements PlatformBackend {
   async deleteLibraryPlan(id: string) {
     this.assertTeacher();
     await this.commit((d) => { d.library = (d.library ?? []).filter((p) => p.id !== id); });
+  }
+  async lessonGroups() {
+    await this.refresh();
+    return (this.data.groups ?? []).filter((g) => g.teacherId === this.actor.id);
+  }
+  async saveLessonGroup(members: LessonGroup['members']) {
+    this.assertTeacher();
+    const g: LessonGroup = { id: `grp-${uid()}`, teacherId: this.actor.id, members, createdAt: this.iso() };
+    await this.commit((d) => { d.groups = [...(d.groups ?? []), g]; });
+    return g;
+  }
+  async deleteLessonGroup(id: string) {
+    this.assertTeacher();
+    await this.commit((d) => { d.groups = (d.groups ?? []).filter((g) => g.id !== id); });
   }
   async saveLesson(input: LessonInput) {
     this.assertTeacher();

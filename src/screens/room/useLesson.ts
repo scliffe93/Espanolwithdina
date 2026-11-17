@@ -58,3 +58,28 @@ export function useLesson(id: string | undefined) {
 
   return { plan, work, now, error, loaded, answer, sync };
 }
+
+/**
+ * For a group lesson: the other students' answers. The teacher's screen asks for each copy of the lesson in turn,
+ * every couple of seconds while it is open, and keeps the latest answers of each.
+ */
+export function useGroupWork(lessonIds: string[], active: boolean) {
+  const { backend } = usePlatform();
+  const [works, setWorks] = useState<Record<string, { work: LessonWork | null; now: number }>>({});
+  const key = lessonIds.join(',');
+  useEffect(() => {
+    if (!backend || !lessonIds.length) return;
+    let stop = false; let timer: number | undefined;
+    const loop = async () => {
+      if (stop) return;
+      if (document.visibilityState === 'visible') {
+        const got = await Promise.all(lessonIds.map((id) => backend.syncLesson(id).then((r) => [id, { work: r.work, now: Date.parse(r.now) || Date.now() }] as const).catch(() => null)));
+        if (!stop) setWorks((w) => ({ ...w, ...Object.fromEntries(got.filter(Boolean) as [string, { work: LessonWork | null; now: number }][]) }));
+      }
+      timer = window.setTimeout(loop, active ? 2500 : 6000);
+    };
+    void loop();
+    return () => { stop = true; window.clearTimeout(timer); };
+  }, [backend, key, active]); // eslint-disable-line react-hooks/exhaustive-deps
+  return works;
+}

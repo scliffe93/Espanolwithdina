@@ -320,6 +320,7 @@ export interface PlatformData {
   students?: StudentSettings[];
   lessons?: LessonPlan[];
   library?: LibraryPlan[];
+  groups?: LessonGroup[];
   lessonWork?: LessonWork[];
 }
 
@@ -332,6 +333,8 @@ export interface LibraryPlan {
   teacherId: string;
   title: string;
   level: import('../../types').Cefr;
+  /** What the lesson is about ("Greetings", "Food", "Preterite"), for finding it again. */
+  topic?: string;
   status: 'review' | 'ready';
   blocks: import('../../../supabase/functions/_shared/lesson').LessonBlock[];
   /** The teacher's own notes: timings and steps from the plan. */
@@ -344,6 +347,18 @@ export interface LibraryPlan {
   source?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * A lesson taught to several students at once. Each student has their own copy of the lesson (and so their own
+ * answers); the teacher's screen drives all the copies together and shows everyone's answers side by side.
+ */
+export interface LessonGroup {
+  id: string;
+  teacherId: string;
+  /** The copies, the first being the one the teacher opens. Every copy has the same parts with the same ids. */
+  members: { lessonId: string; studentId: string }[];
+  createdAt: string;
 }
 
 export const DEMO_TEACHER_ID = 'demo-dina';

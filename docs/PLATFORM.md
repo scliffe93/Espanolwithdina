@@ -267,3 +267,13 @@ Each kind of part has its own colour, icon and Spanish name (`BLOCK_THEME` in `s
 **The clock.** Once a lesson is started, both screens show how long it has been going against the planned minutes, and the teacher's screen shows the stage with its minutes and a nudge when it is time to move on.
 
 Tested by `tests/lesson-adapt.test.ts`, `tests/lesson-api.test.ts`, `scripts/library-e2e.cjs` (demo) and `scripts/library-cloud-e2e.cjs` (real accounts).
+
+### Group lessons, topics and lesson notes
+
+**Group lessons.** On the lesson room's front page the teacher can add more students to a lesson. Each student gets their own copy of the lesson (same parts, same ids) and so their own answers; a `LessonGroup` record keeps the copies together. The teacher's screen drives every copy at once and reads each student's answers (`useGroupWork`). For the part on screen it shows who has answered and who she is waiting for, each answer beside its name with its mark, an option to hide the answers until she is ready, and "Everyone has answered" with a notification when the last one arrives. A student never sees another student's answer. Like the library, groups are stored in the teacher's own settings rows (ids `grp-…`), so no server change was needed. Each change is saved once per student, so this is meant for small groups.
+
+**Topics.** A library plan has a topic as well as a level. It is read from the title when a plan is uploaded and can be changed in the review; the library can be filtered by both.
+
+**Lesson notes for students.** The student's home page lists every past lesson with its date, words and tasks. Opening one shows the parts the teacher opened, the student's answers and the right ones.
+
+Tested by `scripts/group-e2e.cjs` (three logged-in devices).
