@@ -1,12 +1,13 @@
 import { useT } from '../lib/i18n';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Icon } from '../components/Icon';
+import { Icon, type IconName } from '../components/Icon';
 import { HelpMeRemember, type MemorySource } from '../components/HelpMeRemember';
-import { Bar, PageHeader, ProgressRing, Sheet } from '../components/ui';
+import { Bar, ProgressRing, Sheet } from '../components/ui';
 import { personLabel, PERSONS_EN, ROADMAP_TENSES, TENSES, VERBS, VERB_BY_INF, conjugate, groupLabel, parseExample, personsForRegion, type Tense, type Verb } from '../data/verbs';
 import { useSay, stopSpeaking } from '../hooks/useSpeech';
 import { VerbGrid } from './VerbGrid';
+import { VerbFamilies } from './VerbFamilies';
 import { recognitionSupported, recognize, regionLang, type RecognitionHandle } from '../lib/speech';
 import { allVerbMastery } from '../lib/analytics';
 import { CATEGORY_LABEL, CATEGORY_TIP, checkAnswer, classifyVerbError, normalize } from '../lib/answer';
@@ -663,6 +664,24 @@ function VerbSheet({ verb, onClose, onPractise }: { verb: Verb | null; onClose: 
 
 // ─────────────────────────── Gym (entry) ───────────────────────────
 
+const GROUP_ORDER: Verb['group'][] = ['regular', 'stem-e-ie', 'stem-o-ue', 'stem-e-i', 'stem-u-ue', 'irregular-yo', 'irregular'];
+const GROUP_HINT: Record<Verb['group'], string> = {
+  regular: 'they follow the pattern of their ending', 'stem-e-ie': 'quiero, but queremos', 'stem-o-ue': 'puedo, but podemos', 'stem-e-i': 'pido, but pedimos', 'stem-u-ue': 'juego, but jugamos',
+  'irregular-yo': 'only the yo form is special', irregular: 'learn these one by one',
+};
+
+/** One way of practising, as a card. */
+function WayCard({ icon, tone = '', title, text, onClick, testid, primary, badge }: { icon: IconName; tone?: string; title: string; text: string; onClick: () => void; testid: string; primary?: boolean; badge?: string }) {
+  return (
+    <button type="button" onClick={onClick} data-testid={testid}
+      className={`relative flex items-start gap-3 rounded-3xl p-4 text-left ring-1 transition hover:-translate-y-0.5 ${primary ? 'bg-terracotta text-white shadow-lift ring-terracotta' : 'bg-white ring-ink/10 hover:shadow-soft hover:ring-ink/20'}`}>
+      <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${primary ? 'bg-white/20 text-white' : tone}`}><Icon name={icon} size={20} filled={icon === 'play'} /></span>
+      <span className="min-w-0"><b className="block text-[16px] leading-tight">{title}</b><span className={`mt-1 block text-sm leading-snug ${primary ? 'text-white/85' : 'text-ink-soft'}`}>{text}</span></span>
+      {badge && <span className="absolute right-3 top-3 rounded-full bg-saffron px-2 py-0.5 text-[11px] font-bold text-ink">{badge}</span>}
+    </button>
+  );
+}
+
 export function Verbs({ params }: { params: URLSearchParams }) {
   const { t, stage } = useT();
   const { state } = useStore();
@@ -677,6 +696,9 @@ export function Verbs({ params }: { params: URLSearchParams }) {
   const [saved, setSaved] = useState<SavedSession | null>(() => (params.toString() ? null : loadSaved()));
   const [round, setRound] = useState(0);
   const [grid, setGrid] = useState(params.get('grid') === '1');
+  const [families, setFamilies] = useState(params.get('families') === '1');
+  const [byFamily, setByFamily] = useState(true);
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const [detail, setDetail] = useState<Verb | null>(null);
   const [filter, setFilter] = useState<'all' | 'learning' | 'new' | 'mastered'>('all');
   const mastery = useMemo(() => allVerbMastery(state, tense, region), [state, tense, region]);
@@ -714,9 +736,23 @@ export function Verbs({ params }: { params: URLSearchParams }) {
   }, [params.toString(), access.loading]);
 
   if (grid && !session) return <VerbGrid tense={tenseLocked(TENSES.find((t) => t.id === tense)!) ? 'present' : tense} focus={focus.length ? focus : undefined} maxLevel={ceiling} allowed={released} onExit={() => { setGrid(false); navigate('verbs'); }} />;
+  if (families && !session) return <VerbFamilies vosotros={region === 'spain'} onExit={() => { setFamilies(false); navigate('verbs'); }} />;
   if (session) return <Session key={round} exercises={session.ex} tense={session.tense} resume={session.resume} onAgain={() => start({ ...session.again, tense: session.tense })} onExit={() => { setSession(null); navigate('verbs'); }} />;
 
   const tenseAllowed = (t: (typeof TENSES)[number]) => levelIndex(level) >= levelIndex(t.minLevel);
+  const tenseNow = TENSES.find((x) => x.id === tense)!;
+  // Tenses set out by level. Levels above the learner's own are folded away under "More tenses".
+  const tenseLevels = [...new Set(TENSES.map((x) => x.minLevel))].map((lv) => ({ level: lv, tenses: TENSES.filter((x) => x.minLevel === lv), later: levelIndex(lv) > levelIndex(access.level) && levelIndex(lv) > levelIndex(level) }));
+  const TenseRow = ({ g }: { g: (typeof tenseLevels)[number] }) => (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="grid h-8 w-10 shrink-0 place-items-center rounded-xl bg-cream-100 text-xs font-bold text-ink-soft">{g.level}</span>
+      {g.tenses.map((tn) => (
+        <button key={tn.id} className="chip" aria-pressed={tense === tn.id} disabled={tenseLocked(tn)} title={tenseLocked(tn) ? `Locked by your teacher (from ${tn.minLevel})` : undefined} onClick={() => setTense(tn.id)} data-testid={`tense-${tn.id}`}>
+          {stage >= 2 ? tn.es : tn.label}{tenseLocked(tn) ? <span className="text-xs opacity-70"> · locked</span> : null}
+        </button>
+      ))}
+    </div>
+  );
   const mine = released ? mastery.filter((m) => released.has(m.inf)) : mastery;
   const counts = { mastered: mine.filter((m) => m.level === 'mastered').length, familiar: mine.filter((m) => m.level === 'familiar').length, learning: mine.filter((m) => m.level === 'learning').length };
   const shown = myVerbs.filter((v) => {
@@ -729,73 +765,106 @@ export function Verbs({ params }: { params: URLSearchParams }) {
 
   return (
     <div>
-      <PageHeader eyebrow="Verbos" title={t('Verb gym')} subtitle="Every verb, tense and person is tracked separately. Mistakes come back automatically until they stick." />
-
-      {saved && (
-        <div className="card mb-4 flex flex-wrap items-center justify-between gap-3 p-4 ring-2 ring-olive/30" data-testid="session-resume">
-          <p><b>You were on question {saved.i + 1} of {saved.queue.length}.</b> <span className="text-ink-soft">Pick up where you left off?</span></p>
-          <div className="flex gap-2">
-            <button className="btn-primary" onClick={() => { setRound((r) => r + 1); setSession({ ex: saved.queue, tense: saved.tense, resume: { i: saved.i, log: saved.log } }); setSaved(null); }}><Icon name="play" size={18} filled /> Carry on</button>
-            <button className="btn-ghost" onClick={() => { clearSaved(); setSaved(null); }}>Start fresh</button>
+      {/* The start: one clear thing to do, and where you stand. */}
+      <section className="relative overflow-hidden rounded-4xl bg-ink p-6 text-cream shadow-lift sm:p-8" data-testid="verbs-hero">
+        <div className="absolute -right-10 -top-12 h-56 w-56 rounded-full bg-terracotta/40 blur-2xl" />
+        <div className="relative flex flex-wrap items-center gap-6">
+          <div className="min-w-0 flex-1 basis-72">
+            <p className="eyebrow !text-saffron-light">Verbos</p>
+            <h1 className="mt-1 font-display text-4xl font-semibold leading-tight sm:text-5xl">{t('Verb gym')}</h1>
+            <p className="mt-2 max-w-xl text-cream/80">{focus.length ? <>Next session: <b className="text-cream" lang="es">{focus.join(', ')}</b> in the {tenseNow.label.toLowerCase()}.</> : <>Next session: the {tenseNow.label.toLowerCase()}, on the forms you are due to see again and up to two new verbs.</>}</p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              {saved ? (
+                <span className="flex flex-wrap items-center gap-2" data-testid="session-resume">
+                  <button className="inline-flex items-center gap-2 rounded-full bg-saffron px-6 py-3 font-bold text-ink shadow-lift transition hover:scale-[1.02]" onClick={() => { setRound((r) => r + 1); setSession({ ex: saved.queue, tense: saved.tense, resume: { i: saved.i, log: saved.log } }); setSaved(null); }}><Icon name="play" size={18} filled /> Carry on</button>
+                  <button className="rounded-full bg-cream/10 px-5 py-3 font-semibold text-cream ring-1 ring-cream/20 hover:bg-cream/15" onClick={() => { clearSaved(); setSaved(null); }}>Start fresh</button>
+                  <span className="basis-full text-sm text-cream/75"><b className="text-cream">You were on question {saved.i + 1} of {saved.queue.length}.</b> Pick up where you left off?</span>
+                </span>
+              ) : (
+                <button className="inline-flex items-center gap-2 rounded-full bg-saffron px-6 py-3 font-bold text-ink shadow-lift transition hover:scale-[1.02]" onClick={() => start()}><Icon name="play" size={18} filled /> {t('Start 12-exercise session')}</button>
+              )}
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-4 rounded-3xl bg-cream/10 p-4 ring-1 ring-cream/10">
+            <ProgressRing value={(counts.mastered + counts.familiar * 0.5) / myVerbs.length} size={92} stroke={9} color="rgb(var(--c-tertiary))">
+              <span className="text-center text-xs leading-tight text-cream"><b className="block font-display text-2xl">{counts.mastered}</b>mastered</span>
+            </ProgressRing>
+            <div className="text-sm text-cream/85">
+              <p><b className="text-cream">{counts.familiar}</b> familiar</p>
+              <p><b className="text-cream">{counts.learning}</b> learning</p>
+              <p><b className="text-cream">{myVerbs.length - counts.mastered - counts.familiar - counts.learning}</b> not started</p>
+              <p className="mt-1 text-xs text-cream/60">{tenseNow.label} tense</p>
+            </div>
           </div>
         </div>
-      )}
+      </section>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-        <div className="card p-5">
-          <p className="eyebrow mb-2">{t('Tense')}</p>
-          <div className="flex flex-wrap gap-2">
-            {TENSES.map((tn) => (
-              <button key={tn.id} className="chip" aria-pressed={tense === tn.id} disabled={tenseLocked(tn)} title={tenseLocked(tn) ? `Locked by your teacher (from ${tn.minLevel})` : undefined} onClick={() => setTense(tn.id)} data-testid={`tense-${tn.id}`}>
-                {stage >= 2 ? tn.es : tn.label}{tenseLocked(tn) ? <span className="text-xs opacity-70"> · locked</span> : !tenseAllowed(tn) && <span className="text-xs opacity-70">· from {tn.minLevel}</span>}
-              </button>
-            ))}
-          </div>
-          {released && <p className="mt-2 text-sm text-ink-mute" data-testid="release-note">Your teacher releases verbs in blocks: you have {myVerbs.length} so far, and more arrive as you progress.</p>}
-          {ceiling && <p className="mt-2 text-sm text-ink-mute" data-testid="level-note">Your teacher has set your level to {ceiling}: tenses above it are locked until they raise it.</p>}
-          {!tenseAllowed(TENSES.find((t) => t.id === tense)!) && <p className="mt-2 text-sm text-ink-mute">Recommended from {TENSES.find((t) => t.id === tense)!.minLevel}. You can still try it — your verbs level is {level}.</p>}
-          <p className="eyebrow mb-2 mt-5">{t('Focus')}</p>
+      {/* Step 1: the tense, set out by level so only what suits you is in front of you. */}
+      <section className="card mt-5 p-5" data-testid="verbs-tense">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-xl font-semibold"><span className="mr-2 inline-grid h-7 w-7 place-items-center rounded-full bg-terracotta text-sm font-bold text-white">1</span>{t('Tense')}</h2>
+          <p className="text-sm text-ink-mute">Now: <b className="text-ink">{stage >= 2 ? tenseNow.es : tenseNow.label}</b></p>
+        </div>
+        <div className="grid gap-2">
+          {tenseLevels.filter((g) => !g.later).map((g) => <TenseRow key={g.level} g={g} />)}
+        </div>
+        {tenseLevels.some((g) => g.later) && (
+          <details className="mt-2" open={tenseLevels.some((g) => g.later && g.tenses.some((x) => x.id === tense))}>
+            <summary className="cursor-pointer text-sm font-semibold text-ink-soft">More tenses, from {tenseLevels.find((g) => g.later)!.level} up</summary>
+            <div className="mt-2 grid gap-2">{tenseLevels.filter((g) => g.later).map((g) => <TenseRow key={g.level} g={g} />)}</div>
+          </details>
+        )}
+        {released && <p className="mt-3 text-sm text-ink-mute" data-testid="release-note">Your teacher releases verbs in blocks: you have {myVerbs.length} so far, and more arrive as you progress.</p>}
+        {ceiling && <p className="mt-3 text-sm text-ink-mute" data-testid="level-note">Your teacher has set your level to {ceiling}: tenses above it are locked until they raise it.</p>}
+        {!tenseAllowed(tenseNow) && <p className="mt-3 text-sm text-ink-mute">Recommended from {tenseNow.minLevel}. You can still try it — your verbs level is {level}.</p>}
+        <div className="mt-4 border-t border-ink/5 pt-3">
+          <p className="eyebrow mb-2">{t('Focus')}</p>
           {focus.length ? (
             <div className="flex flex-wrap items-center gap-2">
               {focus.map((f) => <button key={f} className="chip" aria-pressed onClick={() => setFocus(focus.filter((x) => x !== f))}>{f} <Icon name="x" size={14} /></button>)}
               <button className="ctrl" onClick={() => setFocus([])}>Clear — let the app choose</button>
             </div>
           ) : (
-            <p className="text-sm text-ink-soft">The app picks for you: forms due for review, then weak verbs, then up to two new verbs. Tap verbs below to choose your own.</p>
+            <p className="text-sm text-ink-soft">The app picks for you: forms due for review, then weak verbs, then up to two new verbs. Tap the star on a verb below to choose your own.</p>
           )}
-          <div className="mt-5 flex flex-wrap gap-2">
-            <button className="btn-primary" onClick={() => start()}><Icon name="play" size={18} filled /> {t('Start 12-exercise session')}</button>
-            <button className="btn-ghost" onClick={() => setGrid(true)} data-testid="open-grid"><Icon name="edit" size={18} /> {t('Grid drill: fill in the table')}</button>
-          </div>
-          <p className="eyebrow mb-2 mt-5">{t('Grammar drills')}</p>
-          <div className="flex flex-wrap gap-2">
-            {GRAMMAR_MODES.map((m) => {
-              const locked = !!ceiling && levelIndex(m.minLevel) > levelIndex(ceiling);
-              return <button key={m.id} className="chip" disabled={locked} title={locked ? `Locked by your teacher (from ${m.minLevel})` : m.blurb} onClick={() => start({ mode: m.id, tense: 'present' })} data-testid={`drill-${m.id}`}>{m.label} <span className="text-xs opacity-60">{locked ? 'locked' : m.minLevel}</span></button>;
-            })}
-          </div>
         </div>
-        <div className="card flex items-center gap-4 p-5">
-          <ProgressRing value={(counts.mastered + counts.familiar * 0.5) / myVerbs.length} size={92} stroke={9} color="rgb(var(--c-tertiary))">
-            <span className="text-center text-xs leading-tight"><b className="block font-display text-2xl">{counts.mastered}</b>mastered</span>
-          </ProgressRing>
-          <div className="text-sm">
-            <p><b>{counts.familiar}</b> familiar</p>
-            <p><b>{counts.learning}</b> learning</p>
-            <p><b>{myVerbs.length - counts.mastered - counts.familiar - counts.learning}</b> not started</p>
-            <p className="mt-1 text-xs text-ink-mute">{TENSES.find((t) => t.id === tense)?.label} tense</p>
-          </div>
+      </section>
+
+      {/* Step 2: the ways to practise. */}
+      <section className="mt-5" data-testid="verbs-ways">
+        <h2 className="mb-3 text-xl font-semibold"><span className="mr-2 inline-grid h-7 w-7 place-items-center rounded-full bg-terracotta text-sm font-bold text-white">2</span>Ways to practise</h2>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <WayCard primary icon="play" title="Session" text={`Twelve mixed questions in the ${tenseNow.label.toLowerCase()}, ending with a sentence that grows.`} onClick={() => start()} testid="way-session" />
+          <WayCard icon="edit" tone="bg-azul-50 text-azul" title={t('Grid drill: fill in the table')} text="Several verbs side by side. Fill in every person, with regular and irregular marked." onClick={() => setGrid(true)} testid="open-grid" />
+          <WayCard icon="sparkle" tone="bg-olive-50 text-olive" title="Verb families" text="Verbs that change the same way, grouped: e → ie, o → ue, e → i, and the special yo forms. With a game." onClick={() => setFamilies(true)} testid="open-families" badge="New" />
         </div>
-      </div>
+        <p className="eyebrow mb-2 mt-5">{t('Grammar drills')}</p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {GRAMMAR_MODES.map((m) => {
+            const locked = !!ceiling && levelIndex(m.minLevel) > levelIndex(ceiling);
+            return (
+              <button key={m.id} type="button" disabled={locked} title={locked ? `Locked by your teacher (from ${m.minLevel})` : undefined} onClick={() => start({ mode: m.id, tense: 'present' })} data-testid={`drill-${m.id}`}
+                className="flex items-start gap-3 rounded-3xl bg-white p-4 text-left ring-1 ring-ink/10 transition hover:-translate-y-0.5 hover:shadow-soft hover:ring-ink/20 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-saffron-50 text-xs font-bold text-ink">{m.minLevel}</span>
+                <span className="min-w-0"><b className="block leading-tight" lang={stage >= 2 ? 'es' : undefined}>{stage >= 2 ? m.es : m.label}{locked ? <span className="ml-1 text-xs font-normal opacity-70">· locked</span> : null}</b><span className="mt-0.5 block text-sm leading-snug text-ink-soft">{m.blurb}</span></span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
       <div className="mb-3 mt-8 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-2xl font-semibold" data-testid="verb-count">{released ? `${myVerbs.length} verbs released by your teacher` : `${VERBS.length} essential verbs`}</h2>
-        <div className="flex gap-1.5">
+        <h2 className="text-xl font-semibold"><span className="mr-2 inline-grid h-7 w-7 place-items-center rounded-full bg-terracotta text-sm font-bold text-white">3</span><span data-testid="verb-count">{released ? `${myVerbs.length} verbs released by your teacher` : `${VERBS.length} essential verbs`}</span></h2>
+        <div className="flex flex-wrap gap-1.5">
+          <button className="chip !py-1.5 text-xs" aria-pressed={byFamily} onClick={() => setByFamily(!byFamily)} data-testid="verbs-by-family">Grouped by how they change</button>
           {(['all', 'learning', 'mastered', 'new'] as const).map((f) => <button key={f} className="chip !py-1.5 text-xs capitalize" aria-pressed={filter === f} onClick={() => setFilter(f)}>{f === 'mastered' ? 'strong' : f}</button>)}
         </div>
       </div>
+      {(byFamily ? GROUP_ORDER.map((g) => ({ g, list: shown.filter((v) => v.group === g) })).filter((x) => x.list.length) : [{ g: null, list: shown }]).map(({ g, list }) => (
+      <div key={g ?? 'all'} className={g ? 'mb-5' : ''} data-testid={g ? `verb-group-${g}` : undefined}>
+      {g && <p className="mb-2 flex items-baseline gap-2"><b className="text-[15px]">{groupLabel(g)}</b><span className="text-sm text-ink-mute">{list.length} verb{list.length === 1 ? '' : 's'} · {GROUP_HINT[g]}</span></p>}
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
-        {shown.map((v) => {
+        {(openGroups.has(g ?? 'all') ? list : list.slice(0, 8)).map((v) => {
           const m = masteryBy[v.inf];
           const inFocus = focus.includes(v.inf);
           return (
@@ -814,6 +883,9 @@ export function Verbs({ params }: { params: URLSearchParams }) {
           );
         })}
       </div>
+      {list.length > 8 && <button type="button" className="ctrl mt-2.5" onClick={() => setOpenGroups((o) => { const n = new Set(o); const key = g ?? 'all'; if (n.has(key)) n.delete(key); else n.add(key); return n; })} data-testid={`verb-more-${g ?? 'all'}`}>{openGroups.has(g ?? 'all') ? 'Show fewer' : `Show all ${list.length}`}</button>}
+      </div>
+      ))}
 
       {ROADMAP_TENSES.length > 0 && (
       <div className="card mt-8 p-5">

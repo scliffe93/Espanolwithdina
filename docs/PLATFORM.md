@@ -239,3 +239,7 @@ Each verb session ends with one growing sentence (`src/data/ladders.ts`): a shor
 ### From words to sentences
 
 The same 1 to 5 step is a sliding scale for the whole verb session, not only the last sentence. At step 1 every question is a single form. Each step up moves more of the 12 questions into sentences (fill the gap, build, fix, translate): about 2, 5, 7 and 10 of 12 at steps 2 to 5. Those sentence questions use verbs the student already knows (six or more answers, 80% right), while single-form questions stay on the verbs still being learnt. Example sentences exist for the present only, so in other tenses steps 4 and 5 add a second growing sentence instead. Vocabulary has no example sentences yet, so the memory deck is unchanged.
+
+### Verb area front page and verb families
+
+The verb area opens with one start button and the learner's progress, then three numbered parts: the tense (set out by level, with higher levels folded away), the ways to practise (session, grid drill, verb families, grammar drills as cards), and the verbs, grouped by how they change and folded to eight per group. Verb families (`src/data/families.ts`, `src/screens/VerbFamilies.tsx`) show the verbs that change in the same way together: e → ie, o → ue, e → i (which change in the boot) and the special yo forms -go, -zco, -oy. The game asks three things: which family a verb is in, the same change on a sister verb, and whether it changes for a given person. Tested by `tests/families.test.ts` and `scripts/families-e2e.cjs`.
