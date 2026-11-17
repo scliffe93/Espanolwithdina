@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SYS, bankCandidates, bankOf, boardOf, isSystem, partsOf, withBank, withBoard, withNotes, type Stroke } from '../src/lib/platform/lessonExtras';
+import { SYS, bankCandidates, bankOf, boardOf, draftSummary, isSystem, partsOf, summaryOf, withBank, withBoard, withNotes, withSummary, type Stroke } from '../src/lib/platform/lessonExtras';
 import { allowedVerbs } from '../src/lib/platform/level';
 import { VERB_BLOCKS } from '../src/data/blocks';
 import { cleanPlan, studentView, type LessonBlock } from '../supabase/functions/_shared/lesson';
@@ -52,6 +52,18 @@ describe('the extras that travel with a lesson', () => {
     expect(bankOf(banked)).toEqual({ words: [{ es: 'la playa', en: 'the beach' }], verbs: [c.verbs[0]] });
     expect(bankOf(withBank(banked, { words: [], verbs: [] }))).toEqual({ words: [], verbs: [] });
     expect(partsOf(banked).map((b) => b.id)).toEqual(['q1abc', 'v1abc']);
+  });
+});
+
+describe('the lesson summary', () => {
+  it('drafts what was covered, and publishes only what the teacher wrote', () => {
+    const draft = draftSummary(parts, { q1abc: {}, v1abc: {} });
+    expect(draft).toMatch(/Today we worked through 2 parts\./); expect(draft).toMatch(/Words and phrases: ayer, comer\./);
+    const done = withSummary(parts, `${draft.replace('What went well: ', 'What went well: your accent.')}`);
+    expect(summaryOf(done)).toMatch(/What went well: your accent\./);
+    expect(summaryOf(done)).not.toMatch(/To work on before next time/);
+    expect(summaryOf(withSummary(done, '  '))).toBe('');
+    expect(partsOf(done).map((b) => b.id)).toEqual(['q1abc', 'v1abc']);
   });
 });
 

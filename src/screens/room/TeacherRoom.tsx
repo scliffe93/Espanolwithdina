@@ -18,7 +18,7 @@ import { ErrorText, Loading, useStudents } from '../teach/shared';
 import { BLOCK_THEME, BlockView, LessonClock, LessonTrail } from './Blocks';
 import { useGroupWork, useLesson } from './useLesson';
 import { Whiteboard } from './Whiteboard';
-import { bankCandidates, bankOf, boardOf, isSystem, partsOf, withBank, withBoard, withNotes, type BankItem } from '../../lib/platform/lessonExtras';
+import { bankCandidates, bankOf, boardOf, draftSummary, isSystem, partsOf, summaryOf, withBank, withBoard, withNotes, withSummary, type BankItem } from '../../lib/platform/lessonExtras';
 import { VERB_BY_INF } from '../../data/verbs';
 import { sfx } from '../../lib/fx';
 
@@ -693,6 +693,10 @@ export function TeacherRoom({ id }: { id: string }) {
   const [autoOpen, setAutoOpen] = useState(false);
   const [hideNames, setHideNames] = useState(false);
   const [screen, setScreen] = useState<'lesson' | 'board'>('lesson');
+  const [ending, setEnding] = useState(false);
+  const [summary, setSummary] = useState('');
+  const [pubBoard, setPubBoard] = useState(true);
+  const [pubSummary, setPubSummary] = useState(true);
   const [boardFull, setBoardFull] = useState(false);
   useEffect(() => { const on = () => setFull(!!document.fullscreenElement); document.addEventListener('fullscreenchange', on); return () => document.removeEventListener('fullscreenchange', on); }, []);
   const keyNav = useRef<(d: number) => void>(() => undefined);
@@ -733,8 +737,32 @@ export function TeacherRoom({ id }: { id: string }) {
   const toggleFull = () => { if (document.fullscreenElement) void document.exitFullscreen(); else void stageRef.current?.requestFullscreen?.().catch(() => undefined); };
   keyNav.current = (d) => { if (tab !== 'present' || idx < 0) return; const b = parts[idx + d]; if (b) go(b, d > 0 && !!cur?.open && autoOpen); };
 
+  const hasBoard = !!board.text.trim() || board.strokes.length > 0;
+  const finish = (publish: boolean) => {
+    change((p) => {
+      let blocks = p.blocks;
+      if (publish && pubBoard) blocks = withBoard(blocks, { ...boardOf(blocks), open: true }).blocks;
+      if (publish && pubSummary) blocks = withSummary(blocks, summary);
+      return { ...p, blocks, live: { ...p.live, on: false } };
+    }, true);
+    setEnding(false);
+    if (publish && (pubSummary || (pubBoard && hasBoard))) notify('Lesson ended', `${[pubSummary && summary.trim() ? 'The summary' : '', pubBoard && hasBoard ? 'the whiteboard' : ''].filter(Boolean).join(' and ')} ${isGroup ? 'are with the group' : `is with ${name}`}, in their Feedback.`);
+  };
   return (
     <div data-testid="teacher-room">
+      <Sheet open={ending} onClose={() => setEnding(false)} title="End the lesson" wide>
+        <div data-testid="end-sheet">
+          <p className="text-ink-soft">Choose what {isGroup ? 'the group gets' : `${name} gets`} afterwards. It appears in their <b>Feedback</b> and under the lesson in their notes.</p>
+          <label className="mt-4 flex items-start gap-3 rounded-2xl bg-white p-3 ring-1 ring-ink/10"><input type="checkbox" className="mt-1" checked={pubSummary} onChange={(e) => setPubSummary(e.target.checked)} data-testid="end-pub-summary" /><span className="min-w-0 flex-1"><b className="block">A summary of the lesson</b><span className="text-sm text-ink-mute">A first draft is written for you from what the lesson covered. Change it as you like.</span>
+            <textarea className="input mt-2 min-h-[170px] w-full" value={summary} onChange={(e) => setSummary(e.target.value)} disabled={!pubSummary} maxLength={3900} data-testid="end-summary" /></span></label>
+          <label className={`mt-3 flex items-start gap-3 rounded-2xl bg-white p-3 ring-1 ring-ink/10 ${hasBoard ? '' : 'opacity-60'}`}><input type="checkbox" className="mt-1" checked={pubBoard && hasBoard} disabled={!hasBoard} onChange={(e) => setPubBoard(e.target.checked)} data-testid="end-pub-board" /><span><b className="block">The whiteboard</b><span className="text-sm text-ink-mute">{hasBoard ? 'As you left it: the text and the drawing.' : 'Nothing was put on the whiteboard in this lesson.'}</span></span></label>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <button type="button" className="btn-primary" onClick={() => finish(true)} data-testid="end-confirm"><Icon name="check" size={18} /> End the lesson and publish</button>
+            <button type="button" className="btn-ghost" onClick={() => finish(false)} data-testid="end-quiet">End without publishing</button>
+            <button type="button" className="btn-ghost" onClick={() => setEnding(false)}>Carry on teaching</button>
+          </div>
+        </div>
+      </Sheet>
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <button type="button" className="ctrl" onClick={() => navigate('teach/room')}><Icon name="arrowLeft" size={14} /> Lesson room</button>
         <Segmented label="View" value={tab} onChange={setTab} options={[{ value: 'plan', label: 'Plan' }, { value: 'present', label: 'Present' }]} />
@@ -783,7 +811,7 @@ export function TeacherRoom({ id }: { id: string }) {
           <aside className="grid min-w-0 content-start gap-3">
             <div className="card p-4">
               {plan.live.on ? (
-                <button type="button" className="btn-ghost w-full justify-center" onClick={() => change((p) => ({ ...p, blocks: withBoard(p.blocks, { ...boardOf(p.blocks), open: true }).blocks, live: { ...p.live, on: false } }), true)} data-testid="end-lesson"><Icon name="stop" size={16} /> End the lesson</button>
+                <button type="button" className="btn-ghost w-full justify-center" onClick={() => { setSummary(summaryOf(plan.blocks) || draftSummary(plan.blocks, isGroup ? undefined : work?.answers)); setPubBoard(true); setPubSummary(true); setEnding(true); }} data-testid="end-lesson"><Icon name="stop" size={16} /> End the lesson</button>
               ) : (
                 <button type="button" className="btn-primary w-full justify-center" onClick={() => change((p) => ({ ...p, blocks: withNotes(p.blocks), live: { on: true, current: p.live.current ?? p.blocks[0]?.id ?? null, startedAt: new Date().toISOString() } }), true)} data-testid="start-lesson"><Icon name="video" size={18} /> Start the lesson</button>
               )}

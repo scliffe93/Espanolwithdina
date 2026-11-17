@@ -322,3 +322,7 @@ These extras travel with the lesson as blocks with reserved ids (`sys-…`, see 
 - **Verbs one by one.** In gradual release, "Next verbs: choose" shows the next block's verbs with their meanings; she ticks the ones to release and only those are released (`StudentSettings.verbs`). A block whose verbs have all been released is recorded as the whole block. Whole blocks can still be released in one tap from "Choose blocks".
 
 Tested by `tests/lesson-extras.test.ts`, `scripts/extras-e2e.cjs` (two logged-in devices) and `scripts/release-e2e.cjs`.
+
+### Ending a lesson: the summary and the whiteboard go to Feedback
+
+"End the lesson" asks what the student gets afterwards: a summary (drafted from what the lesson covered, the words and verbs, and for one student how many answers were right; the teacher edits it; prompts she leaves unfilled are not sent) and the whiteboard. Whatever she ticks is published with the lesson. The student finds it in Feedback, under "From your lessons", with a button to open the lesson, and the summary also sits at the top of the lesson itself. "End without publishing" ends the lesson and sends nothing.

@@ -51,11 +51,23 @@ async function login(p, user) {
   await s.reload(); await s.getByTestId('student-room').waitFor({ timeout: 15000 }); await s.waitForTimeout(2500);
   ok((await s.getByTestId('student-notes-text').inputValue()) === `Me gusta la palabra playa ${tag}`, 'the student’s own notes are saved with the lesson');
   // Ending the lesson publishes the whiteboard to the student.
-  await t.getByTestId('end-lesson').click(); await t.waitForTimeout(1500);
+  await t.getByTestId('end-lesson').click(); await t.getByTestId('end-sheet').waitFor();
+  const draft = await t.getByTestId('end-summary').inputValue();
+  ok(/Words and phrases: la playa, comer/.test(draft) && await t.getByTestId('end-pub-board').isChecked() && await t.getByTestId('end-pub-summary').isChecked(), 'ending the lesson offers a drafted summary and the whiteboard to publish');
+  await t.getByTestId('end-summary').fill(`${draft}\nMuy bien hoy ${tag}.`);
+  await t.screenshot({ path: OUT + '/extras-end.png' });
+  await t.getByTestId('end-confirm').click(); await t.waitForTimeout(1500);
   await s.waitForTimeout(6000);
   ok(await s.getByTestId('student-board').count() === 1 && /ir = to go/.test(await s.getByTestId('student-board').innerText()) && (await s.getByTestId('student-board').locator('path').count()) === 1, 'when the lesson ends the whiteboard is there for the student, text and drawing');
   ok((await s.getByTestId('student-notes-text').inputValue()) === `Me gusta la palabra playa ${tag}`, 'and their notes are still there after the lesson');
   await s.screenshot({ path: OUT + '/extras-student.png', fullPage: true });
+  ok(new RegExp(`Muy bien hoy ${tag}`).test(await s.getByTestId('student-summary').innerText()), 'the summary is at the top of the lesson for the student');
+  // Both are published in the student's Feedback.
+  await s.goto(BASE + '#/student/feedback'); await s.waitForTimeout(4000);
+  const fb = s.getByTestId('feedback-lesson').filter({ hasText: `En la playa ${tag}` });
+  ok(await fb.count() === 1 && new RegExp(`Muy bien hoy ${tag}`).test(await fb.getByTestId('feedback-summary').innerText()) && (await fb.locator('[data-testid="board-surface"] path').count()) === 1 && /ir = to go/.test(await fb.innerText()), 'the summary and the whiteboard are in the student’s Feedback');
+  await s.screenshot({ path: OUT + '/extras-feedback.png', fullPage: true });
+  await s.goto(BASE + `#/student/room/${id}`); await s.getByTestId('student-room').waitFor({ timeout: 15000 }); await s.waitForTimeout(1500);
   // After the lesson: the teacher banks words and verbs.
   await t.getByRole('radio', { name: 'Plan' }).click(); await t.waitForTimeout(600);
   ok((await t.getByTestId('block-editor').count()) === 2, 'the whiteboard and notes are not listed among the lesson’s parts');

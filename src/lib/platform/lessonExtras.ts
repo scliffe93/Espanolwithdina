@@ -4,7 +4,7 @@
 import type { LessonBlock } from './types';
 import { VERB_BY_INF } from '../../data/verbs';
 
-export const SYS = { board: 'sys-board', ink: 'sys-ink-', notes: 'sys-notes', words: 'sys-words', verbs: 'sys-verbs' } as const;
+export const SYS = { board: 'sys-board', ink: 'sys-ink-', notes: 'sys-notes', words: 'sys-words', verbs: 'sys-verbs', summary: 'sys-summary' } as const;
 export const isSystem = (b: { id: string }) => b.id.startsWith('sys-');
 /** The teaching parts of a lesson: everything except the extras. */
 export const partsOf = <T extends { id: string }>(blocks: T[]): T[] => blocks.filter((b) => !isSystem(b));
@@ -85,4 +85,36 @@ export function bankCandidates(blocks: LessonBlock[]): { words: BankItem[]; verb
   for (const w of board.toLowerCase().split(/[^a-záéíóúñü]+/)) if (w.length > 2 && VERB_BY_INF[w]) verbNames.add(w);
   const verbs = [...verbNames].map((v) => ({ es: v, en: VERB_BY_INF[v].en.split(' (')[0] }));
   return { words: all.filter((p) => !verbNames.has(bare(p.es))), verbs };
+}
+
+/** The teacher's summary of the lesson, published to the student when the lesson ends. */
+export const summaryOf = (blocks: LessonBlock[]): string => blocks.find((b) => b.id === SYS.summary && b.open)?.body ?? '';
+export function withSummary(blocks: LessonBlock[], text: string): LessonBlock[] {
+  const rest = blocks.filter((b) => b.id !== SYS.summary);
+  // A prompt the teacher left unfilled ("What went well:") is not sent.
+  const body = text.split('\n').filter((l) => !/^[^:]{3,40}:\s*$/.test(l.trim())).join('\n').trim();
+  return body ? [...rest, { id: SYS.summary, type: 'text', title: 'Resumen · Lesson summary', body: body.slice(0, 3900), open: true }] : rest;
+}
+
+/**
+ * A first draft of the summary, from what the lesson held and how it went: what was covered, the words and verbs,
+ * and (for one student) how many answers were right. The teacher reads it, changes it and decides whether to send it.
+ */
+export function draftSummary(blocks: LessonBlock[], answers?: Record<string, { correct?: boolean }>): string {
+  const parts = partsOf(blocks);
+  const stages = [...new Set(parts.map((b) => b.title.match(/^\d{1,2}\/\d{1,2}\s+(.+?)(?:\s+·\s+\d+\s+min)?$/)?.[1]).filter(Boolean))] as string[];
+  const words = [...new Set(parts.filter((b) => b.type === 'vocab').flatMap((b) => b.pairs ?? []).map((p) => p.es.trim()).filter(Boolean))].slice(0, 12);
+  const bank = bankOf(blocks);
+  const marked = parts.filter((b) => b.type === 'gap' || b.type === 'choice');
+  const answered = marked.filter((b) => answers?.[b.id]);
+  const right = answered.filter((b) => answers?.[b.id]?.correct === true).length;
+  const lines = [
+    stages.length ? `Today we worked through: ${stages.join(', ')}.` : `Today we worked through ${parts.length} part${parts.length === 1 ? '' : 's'}.`,
+    words.length ? `Words and phrases: ${words.join(', ')}.` : '',
+    bank.verbs.length ? `Verbs to keep: ${bank.verbs.map((v) => v.es).join(', ')}.` : '',
+    answers && answered.length ? `You answered ${answered.length} task${answered.length === 1 ? '' : 's'} and got ${right} right.` : '',
+    'What went well: ',
+    'To work on before next time: ',
+  ];
+  return lines.filter(Boolean).join('\n');
 }

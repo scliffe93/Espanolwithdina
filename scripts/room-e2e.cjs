@@ -98,7 +98,7 @@ async function until(fn, ms = 9000) { const end = Date.now() + ms; for (;;) { if
   // ── She closes a part again, then ends the lesson. ──
   await t.getByTestId('toggle-0').click();
   ok(await until(async () => (await s.locator('[data-testid^="block-"]').count()) === 2), 'closing a part takes it off his screen');
-  await t.getByTestId('end-lesson').click();
+  await t.getByTestId('end-lesson').click(); await t.getByTestId('end-confirm').click();
   ok(await until(async () => /The lesson is over/.test(await s.getByTestId('room-status').innerText())), 'when she ends the lesson, his page becomes his notes from it');
   await s.goto(BASE + '#/student'); await s.waitForTimeout(2500);
   console.log('  home card:', JSON.stringify((await s.getByTestId('room-card').innerText().catch((e) => 'none: ' + String(e).slice(0, 60))).slice(0, 160)), 'join:', await s.getByTestId('join-lesson').count());

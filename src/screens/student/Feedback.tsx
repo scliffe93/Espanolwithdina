@@ -5,6 +5,9 @@ import { markLabel } from '../../lib/platform/marking';
 import { fmtDateTime, relative } from '../../lib/platform/time';
 import type { FeedbackKind } from '../../lib/platform/types';
 import { navigate } from '../../lib/router';
+import { usePlatformQuery } from '../../lib/platform/context';
+import { boardOf, summaryOf } from '../../lib/platform/lessonExtras';
+import { Whiteboard } from '../room/Whiteboard';
 import { DemoChip, ErrorCard, FEEDBACK_META, FeedbackItem, Loading, Section, StudentNav, useStudentData } from './shared';
 
 // ───────────────────────────────────────────────────────────────
@@ -18,7 +21,10 @@ export function FeedbackPage() {
   const { data, loading, error, reload } = useStudentData();
   const now = Date.now();
   const reviewed = data ? data.homework.filter((h) => h.feedback).sort((a, b) => (b.feedback?.at ?? '').localeCompare(a.feedback?.at ?? '')) : [];
-  const total = (data?.feedback.length ?? 0) + reviewed.length;
+  // What Dina published when a lesson ended: her summary and the whiteboard.
+  const lessons = usePlatformQuery((b) => b.lessons(), []);
+  const fromLessons = (lessons.data ?? []).map((l) => ({ l, summary: summaryOf(l.blocks), board: boardOf(l.blocks) })).filter((x) => x.summary || (x.board.open && (x.board.text || x.board.strokes.length)));
+  const total = (data?.feedback.length ?? 0) + reviewed.length + fromLessons.length;
 
   return (
     <div data-testid="student-feedback">
@@ -31,6 +37,23 @@ export function FeedbackPage() {
       )}
       {data && total > 0 && (
         <div className="grid gap-4">
+          {fromLessons.length > 0 && (
+            <Section eyebrow="After each lesson" title={`From your lessons · ${fromLessons.length}`}>
+              <ul className="grid gap-3" data-testid="feedback-lessons">
+                {fromLessons.map(({ l, summary, board }) => (
+                  <li key={l.id} className="rounded-2xl bg-white/70 p-4 ring-1 ring-ink/5" data-testid="feedback-lesson">
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                      <p className="font-semibold">{l.title}</p>
+                      <p className="text-xs text-ink-mute">{new Date(`${l.date || l.createdAt.slice(0, 10)}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</p>
+                    </div>
+                    {summary && <p className="mt-2 whitespace-pre-wrap rounded-xl bg-olive-50 px-3 py-2 leading-relaxed" data-testid="feedback-summary">{summary}</p>}
+                    {board.open && (board.text || board.strokes.length > 0) && <div className="mt-3"><p className="eyebrow mb-1.5">Pizarra · The whiteboard</p><Whiteboard board={board} /></div>}
+                    <button className="ctrl mt-3" onClick={() => navigate(`student/room/${l.id}`)}><Icon name="eye" size={14} /> Open the lesson, with your answers and notes</button>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
           {KINDS.map((k) => {
             const list = data.feedback.filter((f) => f.kind === k);
             const m = FEEDBACK_META[k];

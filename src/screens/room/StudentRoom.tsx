@@ -8,7 +8,7 @@ import { useLevelAccess } from '../../lib/platform/useLevelAccess';
 import { reportFailure } from '../../lib/diagnostics';
 import { BlockView, LessonClock, LessonTrail } from './Blocks';
 import { Whiteboard } from './Whiteboard';
-import { SYS, bankOf, boardOf, partsOf } from '../../lib/platform/lessonExtras';
+import { SYS, bankOf, boardOf, partsOf, summaryOf } from '../../lib/platform/lessonExtras';
 import { useLesson } from './useLesson';
 
 /** The student's side of a lesson: what the teacher has opened, following the part she is on, with their answers. */
@@ -67,6 +67,12 @@ export function StudentRoom({ id }: { id: string }) {
         </div>
       </div>
       {error && <p className="mt-3 rounded-xl bg-saffron-50 px-3 py-2 text-sm" role="status">Reconnecting… ({error})</p>}
+      {summaryOf(plan.blocks) && (
+        <section className="mt-4 rounded-3xl bg-olive-50 p-5 ring-1 ring-olive/30" data-testid="student-summary">
+          <p className="eyebrow !text-olive">Resumen · Dina’s summary of this lesson</p>
+          <p className="mt-1 whitespace-pre-wrap text-[17px] leading-relaxed">{summaryOf(plan.blocks)}</p>
+        </section>
+      )}
       {parts.length > 0 && <div className="sticky top-2 z-10 mt-4 rounded-3xl bg-white/95 p-3 shadow-soft ring-1 ring-ink/5 backdrop-blur"><LessonTrail blocks={parts} answers={work?.answers} current={plan.live.on ? current : null} />{plan.live.on && plan.live.startedAt && <div className="mt-2"><LessonClock startedAt={plan.live.startedAt} blocks={parts} current={current} compact /></div>}</div>}
       <div className="mt-5 grid gap-4">
         {parts.length === 0 ? (
