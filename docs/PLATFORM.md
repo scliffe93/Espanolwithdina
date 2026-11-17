@@ -243,3 +243,7 @@ The same 1 to 5 step is a sliding scale for the whole verb session, not only the
 ### Verb area front page and verb families
 
 The verb area opens with one start button and the learner's progress, then three numbered parts: the tense (set out by level, with higher levels folded away), the ways to practise (session, grid drill, verb families, grammar drills as cards), and the verbs, grouped by how they change and folded to eight per group. Verb families (`src/data/families.ts`, `src/screens/VerbFamilies.tsx`) show the verbs that change in the same way together: e → ie, o → ue, e → i (which change in the boot) and the special yo forms -go, -zco, -oy. The game asks three things: which family a verb is in, the same change on a sister verb, and whether it changes for a given person. Tested by `tests/families.test.ts` and `scripts/families-e2e.cjs`.
+
+### Report a problem
+
+Every screen has a small Report a problem button (`src/components/ReportIssue.tsx`, mounted in `src/main.tsx`). A logged-in person writes what went wrong and it is sent to the administrator's Problems list as a note, with the page and the device type. Someone not logged in gets the note copied to send themselves. It uses the existing `report` route, so the server did not change. Tested by `scripts/report-e2e.cjs`.

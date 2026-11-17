@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { StoreProvider } from './lib/store';
 import { AccountProvider } from './lib/account';
+import { ReportIssue } from './components/ReportIssue';
 import { PlatformProvider } from './lib/platform/context';
 import { installDiagnostics } from './lib/diagnostics';
 import { LanguageProvider } from './lib/i18n';
@@ -16,6 +17,7 @@ createRoot(document.getElementById('root')!).render(
       <AccountProvider>
         <PlatformProvider>
           <LanguageProvider><App /></LanguageProvider>
+          <ReportIssue />
         </PlatformProvider>
       </AccountProvider>
     </StoreProvider>

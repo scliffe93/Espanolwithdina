@@ -283,7 +283,7 @@ function ActivityTab({ data }: { data: Everything }) {
   );
 }
 
-const PROBLEM_KIND: Record<string, string> = { crash: 'A page stopped', error: 'Something failed', voice: 'Voice', note: 'Note' };
+const PROBLEM_KIND: Record<string, string> = { crash: 'A page stopped', error: 'Something failed', voice: 'Voice', note: 'Written by the person' };
 /** A short, human name for the device from its user-agent string. */
 function deviceName(ua: string): string {
   const os = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android' : /Macintosh/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : /CrOS/.test(ua) ? 'Chromebook' : 'Other device';
