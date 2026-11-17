@@ -18,7 +18,7 @@ import { ErrorText, Loading, useStudents } from '../teach/shared';
 import { BLOCK_THEME, BlockView, LessonClock, LessonTrail } from './Blocks';
 import { useGroupWork, useLesson } from './useLesson';
 import { Whiteboard } from './Whiteboard';
-import { bankCandidates, bankOf, boardOf, draftSummary, isSystem, partsOf, summaryOf, withBank, withBoard, withNotes, withSummary, type BankItem } from '../../lib/platform/lessonExtras';
+import { SYS, bankCandidates, bankOf, releaseVerbsTo, boardOf, draftSummary, isSystem, partsOf, summaryOf, withBank, withBoard, withNotes, withSummary, type BankItem } from '../../lib/platform/lessonExtras';
 import { VERB_BY_INF } from '../../data/verbs';
 import { sfx } from '../../lib/fx';
 
@@ -548,13 +548,15 @@ function BlockEditor({ b, i, n, onChange, onMove, onDelete, onDuplicate, flag }:
  * the "word = meaning" lines on the whiteboard, any verb the app knows), ticks what she wants, adds her own, and
  * saves. The student then finds them in their word bank and verb bank.
  */
-function LessonBank({ blocks, name, onSave }: { blocks: LessonBlock[]; name: string; onSave: (bank: { words: BankItem[]; verbs: BankItem[] }) => void }) {
+function LessonBank({ blocks, name, notes = [], embedded = false, onSave, onChange }: { blocks: LessonBlock[]; name: string; notes?: string[]; embedded?: boolean; onSave?: (bank: { words: BankItem[]; verbs: BankItem[] }) => void; onChange?: (bank: { words: BankItem[]; verbs: BankItem[] }) => void }) {
   const saved = bankOf(blocks);
-  const offer = bankCandidates(blocks);
-  const [open, setOpen] = useState(false);
+  const offer = bankCandidates(blocks, notes);
+  const [open, setOpen] = useState(embedded);
   const [words, setWords] = useState<BankItem[]>(saved.words);
   const [verbs, setVerbs] = useState<BankItem[]>(saved.verbs);
   const [extra, setExtra] = useState('');
+  const tell = useRef(onChange); tell.current = onChange;
+  useEffect(() => { tell.current?.({ words, verbs }); }, [words, verbs]);
   const has = (list: BankItem[], x: BankItem) => list.some((y) => y.es.toLowerCase() === x.es.toLowerCase());
   const flip = (list: BankItem[], set: (l: BankItem[]) => void, x: BankItem) => set(has(list, x) ? list.filter((y) => y.es.toLowerCase() !== x.es.toLowerCase()) : [...list, x]);
   const allWords = [...offer.words, ...saved.words.filter((x) => !has(offer.words, x)), ...words.filter((x) => !has(offer.words, x) && !has(saved.words, x))];
@@ -570,7 +572,8 @@ function LessonBank({ blocks, name, onSave }: { blocks: LessonBlock[]; name: str
     <button type="button" aria-pressed={on} onClick={onClick} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm ring-1 transition ${on ? 'bg-ink text-cream ring-ink' : 'bg-white text-ink ring-ink/15 hover:ring-ink/40'}`} data-testid={testid} data-on={on || undefined}>{on && <Icon name="check" size={13} />}<b lang="es">{x.es}</b>{x.en && <span className={on ? 'text-cream/70' : 'text-ink-mute'}>{x.en}</span>}</button>
   );
   return (
-    <section className="card p-4" data-testid="lesson-bank">
+    <section className={embedded ? '' : 'card p-4'} data-testid={embedded ? 'end-bank' : 'lesson-bank'}>
+      {!embedded && (<>
       <div className="flex flex-wrap items-center gap-3">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-rosa-50 text-ink"><Icon name="translate" size={18} /></span>
         <div className="min-w-0 flex-1 basis-56">
@@ -579,17 +582,18 @@ function LessonBank({ blocks, name, onSave }: { blocks: LessonBlock[]; name: str
         </div>
         <button type="button" className="btn-soft" onClick={() => { setWords(saved.words); setVerbs(saved.verbs); setOpen(!open); }} data-testid="lesson-bank-open">{open ? 'Close' : 'Choose'}</button>
       </div>
+      </>)}
       {open && (
-        <div className="mt-3 border-t border-ink/5 pt-3">
+        <div className={embedded ? '' : 'mt-3 border-t border-ink/5 pt-3'}>
           <p className="eyebrow mb-1.5">Words · {words.length} chosen <button type="button" className="ml-2 normal-case tracking-normal text-ink-mute underline" onClick={() => setWords(allWords)}>tick all</button></p>
-          <div className="flex flex-wrap gap-1.5">{allWords.length ? allWords.map((x) => <Tick key={x.es} x={x} on={has(words, x)} onClick={() => flip(words, setWords, x)} testid="bank-word" />) : <span className="text-sm text-ink-mute">No words found in this lesson. Add your own below.</span>}</div>
+          <div className="flex flex-wrap gap-1.5">{allWords.length ? allWords.map((x) => <Tick key={x.es} x={x} on={has(words, x)} onClick={() => flip(words, setWords, x)} testid="bank-word" />) : <span className="text-sm text-ink-mute">No words found in the lesson, the whiteboard or the notes. Add your own below.</span>}</div>
           <p className="eyebrow mb-1.5 mt-3">Verbs · {verbs.length} chosen <button type="button" className="ml-2 normal-case tracking-normal text-ink-mute underline" onClick={() => setVerbs(allVerbs)}>tick all</button></p>
-          <div className="flex flex-wrap gap-1.5">{allVerbs.length ? allVerbs.map((x) => <Tick key={x.es} x={x} on={has(verbs, x)} onClick={() => flip(verbs, setVerbs, x)} testid="bank-verb" />) : <span className="text-sm text-ink-mute">No verbs found in this lesson. Add your own below.</span>}</div>
+          <div className="flex flex-wrap gap-1.5">{allVerbs.length ? allVerbs.map((x) => <Tick key={x.es} x={x} on={has(verbs, x)} onClick={() => flip(verbs, setVerbs, x)} testid="bank-verb" />) : <span className="text-sm text-ink-mute">No verbs found in the lesson, the whiteboard or the notes. Add your own below.</span>}</div>
           <form className="mt-3 flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); add(); }}>
             <input className="input min-w-0 flex-1" value={extra} onChange={(e) => setExtra(e.target.value)} placeholder="Add your own: la playa = the beach, or a verb such as volver" lang="es" data-testid="bank-add" />
             <button type="submit" className="ctrl" disabled={!extra.trim()} data-testid="bank-add-go"><Icon name="plus" size={14} /> Add</button>
           </form>
-          <button type="button" className="btn-primary mt-3" onClick={() => { onSave({ words, verbs }); setOpen(false); }} data-testid="lesson-bank-save">Save {words.length} word{words.length === 1 ? '' : 's'} and {verbs.length} verb{verbs.length === 1 ? '' : 's'}</button>
+          {!embedded && <button type="button" className="btn-primary mt-3" onClick={() => { onSave?.({ words, verbs }); setOpen(false); }} data-testid="lesson-bank-save">Save {words.length} word{words.length === 1 ? '' : 's'} and {verbs.length} verb{verbs.length === 1 ? '' : 's'}</button>}
         </div>
       )}
     </section>
@@ -697,6 +701,7 @@ export function TeacherRoom({ id }: { id: string }) {
   const [summary, setSummary] = useState('');
   const [pubBoard, setPubBoard] = useState(true);
   const [pubSummary, setPubSummary] = useState(true);
+  const endBank = useRef<{ words: BankItem[]; verbs: BankItem[] } | null>(null);
   const [boardFull, setBoardFull] = useState(false);
   useEffect(() => { const on = () => setFull(!!document.fullscreenElement); document.addEventListener('fullscreenchange', on); return () => document.removeEventListener('fullscreenchange', on); }, []);
   const keyNav = useRef<(d: number) => void>(() => undefined);
@@ -738,14 +743,25 @@ export function TeacherRoom({ id }: { id: string }) {
   keyNav.current = (d) => { if (tab !== 'present' || idx < 0) return; const b = parts[idx + d]; if (b) go(b, d > 0 && !!cur?.open && autoOpen); };
 
   const hasBoard = !!board.text.trim() || board.strokes.length > 0;
+  // What was written in the lesson: the teacher's own notes and each student's notes. Verbs and words are offered from here.
+  const writtenNotes = [plan.notes ?? '', ...everyone.map((e) => e.work?.answers[SYS.notes]?.value ?? '')].filter((t) => t.trim());
+  const releaseBank = (bank: { words: BankItem[]; verbs: BankItem[] }) => {
+    if (!backend) return;
+    void releaseVerbsTo(backend, everyone.map((e) => e.studentId), bank.verbs).catch(() => notify('The verbs are banked', 'They could not be added to the verb gym just now. Save the choice again from the Plan tab.'));
+  };
   const finish = (publish: boolean) => {
+    const bank = publish ? endBank.current : null;
     change((p) => {
       let blocks = p.blocks;
+      if (bank) blocks = withBank(blocks, bank);
       if (publish && pubBoard) blocks = withBoard(blocks, { ...boardOf(blocks), open: true }).blocks;
       if (publish && pubSummary) blocks = withSummary(blocks, summary);
       return { ...p, blocks, live: { ...p.live, on: false } };
     }, true);
     setEnding(false);
+    if (bank) releaseBank(bank);
+    const released = bank ? bank.words.length + bank.verbs.length : 0;
+    if (released) notify('Released', `${bank!.words.length} word${bank!.words.length === 1 ? '' : 's'} and ${bank!.verbs.length} verb${bank!.verbs.length === 1 ? '' : 's'} added to ${isGroup ? 'the group’s accounts' : `${name}’s account`}.`);
     if (publish && (pubSummary || (pubBoard && hasBoard))) notify('Lesson ended', `${[pubSummary && summary.trim() ? 'The summary' : '', pubBoard && hasBoard ? 'the whiteboard' : ''].filter(Boolean).join(' and ')} ${isGroup ? 'are with the group' : `is with ${name}`}, in their Feedback.`);
   };
   return (
@@ -756,6 +772,11 @@ export function TeacherRoom({ id }: { id: string }) {
           <label className="mt-4 flex items-start gap-3 rounded-2xl bg-white p-3 ring-1 ring-ink/10"><input type="checkbox" className="mt-1" checked={pubSummary} onChange={(e) => setPubSummary(e.target.checked)} data-testid="end-pub-summary" /><span className="min-w-0 flex-1"><b className="block">A summary of the lesson</b><span className="text-sm text-ink-mute">A first draft is written for you from what the lesson covered. Change it as you like.</span>
             <textarea className="input mt-2 min-h-[170px] w-full" value={summary} onChange={(e) => setSummary(e.target.value)} disabled={!pubSummary} maxLength={3900} data-testid="end-summary" /></span></label>
           <label className={`mt-3 flex items-start gap-3 rounded-2xl bg-white p-3 ring-1 ring-ink/10 ${hasBoard ? '' : 'opacity-60'}`}><input type="checkbox" className="mt-1" checked={pubBoard && hasBoard} disabled={!hasBoard} onChange={(e) => setPubBoard(e.target.checked)} data-testid="end-pub-board" /><span><b className="block">The whiteboard</b><span className="text-sm text-ink-mute">{hasBoard ? 'As you left it: the text and the drawing.' : 'Nothing was put on the whiteboard in this lesson.'}</span></span></label>
+          <div className="mt-3 rounded-2xl bg-white p-3 ring-1 ring-ink/10">
+            <b className="block">Words and verbs to release</b>
+            <span className="text-sm text-ink-mute">Found in the lesson, on the whiteboard and in the notes. Only the ones you tick are added to {isGroup ? 'their accounts' : `${name}’s account`}: words go to their word bank, verbs to their verb bank and verb practice.</span>
+            <div className="mt-3">{ending && <LessonBank embedded blocks={plan.blocks} notes={writtenNotes} name={isGroup ? 'the group' : name} onChange={(b) => { endBank.current = b; }} />}</div>
+          </div>
           <div className="mt-5 flex flex-wrap gap-2">
             <button type="button" className="btn-primary" onClick={() => finish(true)} data-testid="end-confirm"><Icon name="check" size={18} /> End the lesson and publish</button>
             <button type="button" className="btn-ghost" onClick={() => finish(false)} data-testid="end-quiet">End without publishing</button>
@@ -796,7 +817,7 @@ export function TeacherRoom({ id }: { id: string }) {
             <span className="mr-1 text-sm font-semibold">Add a part:</span>
             {TYPES.map((t) => <button key={t} type="button" className="ctrl" onClick={() => change((p) => ({ ...p, blocks: [...partsOf(p.blocks), newBlock(t), ...p.blocks.filter(isSystem)] }))} data-testid={`add-${t}`}><Icon name="plus" size={14} /> {BLOCK_LABEL[t]}</button>)}
           </div>
-          <LessonBank blocks={plan.blocks} name={isGroup ? 'the group' : name} onSave={(bank) => { change((p) => ({ ...p, blocks: withBank(p.blocks, bank) }), true); notify('Saved to their banks', `${bank.words.length} word${bank.words.length === 1 ? '' : 's'} and ${bank.verbs.length} verb${bank.verbs.length === 1 ? '' : 's'} from this lesson.`); }} />
+          <LessonBank key={ending ? 'x' : 'y'} blocks={plan.blocks} notes={writtenNotes} name={isGroup ? 'the group' : name} onSave={(bank) => { change((p) => ({ ...p, blocks: withBank(p.blocks, bank) }), true); releaseBank(bank); notify('Saved to their banks', `${bank.words.length} word${bank.words.length === 1 ? '' : 's'} and ${bank.verbs.length} verb${bank.verbs.length === 1 ? '' : 's'} from this lesson.`); }} />
           <SendHomework plan={plan} name={isGroup ? 'the group' : name} studentIds={everyone.map((e) => e.studentId)} />
           <div className="flex flex-wrap gap-2">
             <button type="button" className="btn-ghost" onClick={async () => { if (!backend) return; await backend.saveLibraryPlan({ title: plan.title, topic: topicFrom(plan.title), level: studentLevel, status: 'ready', blocks: parts.map((b) => ({ ...b, open: false, reveal: false })), notes: plan.notes ?? '', minutes: plannedMinutes || undefined, wording }); notify('Saved to your plans', `Filed under ${studentLevel}. You can teach it to anyone from there.`); }} data-testid="save-as-plan"><Icon name="book" size={16} /> Save as a plan to reuse</button>

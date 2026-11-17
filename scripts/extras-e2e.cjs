@@ -27,6 +27,9 @@ async function login(p, user) {
   const b = await chromium.launch(); const errors = [];
   const page = async (viewport) => { const p = await (await b.newContext({ viewport })).newPage(); p.on('pageerror', (e) => errors.push(String(e))); return p; };
   const t = await page({ width: 1366, height: 820 }); await login(t, 'dina');
+  // The student is on gradual release, so only released verbs are in their practice.
+  await t.goto(BASE + `#/teach/student/${made.user.id}`); await t.waitForTimeout(2000);
+  await t.getByTestId('release-on').click(); await t.waitForTimeout(1500);
   await t.goto(BASE + `#/teach/room/${id}`); await t.getByTestId('teacher-room').waitFor({ timeout: 15000 }); await t.waitForTimeout(800);
   ok((await t.getByTestId('block-editor').count()) === 2, 'the lesson has its two parts');
   await t.getByTestId('to-present').click(); await t.getByTestId('start-lesson').click(); await t.waitForTimeout(500); await t.getByTestId('open-all').click(); await t.waitForTimeout(800);
@@ -41,7 +44,7 @@ async function login(p, user) {
   ok((await t.getByTestId('board-surface').getAttribute('data-strokes')) === '1' && /Hoy vamos a hablar/.test(await t.getByTestId('board-text').innerText()), 'the teacher types and draws on the whiteboard');
   await t.getByTestId('stage').screenshot({ path: OUT + '/extras-board.png' });
   // Her own notes, under the screen.
-  await t.getByTestId('present-notes').locator('summary').click(); await t.getByTestId('present-notes-text').fill(`Privado ${tag}: repasar el pretérito`); await t.waitForTimeout(1500);
+  await t.getByTestId('present-notes').locator('summary').click(); await t.getByTestId('present-notes-text').fill(`Privado ${tag}: repasar el pretérito, ayer volvimos tarde`); await t.waitForTimeout(1500);
   // The student joins: no whiteboard yet, no teacher's notes, and a place for their own.
   const s = await page({ width: 820, height: 1100 }); await login(s, name.toLowerCase());
   await s.goto(BASE + `#/student/room/${id}`); await s.getByTestId('student-room').waitFor({ timeout: 15000 }); await s.waitForTimeout(2500);
@@ -55,6 +58,11 @@ async function login(p, user) {
   const draft = await t.getByTestId('end-summary').inputValue();
   ok(/Words and phrases: la playa, comer/.test(draft) && await t.getByTestId('end-pub-board').isChecked() && await t.getByTestId('end-pub-summary').isChecked(), 'ending the lesson offers a drafted summary and the whiteboard to publish');
   await t.getByTestId('end-summary').fill(`${draft}\nMuy bien hoy ${tag}.`);
+  // The review offers the words and verbs used in the lesson, on the whiteboard and in both sets of notes. None ticked.
+  const eb = t.getByTestId('end-bank'); const ev = await eb.getByTestId('bank-verb').allInnerTexts();
+  ok(['ir', 'hablar', 'volver', 'gustar', 'comer'].every((v) => ev.some((x) => x.startsWith(v))) && (await eb.locator('[data-on]').count()) === 0, `the review offers verbs from the whiteboard (ir, hablar), her notes (volver) and the student’s notes (gustar), none ticked (${ev.map((x) => x.split('\n')[0]).join(', ')})`);
+  await eb.getByTestId('bank-verb').filter({ hasText: 'volver' }).click(); await eb.getByTestId('bank-word').filter({ hasText: 'la playa' }).click();
+  await eb.scrollIntoViewIfNeeded(); await t.screenshot({ path: OUT + '/extras-end-bank.png' });
   await t.screenshot({ path: OUT + '/extras-end.png' });
   await t.getByTestId('end-confirm').click(); await t.waitForTimeout(1500);
   await s.waitForTimeout(6000);
@@ -62,6 +70,8 @@ async function login(p, user) {
   ok((await s.getByTestId('student-notes-text').inputValue()) === `Me gusta la palabra playa ${tag}`, 'and their notes are still there after the lesson');
   await s.screenshot({ path: OUT + '/extras-student.png', fullPage: true });
   ok(new RegExp(`Muy bien hoy ${tag}`).test(await s.getByTestId('student-summary').innerText()), 'the summary is at the top of the lesson for the student');
+  const rec0 = (await api(`platform/records?kind=student&studentId=${made.user.id}`, null, d.token)).records[0];
+  ok(rec0.stepped === true && (rec0.verbs ?? []).join() === 'volver' && rec0.unlocked.length >= 1, `only the verb she ticked is released to the student’s account (${(rec0.verbs ?? []).join(', ')})`);
   // Both are published in the student's Feedback.
   await s.goto(BASE + '#/student/feedback'); await s.waitForTimeout(4000);
   const fb = s.getByTestId('feedback-lesson').filter({ hasText: `En la playa ${tag}` });
@@ -73,29 +83,27 @@ async function login(p, user) {
   ok((await t.getByTestId('block-editor').count()) === 2, 'the whiteboard and notes are not listed among the lesson’s parts');
   await t.getByTestId('lesson-bank-open').click();
   const words = await t.getByTestId('bank-word').allInnerTexts(), verbs = await t.getByTestId('bank-verb').allInnerTexts();
-  ok(words.some((w) => /la playa/.test(w)) && ['comer', 'ir', 'hablar'].every((v) => verbs.some((x) => x.startsWith(v))) && (await t.locator('[data-testid="bank-word"][data-on], [data-testid="bank-verb"][data-on]').count()) === 0, `it offers the lesson’s words and verbs, none ticked (${words.length} words; verbs: ${verbs.map((x) => x.split(/[a-z](?=[A-Z])|to /)[0]).join(', ')})`);
-  await t.getByTestId('bank-word').filter({ hasText: 'la playa' }).click();
+  ok(words.some((w) => /la playa/.test(w)) && ['comer', 'ir', 'hablar'].every((v) => verbs.some((x) => x.startsWith(v))) && (await t.locator('[data-testid="bank-word"][data-on], [data-testid="bank-verb"][data-on]').count()) === 2, `it offers the lesson’s words and verbs, with only the two she released ticked (${words.length} words; verbs: ${verbs.map((x) => x.split(/[a-z](?=[A-Z])|to /)[0]).join(', ')})`);
   await t.getByTestId('bank-verb').filter({ hasText: 'comer' }).click(); await t.getByTestId('bank-verb').filter({ hasText: 'hablar' }).click();
   await t.getByTestId('bank-add').fill('el verano = the summer'); await t.getByTestId('bank-add-go').click();
   await t.screenshot({ path: OUT + '/extras-bank.png', fullPage: true });
   await t.getByTestId('lesson-bank-save').click(); await t.waitForTimeout(1800);
-  ok(/2 words and 2 verbs banked/.test(await t.getByTestId('lesson-bank-count').innerText()), 'she banks the ones she ticked, and one of her own');
+  ok(/2 words and 3 verbs banked/.test(await t.getByTestId('lesson-bank-count').innerText()), 'she banks the ones she ticked, and one of her own');
   await s.goto(BASE + '#/student'); await s.waitForTimeout(6000);
   await s.getByTestId('my-bank-open').click(); await s.waitForTimeout(300);
   const bank = await s.getByTestId('my-bank').innerText();
-  ok(/2 words and 2 verbs/.test(bank) && /la playa/.test(bank) && /el verano/.test(bank) && /comer/.test(bank) && /hablar/.test(bank) && !/\bir\b · to go/.test(bank), 'the student finds them in their word and verb bank');
+  ok(/2 words and 3 verbs/.test(bank) && /volver/.test(bank) && /la playa/.test(bank) && /el verano/.test(bank) && /comer/.test(bank) && /hablar/.test(bank) && !/\bir\b · to go/.test(bank), 'the student finds them in their word and verb bank');
   ok(await s.getByTestId('lesson-note').filter({ hasText: `En la playa ${tag}` }).count() === 1, 'and the lesson is in their notes to go back to');
   await s.screenshot({ path: OUT + '/extras-home.png' });
   // Verbs are released one by one.
   await t.goto(BASE + `#/teach/student/${made.user.id}`); await t.waitForTimeout(2000);
-  await t.getByTestId('release-on').click(); await t.waitForTimeout(1500);
   await t.getByTestId('release-next-verbs').click(); await t.getByTestId('release-choose-verbs').waitFor();
   const boxes = t.locator('[data-testid^="release-verb-"]'); await boxes.nth(1).check(); await boxes.nth(2).check();
   await t.getByTestId('release-choose-verbs').screenshot({ path: OUT + '/extras-verbs.png' });
   await t.getByTestId('release-ticked').click(); await t.waitForTimeout(1500);
-  ok(/14 verbs in 1 of/.test(await t.getByTestId('release-summary').innerText()), 'the next verbs are checked first and only the two she ticked are released');
+  ok(/\d+ verbs in 1 of/.test(await t.getByTestId('release-summary').innerText()), 'the next verbs are checked first and only the two she ticked are released');
   const rec = (await api(`platform/records?kind=student&studentId=${made.user.id}`, null, d.token)).records[0];
-  ok(rec.stepped === true && rec.verbs.length === 2 && rec.unlocked.length >= 1, `the student’s record holds exactly those two extra verbs (${rec.verbs.join(', ')})`);
+  ok(rec.stepped === true && rec.verbs.length === rec0.verbs.length + 3 && rec.verbs[0] === 'volver' && rec.unlocked.length >= 1, `the student’s record holds the lesson’s verbs and exactly the two extra she ticked (${rec.verbs.join(', ')})`);
   ok(errors.length === 0, `no page errors${errors.length ? ': ' + errors[0] : ''}`);
   await b.close();
 })();

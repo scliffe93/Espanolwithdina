@@ -8,8 +8,10 @@ import { useLevelAccess } from '../../lib/platform/useLevelAccess';
 import { reportFailure } from '../../lib/diagnostics';
 import { BlockView, LessonClock, LessonTrail } from './Blocks';
 import { Whiteboard } from './Whiteboard';
-import { SYS, bankOf, boardOf, partsOf, summaryOf } from '../../lib/platform/lessonExtras';
+import { SYS, bankOf, boardOf, deckKeysFor, partsOf, summaryOf } from '../../lib/platform/lessonExtras';
 import { useLesson } from './useLesson';
+import { useStore } from '../../lib/store';
+import { addToDeck } from '../../lib/state';
 
 /** The student's side of a lesson: what the teacher has opened, following the part she is on, with their answers. */
 export function StudentRoom({ id }: { id: string }) {
@@ -119,6 +121,11 @@ export function RoomCard() {
   const banked = lessons.map((l) => bankOf(l.blocks));
   const uniq = (list: { es: string; en: string }[]) => list.filter((x, i, a) => a.findIndex((y) => y.es.toLowerCase() === x.es.toLowerCase()) === i);
   const bankWords = uniq(banked.flatMap((b) => b.words)), bankVerbs = uniq(banked.flatMap((b) => b.verbs));
+  // Released words the app has a card for go into the memory deck, so they come up in practice. Added once each.
+  const { state, ready, update } = useStore();
+  const deckKeys = deckKeysFor(bankWords).filter((k) => !state.srs[k]);
+  const deckSig = deckKeys.join(',');
+  useEffect(() => { if (ready && deckKeys.length) update((st) => addToDeck(st, deckKeys)); }, [ready, deckSig]); // eslint-disable-line react-hooks/exhaustive-deps
   const [showAll, setShowAll] = useState(false);
   const past = showAll ? all : all.slice(0, 3);
   const dayOf = (l: (typeof all)[number]) => new Date(`${l.date || l.createdAt.slice(0, 10)}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });

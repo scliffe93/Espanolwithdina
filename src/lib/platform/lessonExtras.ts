@@ -3,6 +3,11 @@
 // they are saved, shared and shown with it, and need nothing new on the server. They are never listed as parts.
 import type { LessonBlock } from './types';
 import { VERB_BY_INF } from '../../data/verbs';
+import { AMBIGUOUS_FORMS, formIndex } from '../material';
+import { VOCAB, acceptedAnswers, vocabKey } from '../../data/vocab';
+import type { StudentSettings } from './types';
+import { allowedVerbs } from './level';
+import { VERB_BLOCKS } from '../../data/blocks';
 
 export const SYS = { board: 'sys-board', ink: 'sys-ink-', notes: 'sys-notes', words: 'sys-words', verbs: 'sys-verbs', summary: 'sys-summary' } as const;
 export const isSystem = (b: { id: string }) => b.id.startsWith('sys-');
@@ -71,21 +76,36 @@ export function withBank(blocks: LessonBlock[], bank: { words: BankItem[]; verbs
 }
 
 /**
- * What a lesson offers to bank: its word-list pairs, the "word = meaning" lines typed on the whiteboard, and any
- * verb the app knows that appears among them or on the board. Nothing is banked until the teacher ticks it.
+ * What a lesson offers to release to the student: its word-list pairs, the "word = meaning" lines written on the
+ * whiteboard or in the notes, and any verb the app knows that was used there, in whatever form ("fuimos" offers ir).
+ * `notes` is the teacher's notes and, when she has them, the student's. Nothing is released until she ticks it.
  */
-export function bankCandidates(blocks: LessonBlock[]): { words: BankItem[]; verbs: BankItem[] } {
-  const board = boardOf(blocks).text;
-  const fromBoard = board.split('\n').map((l) => l.match(/^\s*(.{1,48}?)\s*(?:=|→|–|—)\s*(.{1,70})\s*$/)).filter(Boolean).map((m) => ({ es: m![1].trim(), en: m![2].trim() }));
+export function bankCandidates(blocks: LessonBlock[], notes: string[] = []): { words: BankItem[]; verbs: BankItem[] } {
+  const written = [boardOf(blocks).text, ...notes].filter(Boolean).join('\n');
+  const fromWriting = written.split('\n').map((l) => l.replace(/^\s*[•\-*]\s*/, '').match(/^\s*(.{1,48}?)\s*(?:=|→|–|—)\s*(.{1,70})\s*$/)).filter(Boolean).map((m) => ({ es: m![1].trim(), en: m![2].trim() }));
   const fromParts = partsOf(blocks).filter((b) => b.type === 'vocab').flatMap((b) => b.pairs ?? []).filter((p) => p.es.trim() && p.en.trim());
-  const all = [...fromParts, ...fromBoard].filter((p, i, a) => a.findIndex((x) => x.es.toLowerCase() === p.es.toLowerCase()) === i);
+  const all = [...fromParts, ...fromWriting].filter((p, i, a) => a.findIndex((x) => x.es.toLowerCase() === p.es.toLowerCase()) === i);
   const bare = (s: string) => s.toLowerCase().replace(/^(el|la|los|las|un|una)\s+/, '').replace(/[¿?¡!.,;:…]/g, '').trim();
   const verbNames = new Set<string>();
   for (const p of all) if (VERB_BY_INF[bare(p.es)]) verbNames.add(bare(p.es));
-  for (const w of board.toLowerCase().split(/[^a-záéíóúñü]+/)) if (w.length > 2 && VERB_BY_INF[w]) verbNames.add(w);
-  const verbs = [...verbNames].map((v) => ({ es: v, en: VERB_BY_INF[v].en.split(' (')[0] }));
+  // Verbs used in the writing, as infinitives or in a conjugated form. Words that only look like a verb form
+  // ("como", "para", "una") are left out, and so is anything short enough to be a coincidence.
+  const index = formIndex();
+  for (const w of written.toLowerCase().split(/[^a-záéíóúñü]+/)) {
+    if (w.length < 3) continue;
+    if (VERB_BY_INF[w]) { verbNames.add(w); continue; }
+    if (LIKE_GUSTAR[w] && VERB_BY_INF[LIKE_GUSTAR[w]]) { verbNames.add(LIKE_GUSTAR[w]); continue; }
+    if (w.length < 4 || AMBIGUOUS_FORMS.has(w) || NOT_VERBS.has(w)) continue;
+    const hits = index.get(w); if (!hits) continue;
+    const infs = [...new Set(hits.map((h) => h.inf))];
+    if (infs.length <= 2) for (const inf of infs) verbNames.add(inf); // "fui" is ir and ser: offer both
+  }
+  const verbs = [...verbNames].sort().map((v) => ({ es: v, en: VERB_BY_INF[v].en.split(' (')[0] }));
   return { words: all.filter((p) => !verbNames.has(bare(p.es))), verbs };
 }
+/** Verbs used mostly in the third person ("me gusta", "me duele"), which the form index may not carry. */
+const LIKE_GUSTAR: Record<string, string> = { gusta: 'gustar', gustan: 'gustar', gustó: 'gustar', gustaba: 'gustar', gustaría: 'gustar', encanta: 'encantar', encantan: 'encantar', interesa: 'interesar', interesan: 'interesar', duele: 'doler', duelen: 'doler', importa: 'importar', parece: 'parecer' };
+const NOT_VERBS = new Set(['una', 'unas', 'unos', 'este', 'esta', 'estas', 'estos', 'casa', 'casas', 'cocina', 'camino', 'traje', 'cuento', 'calle', 'habla', 'vista', 'visto', 'dicho', 'hecho', 'puesto', 'vuelta', 'ayuda', 'compra', 'visita', 'llamada', 'salida', 'entrada', 'comida', 'bebida', 'vida', 'nombre', 'siento', 'vaya', 'mira', 'oye', 'venga', 'toma', 'anda', 'dale']);
 
 /** The teacher's summary of the lesson, published to the student when the lesson ends. */
 export const summaryOf = (blocks: LessonBlock[]): string => blocks.find((b) => b.id === SYS.summary && b.open)?.body ?? '';
@@ -117,4 +137,42 @@ export function draftSummary(blocks: LessonBlock[], answers?: Record<string, { c
     'To work on before next time: ',
   ];
   return lines.filter(Boolean).join('\n');
+}
+
+/** The banked verbs the app can release into a student's verb gym (the ones it knows). */
+export const releasableVerbs = (verbs: BankItem[]): string[] => [...new Set(verbs.map((v) => v.es.trim().toLowerCase()).filter((v) => !!VERB_BY_INF[v]))];
+
+/** The slice of a student's settings that a release touches, and how to save it. */
+export interface ReleaseTarget {
+  studentSettings(studentId: string): Promise<StudentSettings | null>;
+  saveStudentSettings(input: { studentId: string; maxLevel: StudentSettings['maxLevel']; note?: string; stepped?: boolean; unlocked?: string[]; verified?: StudentSettings['verified']; notYet?: StudentSettings['notYet']; sentence?: number; verbs?: string[] }): Promise<StudentSettings>;
+}
+/**
+ * Releases verbs into each student's account. A student on gradual release only practises the verbs their teacher
+ * has released, so the chosen ones are added to that list; everything else in their settings is carried over.
+ * A student who is not on gradual release already has every verb, so nothing changes for them.
+ * Returns how many students had verbs added.
+ */
+export async function releaseVerbsTo(backend: ReleaseTarget, studentIds: string[], verbs: BankItem[]): Promise<number> {
+  const infs = releasableVerbs(verbs); if (!infs.length) return 0;
+  let changed = 0;
+  for (const studentId of [...new Set(studentIds)]) {
+    const s = await backend.studentSettings(studentId);
+    if (!s?.stepped) continue;
+    const have = allowedVerbs(s) ?? new Set<string>(); const add = infs.filter((v) => !have.has(v)); if (!add.length) continue;
+    // A student with nothing released yet practises the first block by default: keep it when single verbs arrive.
+    const hasVerbBlock = (s.unlocked ?? []).some((id) => VERB_BLOCKS.some((b) => b.id === id));
+    const unlocked = hasVerbBlock || (s.verbs ?? []).length ? s.unlocked : [...(s.unlocked ?? []), VERB_BLOCKS[0].id];
+    await backend.saveStudentSettings({ studentId, maxLevel: s.maxLevel, note: s.note, stepped: s.stepped, unlocked, verified: s.verified, notYet: s.notYet, sentence: s.sentence, verbs: [...(s.verbs ?? []), ...add] });
+    changed++;
+  }
+  return changed;
+}
+/** The app's own vocabulary cards that match banked words, so they can go into the student's memory deck. */
+export function deckKeysFor(words: BankItem[]): string[] {
+  const bare = (x: string) => x.toLowerCase().replace(/^(el|la|los|las|un|una)\s+/, '').replace(/[¿?¡!.,;:…]/g, '').trim();
+  const want = new Set(words.map((w) => bare(w.es)).filter(Boolean));
+  const out: string[] = [];
+  for (const v of VOCAB) if (acceptedAnswers(v.es).some((a) => want.has(bare(a)))) out.push(vocabKey(v.id));
+  return out;
 }

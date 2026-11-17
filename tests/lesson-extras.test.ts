@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SYS, bankCandidates, bankOf, boardOf, draftSummary, isSystem, partsOf, summaryOf, withBank, withBoard, withNotes, withSummary, type Stroke } from '../src/lib/platform/lessonExtras';
+import { SYS, deckKeysFor, releaseVerbsTo, releasableVerbs, bankCandidates, bankOf, boardOf, draftSummary, isSystem, partsOf, summaryOf, withBank, withBoard, withNotes, withSummary, type Stroke } from '../src/lib/platform/lessonExtras';
 import { allowedVerbs } from '../src/lib/platform/level';
 import { VERB_BLOCKS } from '../src/data/blocks';
 import { cleanPlan, studentView, type LessonBlock } from '../supabase/functions/_shared/lesson';
@@ -47,7 +47,7 @@ describe('the extras that travel with a lesson', () => {
     const withB = withBoard(parts, { text: 'la playa = the beach\nHoy vamos a hablar y vivir', strokes: [], open: false }).blocks;
     const c = bankCandidates(withB);
     expect(c.words).toEqual([{ es: 'ayer', en: 'yesterday' }, { es: 'la playa', en: 'the beach' }]);
-    expect(c.verbs.map((v) => v.es).sort()).toEqual(['comer', 'hablar', 'vivir']);
+    expect(c.verbs.map((v) => v.es).sort()).toEqual(['comer', 'hablar', 'ir', 'vivir']);
     const banked = withBank(withB, { words: [c.words[1], c.words[1]], verbs: [c.verbs[0]] });
     expect(bankOf(banked)).toEqual({ words: [{ es: 'la playa', en: 'the beach' }], verbs: [c.verbs[0]] });
     expect(bankOf(withBank(banked, { words: [], verbs: [] }))).toEqual({ words: [], verbs: [] });
@@ -77,5 +77,55 @@ describe('releasing verbs one by one', () => {
     expect(allowed.has(second.items[5])).toBe(false);
     expect(allowedVerbs({ stepped: false, verbs: some })).toBeNull();
     expect([...allowedVerbs({ stepped: true, unlocked: [], verbs: ['comer'] })!]).toEqual(['comer']);
+  });
+});
+
+describe('releasing what was used in a lesson', () => {
+  const blank: LessonBlock[] = [{ id: 'q1abc', type: 'question', title: '', body: 'Hola' }];
+  it('offers verbs used on the whiteboard or in the notes, in whatever form they were written', () => {
+    const withB = withBoard(blank, { text: 'Ayer fuimos al mercado\nla playa = the beach', strokes: [], open: false }).blocks;
+    const c = bankCandidates(withB, ['Sam dijo: quiero volver mañana', 'I wrote: tengo que estudiar. Me gusta la playa']);
+    const v = c.verbs.map((x) => x.es);
+    for (const inf of ['ir', 'querer', 'volver', 'tener', 'estudiar', 'decir', 'gustar']) expect(v, inf).toContain(inf);
+    expect(c.words.map((x) => x.es)).toContain('la playa');
+  });
+  it('does not mistake everyday words for verbs', () => {
+    const c = bankCandidates(blank, ['una casa para la familia, como siempre, sobre la mesa']);
+    expect(c.verbs).toEqual([]);
+  });
+  it('offers nothing from empty notes', () => {
+    expect(bankCandidates(blank, ['', '  ']).verbs).toEqual([]);
+  });
+  it('adds ticked verbs to a student on gradual release and keeps the rest of their settings', async () => {
+    const store: Record<string, any> = { a: { id: 'student-a', studentId: 'a', maxLevel: 'A2', stepped: true, unlocked: ['b1'], verbs: ['ser'], sentence: 2, note: 'n', updatedAt: '' }, b: { id: 'student-b', studentId: 'b', maxLevel: null, updatedAt: '' } };
+    const saves: any[] = [];
+    const backend = { studentSettings: async (id: string) => store[id] ?? null, saveStudentSettings: async (i: any) => { saves.push(i); store[i.studentId] = { ...store[i.studentId], ...i }; return store[i.studentId]; } };
+    const n = await releaseVerbsTo(backend, ['a', 'b', 'c', 'a'], [{ es: 'Volver', en: 'to return' }, { es: 'ser', en: 'to be' }, { es: 'no es un verbo', en: '' }]);
+    expect(n).toBe(1);
+    expect(saves).toHaveLength(1);
+    expect(saves[0]).toMatchObject({ studentId: 'a', maxLevel: 'A2', stepped: true, unlocked: ['b1'], sentence: 2, note: 'n', verbs: ['ser', 'volver'] });
+    expect(allowedVerbs(store.a)).toContain('volver');
+    expect(await releaseVerbsTo(backend, ['a'], [{ es: 'volver', en: '' }])).toBe(0);
+  });
+  it('knows which banked verbs the app can release', () => {
+    expect(releasableVerbs([{ es: 'Comer', en: '' }, { es: 'comer', en: '' }, { es: 'xyzzy', en: '' }])).toEqual(['comer']);
+  });
+  it('matches banked words to the app’s own cards, with or without the article', () => {
+    expect(deckKeysFor([{ es: 'zzzz', en: '' }])).toEqual([]);
+    expect(deckKeysFor([])).toEqual([]);
+  });
+});
+
+describe('releasing to a student with nothing released yet', () => {
+  it('keeps the first block they practise by default', async () => {
+    let st: any = { id: 'student-z', studentId: 'z', maxLevel: null, stepped: true, updatedAt: '' };
+    const backend = { studentSettings: async () => st, saveStudentSettings: async (i: any) => (st = { ...st, ...i }) };
+    const first = VERB_BLOCKS[0].items;
+    const outside = VERB_BLOCKS[3].items[0];
+    expect(await releaseVerbsTo(backend, ['z'], [{ es: first[0], en: '' }])).toBe(0); // already theirs
+    expect(await releaseVerbsTo(backend, ['z'], [{ es: outside, en: '' }])).toBe(1);
+    const now = allowedVerbs(st)!;
+    expect(now.has(outside)).toBe(true);
+    for (const v of first) expect(now.has(v)).toBe(true);
   });
 });
