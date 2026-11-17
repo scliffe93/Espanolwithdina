@@ -1,5 +1,6 @@
 import { Icon } from '../components/Icon';
-import { PageHeader } from '../components/ui';
+import { useState } from 'react';
+import { PageHeader, Sheet } from '../components/ui';
 import { useAccount } from '../lib/account';
 import { cloudConfigured } from '../lib/cloud';
 import { usePlatform } from '../lib/platform/context';
@@ -39,25 +40,43 @@ const VIDEOS: { file: string; title: string; about: string; seconds: number }[] 
 
 function VideoGuides() {
   const base = `${import.meta.env.BASE_URL}guides/videos/`;
+  // The videos are phone-shaped, so they are shown as small tiles and one opens to play. Shown full size in the
+  // page they pushed the written guide a long way down.
+  const [playing, setPlaying] = useState<number | null>(null);
+  const v = playing === null ? null : VIDEOS[playing];
   return (
     <section className="card mb-4 p-5" data-testid="guide-videos">
       <p className="eyebrow">Vídeos · Watch how</p>
       <h2 className="mt-1 font-display text-2xl font-semibold">Dina and Toby show you</h2>
-      <p className="mt-1 text-sm text-ink-soft">Seven short videos, about a minute each, with sound. Dina talks you through each step and Toby barks at the thing to look at. Watch here or download one to keep or send on.</p>
-      <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {VIDEOS.map((v, i) => (
-          <li key={v.file} className="flex min-w-0 flex-col overflow-hidden rounded-2xl bg-cream-100">
-            <video className="aspect-[390/844] w-full bg-cream-200" controls playsInline preload="none" poster={`${base}${v.file}.jpg`} aria-label={`${v.title}: ${v.about}`} data-testid={`video-${i + 1}`}>
-              <source src={`${base}${v.file}.mp4`} type="video/mp4" />
-            </video>
-            <div className="flex flex-1 flex-col gap-1 p-3">
-              <p className="text-sm font-semibold leading-tight">{i + 1}. {v.title}</p>
-              <p className="text-xs text-ink-mute">{v.about} · {v.seconds}s</p>
-              <a className="ctrl mt-auto w-fit !py-1.5 !text-xs" href={`${base}${v.file}.mp4`} download={`Learning-with-Dina-${v.file}.mp4`} data-testid={`video-download-${i + 1}`}><Icon name="download" size={12} /> Download</a>
-            </div>
+      <p className="mt-1 text-sm text-ink-soft">Seven short videos, about a minute each, with sound. Tap one to watch it. The written guide is just below.</p>
+      <ul className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        {VIDEOS.map((x, i) => (
+          <li key={x.file} className="min-w-0">
+            <button type="button" onClick={() => setPlaying(i)} className="group flex w-full items-center gap-3 rounded-2xl bg-cream-100 p-2 text-left ring-1 ring-ink/5 transition hover:ring-ink/25" data-testid={`video-open-${i + 1}`}>
+              <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-cream-200">
+                <img src={`${base}${x.file}.jpg`} alt="" loading="lazy" className="h-full w-full origin-[50%_85%] scale-[1.9] object-cover object-[50%_60%]" />
+                <span className="absolute inset-0 grid place-items-center bg-ink/25 text-white transition group-hover:bg-ink/40"><Icon name="play" size={18} filled /></span>
+              </span>
+              <span className="min-w-0"><b className="block text-sm leading-tight">{i + 1}. {x.title}</b><span className="block text-xs text-ink-mute">{x.seconds}s</span></span>
+            </button>
           </li>
         ))}
       </ul>
+      <Sheet open={!!v} onClose={() => setPlaying(null)} title={v ? `${playing! + 1}. ${v.title}` : 'Video'}>
+        {v && (
+          <div className="grid justify-items-center gap-3">
+            <video key={v.file} className="max-h-[62vh] w-auto rounded-2xl bg-cream-200" style={{ aspectRatio: '390 / 844' }} controls autoPlay playsInline poster={`${base}${v.file}.jpg`} aria-label={`${v.title}: ${v.about}`} data-testid={`video-${playing! + 1}`}>
+              <source src={`${base}${v.file}.mp4`} type="video/mp4" />
+            </video>
+            <p className="text-center text-sm text-ink-soft">{v.about}</p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {playing! > 0 && <button type="button" className="ctrl" onClick={() => setPlaying(playing! - 1)}><Icon name="arrowLeft" size={14} /> Previous</button>}
+              <a className="ctrl" href={`${base}${v.file}.mp4`} download={`Learning-with-Dina-${v.file}.mp4`} data-testid={`video-download-${playing! + 1}`}><Icon name="download" size={14} /> Download</a>
+              {playing! < VIDEOS.length - 1 && <button type="button" className="btn-soft" onClick={() => setPlaying(playing! + 1)}>Next video <Icon name="arrowRight" size={14} /></button>}
+            </div>
+          </div>
+        )}
+      </Sheet>
     </section>
   );
 }
@@ -74,7 +93,12 @@ export function Guide() {
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader eyebrow="Cómo se usa · How to use" title={teacher ? 'Guide for Dina' : 'Guide for students'} subtitle={teacher ? 'From adding a student to sending the week’s plan after each lesson.' : 'Logging in, this week’s tasks, and how the app adapts to you.'} />
+      <a className="mb-4 flex items-center gap-3 rounded-2xl bg-azul-50 px-4 py-3 text-sm ring-1 ring-azul/20 transition hover:ring-azul/50" href={`${import.meta.env.BASE_URL}guides/${teacher ? 'teacher' : 'student'}-guide.pdf`} target="_blank" rel="noreferrer" data-testid="guide-pdf">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-azul"><Icon name="download" size={17} /></span>
+        <span><b className="block text-ink">The full guide with pictures, as a PDF</b><span className="text-ink-soft">Open it to read, save or print. The same steps are written out on this page.</span></span>
+      </a>
       {!teacher && <VideoGuides />}
+      <h2 className="mb-3 mt-1 text-xl font-semibold" data-testid="guide-written">The guide, step by step</h2>
       <div className="grid gap-4">
         {sections.map((s) => (
           <section key={s.title} className="card p-5">
