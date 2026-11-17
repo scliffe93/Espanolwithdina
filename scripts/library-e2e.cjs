@@ -12,7 +12,7 @@ const PLAN = ['# Spanish A1 — Lesson 3: Food and Drink', '', 'CEFR Level:\tA1\
   const as = async (who) => { await p.goto(BASE + '#/demo'); await p.waitForTimeout(800); await p.getByTestId('demo-' + who).click(); await p.waitForTimeout(1600); };
   await as('dina');
   await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1500);
-  if (await p.getByTestId('room-class-clear').count()) await p.getByTestId('room-class-clear').click(); await p.getByTestId('class-student').filter({ hasText: 'Sam' }).click(); await p.waitForTimeout(600);
+   await p.waitForTimeout(600);
   ok((await p.getByTestId('room-tabs').innerText()).includes('A1') && (await p.getByTestId('student-tab').filter({ hasText: 'Sam' }).count()) === 1, 'the folders are the levels, with a tab for each student beneath');
   ok(await p.getByTestId('library-none').count() === 1, 'the library starts empty');
   await p.getByTestId('room-file').setInputFiles({ name: 'A1 Food and Drink.txt', mimeType: 'text/plain', buffer: Buffer.from(PLAN, 'utf8') });
@@ -41,7 +41,7 @@ const PLAN = ['# Spanish A1 — Lesson 3: Food and Drink', '', 'CEFR Level:\tA1\
   await p.getByTestId('review-cancel').isVisible(); await p.getByText('Close without saving').click(); await p.waitForTimeout(600);
   ok((await p.getByTestId('library-plan').getAttribute('data-status')) === 'ready' && await p.getByTestId('library-waiting').count() === 0, 'she marks it ready');
   await p.screenshot({ path: OUT + '/library-list.png', fullPage: true });
-  await p.getByTestId('library-use').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(800);
+  await p.getByTestId('library-use').click(); await p.getByTestId('teach-sheet').waitFor(); ok(/Nobody chosen yet/.test(await p.getByTestId('room-class-summary').innerText()) && await p.getByTestId('teach-go').isDisabled(), 'pressing Teach asks who it is for: nobody is chosen to begin with'); await p.getByTestId('class-student').filter({ hasText: 'Sam' }).click(); await p.getByTestId('teach-wording-en').click(); await p.screenshot({ path: OUT + '/teach-sheet.png' }); await p.getByTestId('teach-go').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(800);
   ok(/Sam · level/.test(await p.getByTestId('plan-for').innerText()) && /25 minutes/.test(await p.getByTestId('plan-facts').innerText()) && (await p.getByTestId('plan-wording').inputValue()) === 'en', 'taught to Sam, the lesson keeps the wording the teacher chose and shows who it is for and the time');
   await p.screenshot({ path: OUT + '/library-plan-tab.png' });
   await p.getByTestId('to-present').click(); await p.getByTestId('start-lesson').click(); await p.waitForTimeout(2300);
@@ -61,10 +61,9 @@ const PLAN = ['# Spanish A1 — Lesson 3: Food and Drink', '', 'CEFR Level:\tA1\
   // The same plan is taught again, to someone else: it was never tied to Sam.
   await as('dina');
   await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1500);
-  if (await p.getByTestId('room-class-clear').count()) await p.getByTestId('room-class-clear').click(); await p.getByTestId('class-student').filter({ hasText: 'Anneka' }).click(); await p.waitForTimeout(300);
-  ok(/Teach it to Anneka/.test(await p.getByTestId('library-use').innerText()), 'the same plan can be taught to another student');
-  await p.getByTestId('library-use').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(600);
-  ok(/Anneka · level/.test(await p.getByTestId('plan-for').innerText()), 'and becomes a lesson for her');
+   await p.waitForTimeout(300);
+  await p.getByTestId('library-use').click(); await p.getByTestId('teach-sheet').waitFor(); await p.getByTestId('class-student').filter({ hasText: 'Anneka' }).click(); await p.getByTestId('teach-wording-es').click(); await p.getByTestId('teach-go').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(600);
+  ok(/Anneka · level/.test(await p.getByTestId('plan-for').innerText()) && (await p.getByTestId('plan-wording').inputValue()) === 'es', 'the same plan is taught to someone else, this time in Spanish only: the wording is chosen for each lesson');
   await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1500);
   ok((await p.getByTestId('library-plan').count()) === 1, 'the plan is still in the library, once');
   await p.getByTestId('student-tab').filter({ hasText: 'Sam' }).click(); await p.waitForTimeout(600);

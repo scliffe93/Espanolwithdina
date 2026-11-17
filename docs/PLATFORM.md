@@ -298,3 +298,11 @@ Tested by `scripts/selfrepair-e2e.cjs`, `scripts/verbs-e2e.cjs`, `scripts/librar
 ### Choosing who to teach, and named groups
 
 Nobody is chosen when the lesson room opens. Under "Who are you teaching?" the teacher taps one student for a one-to-one lesson or as many as she likes for a group. A selection of two or more can be saved under a name (`StudentGroup`, "Tuesday beginners"); the named group then appears as a chip that picks all its members at once, and its name shows on each member's tab. Named groups are kept in the teacher's own settings rows (ids `cls-…`), like the library. The "Teach it to …" buttons stay off until someone is chosen.
+
+### Plan first, then teach: who and how are chosen on the plan
+
+There is no student picker on the lesson room's front page. Each plan has "Teach this lesson", which asks two things for that lesson only: who it is for (tap one student or any number, or a named group; nobody is chosen to begin with; a selection can be saved as a named group there) and how the instructions are worded this time (English, Spanish with English beside it, or Spanish only, starting from the plan's own wording). Neither is tied to the level in a student's account. From a student's tab, "Teach them a plan" opens their level folder with that student already picked in the chooser.
+
+### Staying up to date
+
+A tab left open keeps running the version it loaded. `UpdateWatcher` asks the site every five minutes, and whenever the app comes back into view, which version is current; when a newer one is out it says so and loads it the next time the person changes page. The offline worker never stores that check.

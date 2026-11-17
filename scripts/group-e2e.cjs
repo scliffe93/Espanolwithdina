@@ -26,20 +26,19 @@ async function login(p, user) {
   const page = async (viewport) => { const p = await (await b.newContext({ viewport })).newPage(); p.on('pageerror', (e) => errors.push(String(e))); return p; };
   const t = await page({ width: 1366, height: 800 }); await login(t, 'dina');
   await t.goto(BASE + '#/teach/room'); await t.waitForTimeout(2000);
-  if (await t.getByTestId('room-class-clear').count()) await t.getByTestId('room-class-clear').click(); await t.getByTestId('class-student').filter({ hasText: A }).click(); await t.waitForTimeout(400);
-  await t.getByTestId('class-student').filter({ hasText: B }).click(); await t.waitForTimeout(400);
-  ok(new RegExp(`A group lesson for ${A}, ${B}`).test(await t.getByTestId('room-group-note').innerText()), 'the teacher picks two students: it is a group lesson');
-  // A third joins the group, and the three are saved under a name to pick in one tap next time.
-  await t.getByTestId('class-student').filter({ hasText: C }).click(); await t.waitForTimeout(300);
-  ok(/a group of 3/.test(await t.getByTestId('room-class-summary').innerText()), 'more than two can be chosen');
+  await t.getByTestId('room-example').click(); await t.getByTestId('import-review').waitFor({ timeout: 15000 });
+  await t.getByTestId('review-create').click(); await t.getByTestId('teach-sheet').waitFor();
+  ok(/Nobody chosen yet/.test(await t.getByTestId('room-class-summary').innerText()), 'pressing Teach asks who the lesson is for, with nobody chosen');
+  for (const n of [A, B, C]) await t.getByTestId('class-student').filter({ hasText: n }).click();
+  ok(/a group of 3/.test(await t.getByTestId('room-class-summary').innerText()) && new RegExp(`A group lesson for ${A}, ${B}, ${C}`).test(await t.getByTestId('room-group-note').innerText()), 'three students are chosen: a group lesson');
   await t.getByTestId('class-save').click(); await t.getByTestId('class-name').fill(`Martes ${tag}`); await t.getByTestId('class-name-save').click(); await t.waitForTimeout(1500);
-  await t.reload(); await t.waitForTimeout(2500);
-  ok(/Nobody chosen yet/.test(await t.getByTestId('room-class-summary').innerText()), 'nobody is chosen until she chooses');
-  await t.getByTestId('class-chip').filter({ hasText: `Martes ${tag}` }).click(); await t.waitForTimeout(400);
-  ok(new RegExp(`Martes ${tag}: a group of 3`).test(await t.getByTestId('room-class-summary').innerText()) && (await t.locator('[data-testid="class-student"][data-on]').count()) === 3, 'the named group picks all three at once');
-  await t.getByTestId('class-student').filter({ hasText: C }).click(); await t.waitForTimeout(300);
-  await t.getByTestId('room-example').click(); await t.getByTestId('import-review').waitFor({ timeout: 15000 }); await t.getByTestId('review-create').click(); await t.getByTestId('teacher-room').waitFor({ timeout: 15000 }); await t.waitForTimeout(1200);
-  ok(new RegExp(`${A}, ${B} · a group of 2`).test(await t.getByTestId('plan-for').innerText()), 'the lesson is for both of them');
+  ok(new RegExp(`Martes ${tag}: a group of 3`).test(await t.getByTestId('room-class-summary').innerText()), 'they are saved as a named group');
+  await t.getByTestId('room-class-clear').click(); await t.waitForTimeout(200);
+  await t.getByTestId('class-chip').filter({ hasText: `Martes ${tag}` }).click(); await t.waitForTimeout(300);
+  ok((await t.locator('[data-testid="class-student"][data-on]').count()) === 3, 'the named group picks all three in one tap');
+  await t.getByTestId('class-student').filter({ hasText: C }).click(); await t.waitForTimeout(200);
+  await t.getByTestId('teach-go').click(); await t.getByTestId('teacher-room').waitFor({ timeout: 15000 }); await t.waitForTimeout(1200);
+  ok(new RegExp(`${A}, ${B} · a group of 2`).test(await t.getByTestId('plan-for').innerText()), 'the lesson is for the two who were left chosen');
   await t.getByTestId('to-present').click(); await t.getByTestId('start-lesson').click(); await t.waitForTimeout(500); await t.getByTestId('open-all').click(); await t.waitForTimeout(1500);
   // Each student joins on their own device.
   const sa = await page({ width: 390, height: 844 }), sb = await page({ width: 820, height: 1100 });

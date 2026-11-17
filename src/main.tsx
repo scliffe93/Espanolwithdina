@@ -4,6 +4,7 @@ import App from './App';
 import { StoreProvider } from './lib/store';
 import { AccountProvider } from './lib/account';
 import { ReportIssue } from './components/ReportIssue';
+import { UpdateWatcher } from './components/UpdateWatcher';
 import { PlatformProvider } from './lib/platform/context';
 import { installDiagnostics } from './lib/diagnostics';
 import { LanguageProvider } from './lib/i18n';
@@ -18,6 +19,7 @@ createRoot(document.getElementById('root')!).render(
         <PlatformProvider>
           <LanguageProvider><App /></LanguageProvider>
           <ReportIssue />
+          <UpdateWatcher />
         </PlatformProvider>
       </AccountProvider>
     </StoreProvider>

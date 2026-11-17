@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DinaArt } from '../../components/Dina';
 import { Icon, type IconName } from '../../components/Icon';
-import { Segmented } from '../../components/ui';
+import { Segmented, Sheet } from '../../components/ui';
 import { isPresent } from '../../../supabase/functions/_shared/lesson';
 import { usePlatform, usePlatformQuery } from '../../lib/platform/context';
 import { BLOCK_LABEL, draftLesson, exampleLesson, newBlock } from '../../lib/platform/lessonDraft';
@@ -10,7 +10,7 @@ import { WORDING_LABEL, adaptPlan, detectWording, reword, stageOf, type Wording 
 import { overallLevel } from '../../lib/platform/level';
 import { describeImport, type ImportedPlan } from '../../lib/platform/lessonImport';
 import { extractText, sourceKindOf } from '../../lib/extractText';
-import type { LessonAnswer, LessonBlock, LessonPlan, LibraryPlan, StudentSettings } from '../../lib/platform/types';
+import type { LessonAnswer, LessonBlock, LessonPlan, LibraryPlan, StudentGroup, StudentSettings } from '../../lib/platform/types';
 import type { AppState, Cefr } from '../../types';
 import { navigate } from '../../lib/router';
 import { useStore } from '../../lib/store';
@@ -91,7 +91,7 @@ function PlanReview({ plan, source, sourceName, adapted, teachWith, topics, busy
           <div className="flex flex-wrap gap-2">
             <button type="button" className="rounded-full bg-cream/10 px-5 py-3 font-semibold text-cream ring-1 ring-cream/20 hover:bg-cream/15" disabled={busy} onClick={() => onSave({ ...d, status: 'review' }, 'close')} data-testid="review-cancel">Save, review later</button>
             <button type="button" className={`inline-flex items-center gap-2 rounded-full px-5 py-3 font-bold transition ${d.status === 'ready' ? 'bg-olive text-white' : 'bg-cream text-ink hover:scale-[1.02]'}`} disabled={busy || blocks.length === 0} onClick={() => { setD((x) => ({ ...x, status: 'ready' })); onSave({ ...d, status: 'ready' }, 'stay'); }} data-testid="review-ready"><Icon name="check" size={18} /> {d.status === 'ready' ? 'Ready' : 'Mark as ready'}</button>
-            {teachWith && <button type="button" className="inline-flex items-center gap-2 rounded-full bg-saffron px-6 py-3 font-bold text-ink shadow-lift transition hover:scale-[1.02] disabled:opacity-60" disabled={busy || blocks.length === 0} onClick={() => onUse(d)} data-testid="review-create"><Icon name="video" size={18} /> Teach it to {teachWith}</button>}
+            {teachWith && <button type="button" className="inline-flex items-center gap-2 rounded-full bg-saffron px-6 py-3 font-bold text-ink shadow-lift transition hover:scale-[1.02] disabled:opacity-60" disabled={busy || blocks.length === 0} onClick={() => onUse(d)} data-testid="review-create"><Icon name="video" size={18} /> Teach this lesson</button>}
           </div>
         </div>
       </section>
@@ -167,6 +167,70 @@ function PlanReview({ plan, source, sourceName, adapted, teachWith, topics, busy
   );
 }
 
+/**
+ * Teaching a plan: who is it for, and how should it be worded this time? One student, several, or a named group;
+ * nobody is chosen to begin with. The wording starts as the plan's own and is hers to change for this lesson. It has
+ * nothing to do with the level in a student's account.
+ */
+function TeachSheet({ open, plan, people, classes, preselect, busy, error, onClose, onStart, onSaveGroup, onDeleteGroup }: { open: boolean; plan: Draft | null; people: { id: string; firstName: string }[]; classes: StudentGroup[]; preselect: string[]; busy: boolean; error: string | null; onClose: () => void; onStart: (ids: string[], wording: Wording) => void; onSaveGroup: (name: string, ids: string[]) => Promise<void>; onDeleteGroup: (id: string) => Promise<void> }) {
+  const [ids, setIds] = useState<string[]>([]);
+  const [wording, setWording] = useState<Wording>('both');
+  const [naming, setNaming] = useState<string | null>(null);
+  useEffect(() => { if (open && plan) { setIds(preselect.filter((x) => people.some((p) => p.id === x))); setWording(plan.wording); setNaming(null); } }, [open, plan?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const nameOf = (id: string) => people.find((p) => p.id === id)?.firstName ?? 'Student';
+  const members = (g: StudentGroup) => g.studentIds.filter((x) => people.some((p) => p.id === x));
+  const same = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
+  const picked = classes.find((g) => same(members(g), ids) && ids.length > 0);
+  return (
+    <Sheet open={open} onClose={onClose} title="Teach this lesson">
+      {plan && (
+        <div data-testid="teach-sheet">
+          <p className="rounded-2xl bg-cream-100 px-4 py-3"><b className="block">{plan.title}</b><span className="text-sm text-ink-mute">{plan.level}{plan.minutes ? ` · ${plan.minutes} min` : ''} · {plan.blocks.length} parts</span></p>
+
+          <p className="mt-4 font-semibold">Who is it for?</p>
+          <p className="text-sm text-ink-soft" data-testid="room-class-summary">{ids.length === 0 ? 'Nobody chosen yet. Tap one student, or as many as you like for a group.' : ids.length === 1 ? `${nameOf(ids[0])}, one to one` : `${picked ? `${picked.name}: ` : ''}a group of ${ids.length}`}</p>
+          {classes.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {classes.map((g) => { const on = picked?.id === g.id; return (
+                <span key={g.id} className={`inline-flex items-center overflow-hidden rounded-full text-sm font-semibold ring-1 ${on ? 'bg-olive text-white ring-olive' : 'bg-olive-50 text-ink ring-olive/30'}`}>
+                  <button type="button" className="px-3 py-1.5" aria-pressed={on} onClick={() => setIds(on ? [] : members(g))} data-testid="class-chip">{g.name} <span className="opacity-60">{members(g).length}</span></button>
+                  <button type="button" className="border-l border-ink/10 px-2 py-1.5 opacity-60 hover:opacity-100" aria-label={`Delete the group ${g.name}`} onClick={() => { if (window.confirm(`Delete the group “${g.name}”? The students and their lessons are kept.`)) void onDeleteGroup(g.id); }}><Icon name="x" size={12} /></button>
+                </span>
+              ); })}
+            </div>
+          )}
+          <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Students">
+            {people.length === 0 ? <span className="text-sm text-ink-mute">Add a student first, on the Students page.</span> : people.map((p) => { const on = ids.includes(p.id); return <button key={p.id} type="button" aria-pressed={on} onClick={() => setIds((x) => (x.includes(p.id) ? x.filter((y) => y !== p.id) : [...x, p.id]))} className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold ring-1 transition ${on ? 'bg-ink text-cream ring-ink' : 'bg-white text-ink ring-ink/15 hover:ring-ink/40'}`} data-testid="class-student" data-on={on || undefined}>{on && <Icon name="check" size={13} />}{p.firstName}</button>; })}
+            {ids.length > 0 && <button type="button" className="rounded-full px-3 py-2 text-sm text-ink-mute hover:text-ink" onClick={() => setIds([])} data-testid="room-class-clear">Clear</button>}
+          </div>
+          {ids.length > 1 && !picked && (
+            naming === null ? <button type="button" className="ctrl mt-2" onClick={() => setNaming('')} data-testid="class-save">Save these {ids.length} as a named group</button> : (
+              <form className="mt-2 flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); if (naming.trim()) void onSaveGroup(naming, ids).then(() => setNaming(null)); }}>
+                <input className="input !w-56 !py-1.5" value={naming} onChange={(e) => setNaming(e.target.value)} placeholder="Name, e.g. Tuesday beginners" maxLength={40} autoFocus data-testid="class-name" />
+                <button type="submit" className="btn-soft !py-1.5" disabled={!naming.trim()} data-testid="class-name-save">Save group</button>
+                <button type="button" className="text-sm text-ink-mute" onClick={() => setNaming(null)}>Cancel</button>
+              </form>
+            )
+          )}
+          {ids.length > 1 && <p className="mt-2 rounded-2xl bg-olive-50 px-3 py-2 text-sm ring-1 ring-olive/30" data-testid="room-group-note"><b>A group lesson for {ids.map(nameOf).join(', ')}.</b> Each joins on their own device and answers for themselves. Your screen tells you when everyone has.</p>}
+
+          <p className="mt-5 font-semibold">How should the instructions be worded this time?</p>
+          <p className="text-sm text-ink-soft">Your choice for this lesson. It is not tied to anyone’s level, and you can change it again inside the lesson.</p>
+          <div className="mt-2 grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Wording">
+            {(['en', 'both', 'es'] as Wording[]).map((w) => <button key={w} type="button" role="radio" aria-checked={wording === w} onClick={() => setWording(w)} className={`rounded-2xl px-3 py-2.5 text-left text-sm ring-1 transition ${wording === w ? 'bg-ink text-cream ring-ink' : 'bg-white ring-ink/15 hover:ring-ink/40'}`} data-testid={`teach-wording-${w}`}><b className="block">{WORDING_LABEL[w]}</b><span className={wording === w ? 'text-cream/75' : 'text-ink-mute'}>{w === 'en' ? 'Start with: Me llamo…' : w === 'both' ? 'Empieza con · Start with' : 'Empieza con: Me llamo…'}</span></button>)}
+          </div>
+
+          <ErrorText error={error} />
+          <div className="mt-5 flex flex-wrap gap-2">
+            <button type="button" className="btn-primary" disabled={busy || ids.length === 0} onClick={() => onStart(ids, wording)} data-testid="teach-go"><Icon name="video" size={18} /> {ids.length === 0 ? 'Choose who it is for' : ids.length === 1 ? `Open the lesson for ${nameOf(ids[0])}` : `Open the lesson for ${picked ? picked.name : `these ${ids.length}`}`}</button>
+            <button type="button" className="btn-ghost" onClick={onClose}>Cancel</button>
+          </div>
+        </div>
+      )}
+    </Sheet>
+  );
+}
+
 /** The teacher's lesson room: her plans in level folders, a tab for each student, and who she is teaching now. */
 export function RoomList() {
   const { backend } = usePlatform();
@@ -181,14 +245,10 @@ export function RoomList() {
   const nameOf = (id: string) => people.find((p) => p.id === id)?.firstName ?? 'Student';
 
   // Who the next lesson is taught to. A plan belongs to nobody: it is given to a student, or a group, when it is taught.
-  // Nobody is chosen to begin with: she picks one student, several, or a named group.
-  const [classIds, setClassIds] = useState<string[]>([]);
+  // Who a lesson is for is chosen when a plan is taught, on the plan itself: never beforehand, and never stored in the plan.
   const classes = usePlatformQuery((b) => b.studentGroups(), []);
-  const [naming, setNaming] = useState<string | null>(null);
-  const toggle = (sid: string) => setClassIds((ids) => (ids.includes(sid) ? ids.filter((x) => x !== sid) : [...ids, sid]));
-  const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
-  const picked = (classes.data ?? []).find((g) => sameSet(g.studentIds.filter((x) => people.some((p) => p.id === x)), classIds));
-  const className = !classIds.length ? 'a student' : picked ? picked.name : classIds.length > 2 ? `${nameOf(classIds[0])} +${classIds.length - 1}` : classIds.map(nameOf).join(' and ');
+  const [teaching, setTeaching] = useState<{ plan: Draft; save: boolean } | null>(null);
+  const [preselect, setPreselect] = useState<string[]>([]);
   const groupTagsOf = (sid: string) => (classes.data ?? []).filter((g) => g.studentIds.includes(sid)).map((g) => g.name);
 
   // What is on show: a level folder of plans, or one student's lessons.
@@ -250,13 +310,15 @@ export function RoomList() {
     catch (e) { setError(e instanceof Error ? e.message : 'Could not save the plan.'); }
     setBusy(false);
   };
-  /** Teach a plan: a lesson is made from it for whoever is chosen now. The plan stays in the library for next time. */
-  const teach = async (d: Draft, save = true) => {
-    if (!backend || !classIds.length) return;
+  /** Teach a plan: first ask who it is for and in which wording. The plan stays in the library for next time. */
+  const teach = (d: Draft, save = true) => setTeaching({ plan: d, save });
+  const start = async (ids: string[], wording: Wording) => {
+    if (!backend || !teaching || !ids.length) return;
+    const d = teaching.plan;
     setBusy(true); setError(null);
     try {
-      if (save) { await backend.saveLibraryPlan(d); library.reload(); }
-      const plan = await makeLesson(classIds, { title: d.title.trim() || 'Lesson', notes: d.notes, blocks: d.blocks.map((b) => ({ ...b, open: false, reveal: false })) });
+      if (teaching.save) { await backend.saveLibraryPlan(d); library.reload(); }
+      const plan = await makeLesson(ids, { title: d.title.trim() || 'Lesson', notes: d.notes, blocks: reword(d.blocks, wording).map((b) => ({ ...b, open: false, reveal: false })) });
       navigate(`teach/room/${plan.id}`);
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not create the lesson.'); setBusy(false); }
   };
@@ -269,7 +331,13 @@ export function RoomList() {
     setBusy(false);
   };
 
-  if (review) return (<><ErrorText error={error} /><PlanReview key={review.plan.id} topics={[...new Set((library.data ?? []).map((x) => x.topic ?? '').filter(Boolean))].sort()} plan={review.plan} source={review.source} sourceName={review.name} adapted={review.adapted} teachWith={classIds.length ? className : null} busy={busy} onSave={(d, then) => void savePlan(d, then)} onUse={(d) => void teach(d)} onClose={() => { setReview(null); setError(null); }} onDelete={() => { void backend?.deleteLibraryPlan(review.plan.id).then(() => { library.reload(); setReview(null); notify('Plan deleted'); }); }} /></>);
+  const chooser = (
+    <TeachSheet open={!!teaching} plan={teaching?.plan ?? null} people={people} classes={classes.data ?? []} preselect={preselect} busy={busy} error={error}
+      onClose={() => setTeaching(null)} onStart={(ids, w) => void start(ids, w)}
+      onSaveGroup={async (name, ids) => { await backend?.saveStudentGroup({ name, studentIds: ids }); classes.reload(); notify('Group saved', `Pick “${name.trim()}” next time to choose them all at once.`); }}
+      onDeleteGroup={async (gid) => { await backend?.deleteStudentGroup(gid); classes.reload(); }} />
+  );
+  if (review) return (<>{chooser}<ErrorText error={error} /><PlanReview key={review.plan.id} topics={[...new Set((library.data ?? []).map((x) => x.topic ?? '').filter(Boolean))].sort()} plan={review.plan} source={review.source} sourceName={review.name} adapted={review.adapted} teachWith={people.length ? 'someone' : null} busy={busy} onSave={(d, then) => void savePlan(d, then)} onUse={(d) => void teach(d)} onClose={() => { setReview(null); setError(null); }} onDelete={() => { void backend?.deleteLibraryPlan(review.plan.id).then(() => { library.reload(); setReview(null); notify('Plan deleted'); }); }} /></>);
 
   const none = !!students.data && people.length === 0;
   const all = lessons.data ?? [];
@@ -296,58 +364,29 @@ export function RoomList() {
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
         <button type="button" className="ctrl" onClick={() => { setReview({ plan: p, adapted: [] }); window.scrollTo({ top: 0 }); }} data-testid="library-review"><Icon name="edit" size={14} /> {p.status === 'review' ? 'Review' : 'Open'}</button>
-        <button type="button" className={p.status === 'ready' ? 'btn-primary !py-2' : 'ctrl'} disabled={busy || !classIds.length} title={classIds.length ? undefined : 'Choose who you are teaching at the top first'} onClick={() => void teach(p, false)} data-testid="library-use"><Icon name="video" size={14} /> {classIds.length ? `Teach it to ${className}` : 'Choose who to teach, above'}</button>
+        <button type="button" className={p.status === 'ready' ? 'btn-primary !py-2' : 'ctrl'} disabled={busy || !people.length} onClick={() => teach(p, false)} data-testid="library-use"><Icon name="video" size={14} /> Teach this lesson</button>
       </div>
     </li>
   );
 
   return (
     <div data-testid="room-list">
+      {chooser}
       <section className="relative overflow-hidden rounded-4xl bg-ink p-6 text-cream shadow-lift sm:p-7">
         <div className="absolute -right-10 -top-12 h-52 w-52 rounded-full bg-terracotta/40 blur-2xl" />
         <div className="relative flex flex-wrap items-center gap-5">
           <div className="shrink-0"><DinaArt size={88} expression="beam" /></div>
           <div className="min-w-0 flex-1 basis-72">
             <p className="eyebrow !text-saffron-light">Aula · Lesson room</p>
-            <h1 className="mt-1 font-display text-3xl font-semibold leading-tight sm:text-4xl">Your plans, ready to teach to anyone</h1>
-            <p className="mt-2 max-w-2xl text-cream/80">A plan belongs to no student. File it under its level, then teach it to one student or a group whenever you like, as often as you like.</p>
+            <h1 className="mt-1 font-display text-3xl font-semibold leading-tight sm:text-4xl">Plan a lesson, then teach it</h1>
+            <p className="mt-2 max-w-2xl text-cream/80">A plan belongs to no student. You choose who it is for, and how it is worded, each time you teach it.</p>
           </div>
         </div>
-        {/* Who the next lesson is for. Chosen at the moment of teaching, never stored in the plan. Nobody to begin with. */}
-        <div className="relative mt-5 rounded-3xl bg-cream/10 p-3.5 ring-1 ring-cream/10" data-testid="room-class">
-          <div className="flex flex-wrap items-center gap-2">
-            <b className="mr-1">Who are you teaching?</b>
-            <span className="text-sm text-cream/75" data-testid="room-class-summary">{classIds.length === 0 ? 'Nobody chosen yet. Tap one student, or several for a group.' : classIds.length === 1 ? `${nameOf(classIds[0])}, one to one` : `${picked ? `${picked.name}: ` : ''}a group of ${classIds.length}`}</span>
-            {classIds.length > 0 && <button type="button" className="ml-auto rounded-full bg-cream/10 px-3 py-1 text-xs font-semibold text-cream ring-1 ring-cream/20" onClick={() => setClassIds([])} data-testid="room-class-clear">Clear</button>}
-          </div>
-          {(classes.data ?? []).length > 0 && (
-            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-              <span className="w-16 text-xs font-bold uppercase tracking-[0.12em] text-cream/60">Groups</span>
-              {(classes.data ?? []).map((g) => { const ids = g.studentIds.filter((x) => people.some((p) => p.id === x)); const on = picked?.id === g.id; return (
-                <span key={g.id} className={`inline-flex items-center overflow-hidden rounded-full text-sm font-semibold ring-1 ${on ? 'bg-saffron text-ink ring-saffron' : 'bg-cream text-ink ring-cream'}`}>
-                  <button type="button" className="px-3 py-1.5" aria-pressed={on} onClick={() => setClassIds(on ? [] : ids)} data-testid="class-chip">{g.name} <span className="opacity-60">{ids.length}</span></button>
-                  <button type="button" className="border-l border-ink/10 px-2 py-1.5 opacity-60 hover:opacity-100" aria-label={`Delete the group ${g.name}`} onClick={() => { if (window.confirm(`Delete the group “${g.name}”? The students and their lessons are kept.`)) void backend?.deleteStudentGroup(g.id).then(() => classes.reload()); }}><Icon name="x" size={12} /></button>
-                </span>
-              ); })}
-            </div>
-          )}
-          <div className="mt-2.5 flex flex-wrap items-center gap-1.5" role="group" aria-label="Students">
-            <span className="w-16 text-xs font-bold uppercase tracking-[0.12em] text-cream/60">Students</span>
-            {people.length === 0 ? <span className="text-sm text-cream/70">None yet</span> : people.map((p) => { const on = classIds.includes(p.id); return <button key={p.id} type="button" aria-pressed={on} onClick={() => toggle(p.id)} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ring-1 transition ${on ? 'bg-saffron text-ink ring-saffron' : 'bg-cream/10 text-cream ring-cream/25 hover:bg-cream/20'}`} data-testid="class-student" data-on={on || undefined}>{on && <Icon name="check" size={13} />}{p.firstName}</button>; })}
-          </div>
-          {classIds.length > 1 && !picked && (
-            <div className="mt-2.5 flex flex-wrap items-center gap-2">
-              {naming === null ? <button type="button" className="rounded-full bg-cream/10 px-3 py-1.5 text-sm font-semibold text-cream ring-1 ring-cream/25 hover:bg-cream/20" onClick={() => setNaming('')} data-testid="class-save">Save these {classIds.length} as a named group</button> : (
-                <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); if (!backend || !naming.trim()) return; void backend.saveStudentGroup({ name: naming, studentIds: classIds }).then(() => { classes.reload(); setNaming(null); notify('Group saved', `Pick “${naming.trim()}” next time to choose them all at once.`); }); }}>
-                  <input className="input !w-56 !py-1.5 !text-ink" value={naming} onChange={(e) => setNaming(e.target.value)} placeholder="Name, e.g. Tuesday beginners" maxLength={40} autoFocus data-testid="class-name" />
-                  <button type="submit" className="rounded-full bg-saffron px-4 py-1.5 text-sm font-bold text-ink disabled:opacity-50" disabled={!naming.trim()} data-testid="class-name-save">Save group</button>
-                  <button type="button" className="text-sm text-cream/70" onClick={() => setNaming(null)}>Cancel</button>
-                </form>
-              )}
-            </div>
-          )}
-          {classIds.length > 1 && <p className="mt-2.5 text-sm text-cream/80" data-testid="room-group-note"><b className="text-cream">A group lesson for {classIds.map(nameOf).join(', ')}.</b> Each joins on their own device and answers for themselves. Your screen tells you when everyone has.</p>}
-        </div>
+        <ol className="relative mt-5 grid gap-2 sm:grid-cols-3">
+          {[['Plan a lesson', 'Upload one, paste one, or write a new one. It is filed under its level.'], ['Teach it', 'Press “Teach this lesson” on a plan and choose who it is for: one student, several, or a named group.'], ['Use it again', 'The plan stays here. Teach it to someone else whenever you like.']].map(([t, dsc], i) => (
+            <li key={t} className="flex items-start gap-3 rounded-2xl bg-cream/10 p-3 ring-1 ring-cream/10"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-saffron text-sm font-bold text-ink">{i + 1}</span><span><b className="block">{t}</b><span className="text-sm text-cream/75">{dsc}</span></span></li>
+          ))}
+        </ol>
       </section>
       {none && <p className="mt-3 rounded-2xl bg-saffron-50 px-4 py-3 text-sm ring-1 ring-saffron/40">Add a student first (Students, Add a student). You can still build and file plans now.</p>}
 
@@ -382,6 +421,7 @@ export function RoomList() {
             <button type="button" className="btn-ghost !py-2.5" disabled={busy} onClick={() => void newPlan('blank')} data-testid="room-blank"><Icon name="plus" size={16} /> New plan</button>
             <button type="button" className="btn-ghost !py-2.5" disabled={busy} onClick={() => void newPlan('example')} data-testid="room-example"><Icon name="eye" size={16} /> Add the example</button>
           </div>
+          {preselect.length > 0 && <p className="mb-3 flex flex-wrap items-center gap-2 rounded-2xl bg-olive-50 px-4 py-2.5 text-sm ring-1 ring-olive/30" data-testid="preselect-note"><span>Choosing a plan for <b>{preselect.map(nameOf).join(', ')}</b>: press “Teach this lesson” on one and they are already picked.</span><button type="button" className="ctrl !py-1" onClick={() => setPreselect([])}>Not just them</button></p>}
           {pasting && (
             <div className="card mb-3 p-4" data-testid="room-import">
               <label className="font-semibold" htmlFor="room-paste">Paste your lesson plan</label>
@@ -433,7 +473,7 @@ export function RoomList() {
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <h2 className="mr-auto text-2xl font-semibold">{nameOf(sid)} <span className="ml-1 rounded-xl bg-azul px-2.5 py-1 align-middle text-sm font-bold text-white" data-testid="student-level">{lv}</span>{groupTagsOf(sid).map((g) => <span key={g} className="ml-1.5 rounded-xl bg-olive-50 px-2.5 py-1 align-middle text-sm font-bold text-olive" data-testid="student-group-tag">{g}</span>)}</h2>
               <button type="button" className="btn-primary !py-2.5" disabled={busy} onClick={() => void draftFor(sid)} data-testid="room-draft"><Icon name="sparkle" size={16} /> Draft a lesson from their week</button>
-              <button type="button" className="btn-ghost !py-2.5" onClick={() => { setClassIds([sid]); setView({ kind: 'level', level: lv }); }} data-testid="student-plans"><Icon name="book" size={16} /> Teach them a {lv} plan</button>
+              <button type="button" className="btn-ghost !py-2.5" onClick={() => { setPreselect([sid]); setView({ kind: 'level', level: lv }); }} data-testid="student-plans"><Icon name="book" size={16} /> Teach them a {lv} plan</button>
               <button type="button" className="btn-ghost !py-2.5" onClick={() => navigate(`teach/student/${sid}`)}><Icon name="user" size={16} /> Their profile</button>
             </div>
             <p className="mb-3 text-sm text-ink-soft">What {nameOf(sid)} has worked on with you: {mine.length} lesson{mine.length === 1 ? '' : 's'}. Open one to see the parts and their answers, or to teach it again.</p>

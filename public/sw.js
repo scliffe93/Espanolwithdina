@@ -11,6 +11,8 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
   // Videos are streamed in ranges, which cannot be cached; let the browser fetch them directly.
   if (req.headers.has('range') || /\.(mp4|webm)$/.test(new URL(req.url).pathname)) return;
+  // The app's own check for a newer version must always reach the network, and is never stored.
+  if (new URL(req.url).searchParams.has('v')) return;
   if (req.mode === 'navigate') {
     e.respondWith(fetch(req).then((res) => { caches.open(CACHE).then((c) => c.put('./index.html', res.clone())); return res; }).catch(() => caches.match('./index.html')));
     return;

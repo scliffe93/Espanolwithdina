@@ -11,7 +11,7 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
   const as = async (who) => { await p.goto(BASE + '#/demo'); await p.waitForTimeout(800); await p.getByTestId('demo-' + who).click(); await p.waitForTimeout(1600); };
   await as('dina');
   await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1500);
-  if (await p.getByTestId('room-class-clear').count()) await p.getByTestId('room-class-clear').click(); await p.getByTestId('class-student').filter({ hasText: 'Sam' }).click();
+  
   await p.getByTestId('student-tab').filter({ hasText: 'Sam' }).click(); await p.waitForTimeout(500); await p.getByTestId('room-draft').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(600);
   const parts = await p.getByTestId('block-editor').count();
   ok(parts >= 5, `“Draft it from their week” writes a lesson from Sam’s own mistakes (${parts} parts)`);
@@ -32,12 +32,12 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
   ok(/answered ✗/.test(await p.getByTestId('block-list').innerText()), 'and Dina sees it on her side');
   // The ready-made example lesson.
   await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1200);
-  if (await p.getByTestId('room-class-clear').count()) await p.getByTestId('room-class-clear').click(); await p.getByTestId('class-student').filter({ hasText: 'Sam' }).click(); await p.getByTestId('room-example').click(); await p.getByTestId('import-review').waitFor({ timeout: 10000 }); await p.getByTestId('review-create').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(600);
+   await p.getByTestId('room-example').click(); await p.getByTestId('import-review').waitFor({ timeout: 10000 }); await p.getByTestId('review-create').click(); await p.getByTestId('teach-sheet').waitFor(); await p.getByTestId('class-student').filter({ hasText: 'Sam' }).click(); await p.getByTestId('teach-go').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(600);
   ok((await p.getByTestId('block-editor').count()) === 7 && /Example lesson/.test(await p.getByTestId('room-title').inputValue()), '“Open an example lesson” makes a finished seven-part lesson to try');
   // A lesson made from the teacher's own plan: pasted, then uploaded as a text file and as a Word document.
   const PLAN = 'El pretérito: ir y ser\n\nCalentamiento\n¿Qué hiciste el fin de semana?\n\nEXPLICACIÓN\nIr and ser have the same forms in the preterite.\n\nPráctica:\n1. Ayer yo ___ (ir) al mercado. [fui]\n2. La película ___ (ser) muy buena.\nAnswers: fue\n\n¿Ir o ser?\nEl sábado fuimos a la playa.\na) ir *\nb) ser\n\nVocabulario\nayer = yesterday\nanoche = last night\n';
   await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1200);
-  if (await p.getByTestId('room-class-clear').count()) await p.getByTestId('room-class-clear').click(); await p.getByTestId('class-student').filter({ hasText: 'Sam' }).click();
+  
   await p.getByTestId('room-paste-toggle').click(); await p.getByTestId('room-paste').fill(PLAN); await p.getByTestId('room-paste-go').click();
   await p.getByTestId('import-review').waitFor({ timeout: 10000 });
   ok((await p.getByTestId('review-title').inputValue()) === 'El pretérito: ir y ser' && (await p.getByTestId('block-editor').count()) === 6, 'a pasted plan opens for review first: title and six parts');
@@ -59,7 +59,7 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
   ok(/Every gap and choice has its answer/.test(await p.getByTestId('review-missing').innerText()), 'filling it in clears the flag');
   await p.getByTestId('review-title').fill('Mi clase revisada');
   await p.getByTestId('block-editor').first().getByLabel('Delete this part').click();
-  await p.getByTestId('review-create').click();
+  await p.getByTestId('review-create').click(); await p.getByTestId('teach-sheet').waitFor(); await p.getByTestId('class-student').filter({ hasText: 'Sam' }).click(); await p.getByTestId('teach-go').click();
   await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(600);
   ok((await p.getByTestId('room-title').inputValue()) === 'Mi clase revisada' && (await p.getByTestId('block-editor').count()) === 5, 'the lesson is created as she left it in the review');
   await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1200);
@@ -68,7 +68,7 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
   const upload = async (file, label, min) => {
     if (await p.getByTestId('review-cancel').count()) await p.getByTestId('review-cancel').click();
     await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1200);
-    if (await p.getByTestId('room-class-clear').count()) await p.getByTestId('room-class-clear').click(); await p.getByTestId('class-student').filter({ hasText: 'Sam' }).click();
+    
     await p.getByTestId('room-file').setInputFiles(file);
     await p.getByTestId('import-review').waitFor({ timeout: 20000 });
     const n = await p.getByTestId('block-editor').count(); const title = await p.getByTestId('review-title').inputValue();
@@ -88,7 +88,7 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
   const pa = await p.locator('input[data-testid="block-answer"]').evaluateAll((els) => els.map((e) => e.value));
   ok(pa.join(',') === 'fui,fue', `with the answers from the PDF (${pa.join(', ')})`);
   await p.screenshot({ path: OUT + '/room-review-pdf.png', fullPage: true });
-  await p.getByTestId('review-create').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(600);
+  await p.getByTestId('review-create').click(); await p.getByTestId('teach-sheet').waitFor(); await p.getByTestId('class-student').filter({ hasText: 'Sam' }).click(); await p.getByTestId('teach-go').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(600);
   ok((await p.getByTestId('block-editor').count()) === 6, 'and the lesson is created from the reviewed PDF');
   await p.screenshot({ path: OUT + '/room-plan.png', fullPage: true });
   // The Word template: uploaded exactly as it is downloaded, it gives a finished lesson and leaves the guide page out.
@@ -96,7 +96,7 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
   {
     await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1200);
     ok(await p.getByTestId('room-template').count() === 1, 'the lesson room offers the Word template');
-    if (await p.getByTestId('room-class-clear').count()) await p.getByTestId('room-class-clear').click(); await p.getByTestId('class-student').filter({ hasText: 'Sam' }).click();
+    
     await p.getByTestId('room-file').setInputFiles('public/guides/lesson-plan-template.docx');
     await p.getByTestId('import-review').waitFor({ timeout: 20000 });
     const kinds = await p.getByTestId('block-editor').evaluateAll((els) => els.map((e) => e.dataset.type).join(','));
@@ -104,7 +104,7 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
     ok((await p.getByTestId('review-title').inputValue()) === 'El pretérito de ir y ser' && /Every gap and choice has its answer/.test(await p.getByTestId('review-missing').innerText()), 'with its title and every answer');
     ok(!/How to use this template|Good to know/.test(await p.getByTestId('import-review').locator('ol').innerText()), 'the guide page after END OF LESSON is not put in the lesson');
     await p.screenshot({ path: OUT + '/room-review-template.png', fullPage: true });
-    await p.getByTestId('review-create').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(600);
+    await p.getByTestId('review-create').click(); await p.getByTestId('teach-sheet').waitFor(); await p.getByTestId('class-student').filter({ hasText: 'Sam' }).click(); await p.getByTestId('teach-go').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(600);
     // The tasks of the lesson, sent as homework.
     ok(/10 tasks for Sam to do alone: 8 marked by the app, 2 for you to mark/.test(await p.getByTestId('lesson-homework-count').innerText()), `the lesson offers its tasks as homework (${await p.getByTestId('lesson-homework-count').innerText()})`);
     await p.getByTestId('lesson-homework-open').click(); await p.getByTestId('lesson-homework-send').click();
