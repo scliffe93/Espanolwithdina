@@ -125,3 +125,27 @@ describe('the lesson room', () => {
     expect((v as { notes?: string }).notes).toBeUndefined();
   });
 });
+
+describe('the plan library', () => {
+  it('is kept in the teacher’s own rows: saved, listed, emptied, never seen by a student and never mixed with her settings', async () => {
+    const dina = await register('dina', 'Dina'); const sam = await register('sam', 'Sam');
+    const plan = { id: 'lib-0123456789abcdef', library: true, title: 'A1 Greetings', level: 'A1', status: 'review', wording: 'en', minutes: 60, notes: 'Stage 1…', blocks: blocks(), createdAt: 'x', updatedAt: 'x' };
+    const put = await call('platform/records', { method: 'PUT', token: dina.token, body: { kind: 'config', id: plan.id, studentId: dina.id, data: plan } });
+    expect(put.status).toBe(200);
+    await call('platform/records', { method: 'PUT', token: dina.token, body: { kind: 'config', id: `config-${dina.id}`, studentId: dina.id, data: { businessName: 'Dina', currency: 'EUR' } } });
+    const list = await call('platform/records?kind=config', { token: dina.token });
+    const mine = list.json.records.filter((r: { library?: boolean }) => r.library === true);
+    expect(mine).toHaveLength(1);
+    expect(mine[0]).toMatchObject({ title: 'A1 Greetings', level: 'A1', status: 'review', minutes: 60 });
+    expect(mine[0].blocks).toHaveLength(4);
+    expect(list.json.records.find((r: { id: string }) => r.id === `config-${dina.id}`).businessName).toBe('Dina');
+    // Marked ready, then emptied (settings rows are not deleted, so a removed plan is hidden).
+    await call('platform/records', { method: 'PUT', token: dina.token, body: { kind: 'config', id: plan.id, studentId: dina.id, data: { ...plan, status: 'ready' } } });
+    expect((await call('platform/records?kind=config', { token: dina.token })).json.records.find((r: { id: string }) => r.id === plan.id).status).toBe('ready');
+    await call('platform/records', { method: 'PUT', token: dina.token, body: { kind: 'config', id: plan.id, studentId: dina.id, data: { id: plan.id, library: true, deleted: true, blocks: [] } } });
+    expect((await call('platform/records?kind=config', { token: dina.token })).json.records.find((r: { id: string }) => r.id === plan.id).deleted).toBe(true);
+    // A student can neither read nor write it.
+    expect((await call('platform/records?kind=config', { token: sam.token })).json.records).toEqual([]);
+    expect((await call('platform/records', { method: 'PUT', token: sam.token, body: { kind: 'config', id: 'lib-aaaaaaaaaaaaaaaa', studentId: sam.id, data: plan } })).status).toBe(403);
+  });
+});

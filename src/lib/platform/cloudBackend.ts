@@ -1,10 +1,11 @@
 import type { AppState } from '../../types';
 import { ApiError, platformApi, type PlatformKind, type Session } from '../cloud';
 import { migrate } from '../state';
-import { PlatformError, findOverlap, uid, validateBooking, type LessonInput, type PlatformBackend, type StudentSettingsInput } from './backend';
+import { PlatformError, findOverlap, uid, validateBooking, type LessonInput, type LibraryInput, type PlatformBackend, type StudentSettingsInput } from './backend';
 import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, Marking, Person, StudentSettings, TeacherConfig } from './types';
 import { settingsId } from './level';
-import type { LessonPlan, LessonWork } from './types';
+import type { LessonPlan, LessonWork, LibraryPlan } from './types';
+import { cleanPlan } from '../../../supabase/functions/_shared/lesson';
 import { DEFAULT_TEACHER_CONFIG } from './types';
 
 // ───────────────────────────────────────────────────────────────
@@ -270,6 +271,27 @@ class CloudBackend implements PlatformBackend {
     this.cache.delete(`lesson|${this.isTeacher() ? studentId ?? '' : ''}`);
     const rows = await this.records<LessonPlan>('lesson', this.isTeacher() ? studentId : undefined);
     return [...rows].sort((a, b) => (b.date ?? b.createdAt).localeCompare(a.date ?? a.createdAt));
+  }
+  // The library lives in the teacher's own settings rows (one row a plan), which the server stores as given.
+  async libraryPlans() {
+    if (!this.isTeacher()) return [];
+    this.cache.delete('config|');
+    const rows = await this.records<LibraryPlan & { library?: boolean; deleted?: boolean }>('config');
+    return rows.filter((r) => r.library === true && !r.deleted && Array.isArray(r.blocks)).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }
+  async saveLibraryPlan(input: LibraryInput) {
+    this.assertTeacher();
+    const id = input.id ?? `lib-${uid()}`;
+    const now = new Date().toISOString();
+    const prev = input.id ? (await this.libraryPlans()).find((p) => p.id === input.id) : undefined;
+    const plan = { ...input, id, library: true, blocks: cleanPlan(input as unknown as Record<string, unknown>).blocks, createdAt: prev?.createdAt ?? now, updatedAt: now };
+    return this.put('config', id, this.actor.id, plan as unknown as LibraryPlan);
+  }
+  async deleteLibraryPlan(id: string) {
+    this.assertTeacher();
+    // Settings rows cannot be removed, so the plan is emptied and hidden.
+    const now = new Date().toISOString();
+    await this.put('config', id, this.actor.id, { id, library: true, deleted: true, title: '', blocks: [], notes: '', updatedAt: now, createdAt: now });
   }
   async saveLesson(input: LessonInput) {
     this.assertTeacher();

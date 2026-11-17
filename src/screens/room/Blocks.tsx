@@ -4,6 +4,7 @@ import { DinaArt } from '../../components/Dina';
 import { Icon, type IconName } from '../../components/Icon';
 import { useSay } from '../../hooks/useSpeech';
 import { confetti, haptic, sfx } from '../../lib/fx';
+import { stageOf, type Wording } from '../../lib/platform/lessonAdapt';
 import type { LessonAnswer, LessonBlock } from '../../lib/platform/types';
 
 const ACCENTS = ['á', 'é', 'í', 'ó', 'ú', 'ñ', '¿', '¡'];
@@ -26,10 +27,53 @@ function GapSentence({ body, fill, tone }: { body: string; fill?: string; tone?:
   return <>{before}<motion.span key={fill ?? 'empty'} initial={fill ? { scale: 0.6, opacity: 0 } : false} animate={{ scale: 1, opacity: 1 }} className={`mx-1 inline-block min-w-[4ch] rounded-xl px-2 text-center font-semibold ${fill ? (tone === 'wrong' ? 'bg-terracotta-50 text-terracotta-dark ring-2 ring-terracotta' : 'bg-olive-50 text-olive ring-2 ring-olive') : 'border-b-[3px] border-dashed border-ink/40'}`}>{fill || ' '}</motion.span>{after}</>;
 }
 
+// The small words on the lesson screen, in the wording that suits the student's level.
+const SAY = {
+  tap: ['Tap a card to hear it and see what it means.', 'Toca una tarjeta para escucharla y ver qué significa.'],
+  tapHear: ['Tap a card to hear it, then say it.', 'Toca una tarjeta para escucharla y repítela.'],
+  turned: ['turned', 'vistas'],
+  listen: ['Listen', 'Escucha'],
+  answer: ['Write your answer…', 'Escribe tu respuesta…'],
+  yours: ['Your answer', 'Tu respuesta'],
+  send: ['Send', 'Enviar'], sent: ['Sent', 'Enviado'], again: ['Send again', 'Enviar otra vez'],
+  check: ['Check', 'Comprobar'],
+  right: ['Right!', '¡Correcto!'],
+  notQuite: ['Not quite', 'Casi'],
+  itIs: ['it is', 'es'],
+  tryAgain: ['Try again.', 'Inténtalo otra vez.'],
+  tapLine: ['Tap a line to hear it.', 'Toca una frase para escucharla.'],
+  meaning: ['What does it mean?', '¿Qué significa?'],
+  sayIt: ['Say it aloud', 'Dilo en voz alta'],
+} as const;
+// With both languages, sentences show Spanish then English; the short button words are Spanish alone.
+const SHORT = new Set(['send', 'sent', 'again', 'check', 'turned', 'itIs', 'listen', 'yours']);
+const word = (k: keyof typeof SAY, w: Wording) => (w === 'en' ? SAY[k][0] : w === 'es' || SHORT.has(k) ? SAY[k][1] : `${SAY[k][1]} · ${SAY[k][0]}`);
+
+/**
+ * The words of a task: the instruction small, the Spanish to work on large, and a starter ("Start with: Me llamo...")
+ * as a hint beneath. The instruction is the first line when it ends in a full stop or a colon and more follows.
+ */
+function Prompt({ body, big = 'text-2xl sm:text-4xl', gap }: { body: string; big?: string; gap?: (line: string) => React.ReactNode }) {
+  const lines = body.split('\n').map((l) => l.trim()).filter(Boolean);
+  const isHint = (l: string) => /^(?:Start with|Empieza con)/i.test(l);
+  const lead = lines.length > 1 && !/_{2,}/.test(lines[0]) && (/[.:]$|\d\/\d$/.test(lines[0]) || (/\?$/.test(lines[0]) && !isHint(lines[1]) && lines.length === 2 && !/[¿?]/.test(lines[1]))) ? lines[0] : null;
+  const rest = lead ? lines.slice(1) : lines;
+  return (
+    <>
+      {lead && <p className="text-base font-semibold text-ink-soft sm:text-lg">{lead}</p>}
+      {rest.map((l, i) => {
+        const hint = l.match(/^((?:Start with|Empieza con)(?: · Start with)?:)\s*(.+)$/i);
+        if (hint) return <p key={i} className="mt-2 inline-flex flex-wrap items-center gap-2 rounded-full bg-saffron-50 px-3 py-1.5 text-base ring-1 ring-saffron/40"><span className="font-semibold text-ink-soft">{hint[1]}</span><b className="font-display text-xl" lang="es">{hint[2]}</b></p>;
+        return <p key={i} className={`font-display font-medium leading-snug ${big} ${i || lead ? 'mt-1' : ''}`} lang="es">{gap && /_{2,}/.test(l) ? gap(l) : l}</p>;
+      })}
+    </>
+  );
+}
+
 const speakerHue = ['bg-azul-50 ring-azul/25', 'bg-rosa-50 ring-rosa/40', 'bg-olive-50 ring-olive/25', 'bg-saffron-50 ring-saffron/40'];
 
 /** Explanation text, drawn by what it is: a conversation as speech bubbles, a list as rows, the rest as large text. */
-function RichText({ body }: { body: string }) {
+function RichText({ body, wording }: { body: string; wording: Wording }) {
   const say = useSay();
   const lines = body.split('\n').map((l) => l.trim());
   const talk = lines.filter((l) => /^[A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑáéíóúñ]{1,14}:\s+\S/.test(l));
@@ -53,11 +97,17 @@ function RichText({ body }: { body: string }) {
         if (/^[•\-*]\s+/.test(l)) {
           return <motion.p key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i, 8) * 0.06 }} className="flex items-start gap-3 rounded-2xl bg-white/80 px-4 py-2.5 text-[18px] leading-snug ring-1 ring-ink/5 sm:text-[20px]"><span className="mt-1 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-azul text-white"><Icon name="check" size={13} /></span><span>{l.replace(/^[•\-*]\s+/, '')}</span></motion.p>;
         }
-        const role = l.match(/^(You are|Your teacher is|Eres|Tu profesora es):\s*(.+)$/i);
+        const round = l.match(/^((?:Ronda|Round)(?: · Round)?)\s+(\d+)\/(\d+)$/i);
+        if (round) return <p key={i} className="flex items-center gap-2"><span className="rounded-full bg-terracotta px-3 py-1 text-sm font-bold text-white">{round[1].split(' · ')[0]} {round[2]}</span><span className="flex gap-1">{Array.from({ length: Number(round[3]) }, (_, k) => <span key={k} className={`h-2.5 w-6 rounded-full ${k < Number(round[2]) ? 'bg-terracotta' : 'bg-ink/10'}`} />)}</span></p>;
+        const numbered = l.match(/^(\d{1,2})\.\s+(.+?)(?:\s+·\s+(\d+\s*min))?$/);
+        if (numbered) return <motion.p key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i, 10) * 0.05 }} className="flex items-center gap-3 rounded-2xl bg-white/80 px-4 py-2.5 text-[18px] ring-1 ring-ink/5"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-ink text-sm font-bold text-cream">{numbered[1]}</span><span className="min-w-0 flex-1 font-semibold">{numbered[2]}</span>{numbered[3] && <span className="shrink-0 rounded-full bg-saffron-50 px-2.5 py-1 text-sm font-semibold">{numbered[3]}</span>}</motion.p>;
+        if (/:$/.test(l) && l.length <= 60) return <p key={i} className="mt-1 text-sm font-bold uppercase tracking-[0.12em] text-ink-mute">{l.replace(/:$/, '')}</p>;
+        if (i === 0 && lines.length > 1 && l.length <= 40 && !/[.?!]$/.test(l)) return <p key={i} className="font-display text-2xl font-semibold">{l}</p>;
+        const role = l.match(/^(You are|Your teacher is|Eres|Tu profesora es|Eres · You are|Tu profesora es · Your teacher is):\s*(.+)$/i);
         if (role) return <p key={i} className="flex flex-wrap items-center gap-2 text-lg"><span className="rounded-full bg-ink px-3 py-1 text-sm font-bold text-cream">{role[1]}</span><b className="font-display text-2xl" lang="es">{role[2]}</b></p>;
         return <p key={i} className="whitespace-pre-wrap text-[19px] leading-relaxed sm:text-[22px]">{l}</p>;
       })}
-      {isTalk && <p className="text-sm text-ink-mute">Tap a line to hear it.</p>}
+      {isTalk && <p className="text-sm text-ink-mute">{word('tapLine', wording)}</p>}
     </div>
   );
 }
@@ -67,7 +117,7 @@ function RichText({ body }: { body: string }) {
  *  • `student`: the learner's own device. They can answer.
  *  • `present`: the teacher's shared screen. It shows the student's answer as it arrives.
  */
-export function BlockView({ block, mode, answer, onAnswer, current }: { block: LessonBlock; mode: 'student' | 'present'; answer?: LessonAnswer; onAnswer?: (value: string) => void; current?: boolean }) {
+export function BlockView({ block, mode, answer, onAnswer, current, wording = 'both' }: { block: LessonBlock; mode: 'student' | 'present'; answer?: LessonAnswer; onAnswer?: (value: string) => void; current?: boolean; wording?: Wording }) {
   const say = useSay();
   const [draft, setDraft] = useState(answer?.value ?? '');
   const [editing, setEditing] = useState(false);
@@ -98,17 +148,17 @@ export function BlockView({ block, mode, answer, onAnswer, current }: { block: L
       <span className={`pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full opacity-20 blur-2xl ${th.dot}`} aria-hidden />
       <header className="relative flex flex-wrap items-center gap-2.5">
         <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl shadow-soft ${th.badge}`}><Icon name={th.icon} size={19} /></span>
-        <span className="min-w-0"><span className={`block text-xs font-bold uppercase tracking-[0.14em] ${th.ink}`}>{th.es} · {th.en}</span>{block.title && <span className="block truncate font-semibold text-ink-soft">{block.title}</span>}</span>
+        <span className="min-w-0"><span className={`block text-xs font-bold uppercase tracking-[0.14em] ${th.ink}`}>{wording === 'es' ? th.es : `${th.es} · ${th.en}`}</span>{block.title && <span className="block truncate font-semibold text-ink-soft">{block.title}</span>}</span>
         {answer?.correct === true && <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="ml-auto grid h-9 w-9 place-items-center rounded-full bg-olive text-white" aria-label="Right"><Icon name="check" size={18} /></motion.span>}
       </header>
 
       <div className="relative">
-        {block.type === 'text' && <RichText body={block.body} />}
+        {block.type === 'text' && <RichText body={block.body} wording={wording} />}
 
         {block.type === 'vocab' && (
           <>
             {block.body && <p className="mt-2 whitespace-pre-wrap text-lg text-ink-soft">{block.body}</p>}
-            <p className="mt-2 text-sm text-ink-mute">Tap a card to hear it and see what it means. <b className={th.ink}>{seen.size} of {pairs.length}</b> turned.</p>
+            <p className="mt-2 text-sm text-ink-mute">{block.body ? '' : `${word(pairs.some((p) => p.en) ? 'tap' : 'tapHear', wording)} `}<b className={th.ink}>{seen.size}/{pairs.length}</b> {word('turned', wording)}</p>
             <ul className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
               {pairs.map((p, i) => {
                 const on = seen.has(i);
@@ -117,7 +167,7 @@ export function BlockView({ block, mode, answer, onAnswer, current }: { block: L
                     <button type="button" onClick={() => { void say(p.es); setSeen((s) => new Set(s).add(i)); }} aria-label={`${p.es}: ${on ? p.en : 'tap to hear and see the meaning'}`}
                       className={`flex h-full min-h-[5.5rem] w-full flex-col justify-center rounded-3xl px-4 py-3 text-left ring-2 transition hover:-translate-y-0.5 hover:shadow-soft active:scale-[0.98] ${on ? 'bg-white ring-rosa' : 'bg-rosa-50 ring-transparent'}`}>
                       <span className="flex items-center justify-between gap-2"><span className="font-display text-2xl font-semibold leading-tight" lang="es">{p.es}</span><Icon name="volume" size={16} className="shrink-0 text-ink-mute" /></span>
-                      <motion.span key={on ? 'en' : 'q'} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={`mt-1 block ${on ? 'text-ink-soft' : 'text-sm text-ink-mute'}`}>{on ? p.en : '¿Qué significa?'}</motion.span>
+                      <motion.span key={on ? 'en' : 'q'} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={`mt-1 block ${on ? 'text-ink-soft' : 'text-sm text-ink-mute'}`}>{on ? (p.en || '✓') : p.en ? word('meaning', wording) : word('sayIt', wording)}</motion.span>
                     </button>
                   </motion.li>
                 );
@@ -131,16 +181,16 @@ export function BlockView({ block, mode, answer, onAnswer, current }: { block: L
             <div className="mt-3 flex items-start gap-3">
               <div className="hidden shrink-0 sm:block"><DinaArt size={64} expression={answer ? 'beam' : 'smile'} /></div>
               <button type="button" onClick={() => void say(block.body.split('\n').filter((l) => /[¿?]/.test(l)).join(' ') || block.body)} className="min-w-0 flex-1 rounded-3xl rounded-tl-md bg-white px-5 py-4 text-left shadow-soft ring-1 ring-terracotta/20 transition hover:ring-terracotta/50" aria-label="Hear the question">
-                <span className="block whitespace-pre-wrap font-display text-2xl font-medium leading-snug sm:text-3xl" lang="es">{block.body}</span>
-                <span className="mt-1.5 inline-flex items-center gap-1 text-sm font-semibold text-terracotta-dark"><Icon name="volume" size={14} /> Escucha · Listen</span>
+                <span className="block"><Prompt body={block.body} big="text-2xl sm:text-3xl" /></span>
+                <span className="mt-1.5 inline-flex items-center gap-1 text-sm font-semibold text-terracotta-dark"><Icon name="volume" size={14} /> {wording === 'both' ? 'Escucha · Listen' : word('listen', wording)}</span>
               </button>
             </div>
             {can ? (
               <div className="mt-4">
-                <textarea className="input min-h-[110px] w-full text-lg" value={draft} onChange={(e) => { setDraft(e.target.value); setEditing(true); }} placeholder="Escribe tu respuesta…" lang="es" spellCheck={false} data-testid={`answer-${block.id}`} />
+                <textarea className="input min-h-[110px] w-full text-lg" value={draft} onChange={(e) => { setDraft(e.target.value); setEditing(true); }} placeholder={word('answer', wording)} lang="es" spellCheck={false} data-testid={`answer-${block.id}`} />
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
                   {ACCENTS.map((c) => <button key={c} type="button" className="h-9 w-9 rounded-xl bg-white text-lg ring-1 ring-ink/10" onMouseDown={(e) => e.preventDefault()} onClick={() => { setDraft((d) => d + c); setEditing(true); }}>{c}</button>)}
-                  <button type="button" className="btn-primary ml-auto !py-2.5" disabled={!draft.trim() || (!editing && !!answer)} onClick={send} data-testid={`send-${block.id}`}><Icon name="send" size={16} /> {answer && !editing ? 'Sent' : answer ? 'Send again' : 'Send'}</button>
+                  <button type="button" className="btn-primary ml-auto !py-2.5" disabled={!draft.trim() || (!editing && !!answer)} onClick={send} data-testid={`send-${block.id}`}><Icon name="send" size={16} /> {answer && !editing ? word('sent', wording) : answer ? word('again', wording) : word('send', wording)}</button>
                 </div>
               </div>
             ) : (
@@ -156,19 +206,19 @@ export function BlockView({ block, mode, answer, onAnswer, current }: { block: L
             <p className="mt-4 font-display text-2xl font-medium leading-relaxed sm:text-4xl" lang="es"><GapSentence body={block.body} fill={answer ? answer.value : block.reveal ? right : undefined} tone={answer && answer.correct === false ? 'wrong' : 'right'} /></p>
             {can && !answer?.correct && (
               <form className="mt-5 flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); send(); }}>
-                <input className="input min-w-0 flex-1 text-xl" value={draft} onChange={(e) => { setDraft(e.target.value); setEditing(true); }} placeholder="Tu respuesta" lang="es" autoCapitalize="off" autoCorrect="off" spellCheck={false} data-testid={`answer-${block.id}`} />
-                <button className="btn-primary" disabled={!draft.trim()} data-testid={`send-${block.id}`}>Check</button>
+                <input className="input min-w-0 flex-1 text-xl" value={draft} onChange={(e) => { setDraft(e.target.value); setEditing(true); }} placeholder={word('yours', wording)} lang="es" autoCapitalize="off" autoCorrect="off" spellCheck={false} data-testid={`answer-${block.id}`} />
+                <button className="btn-primary" disabled={!draft.trim()} data-testid={`send-${block.id}`}>{word('check', wording)}</button>
                 <div className="flex w-full flex-wrap gap-1.5">{ACCENTS.slice(0, 6).map((c) => <button key={c} type="button" className="h-9 w-9 rounded-xl bg-white text-lg ring-1 ring-ink/10" onMouseDown={(e) => e.preventDefault()} onClick={() => { setDraft((d) => d + c); setEditing(true); }}>{c}</button>)}</div>
               </form>
             )}
-            {answer && <motion.p initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={`mt-4 inline-block rounded-full px-4 py-2 text-lg font-semibold ${answer.correct ? 'bg-olive text-white' : 'bg-terracotta-50 text-terracotta-dark'}`} role="status" data-testid={`verdict-${block.id}`}>{answer.correct ? '¡Correcto!' : <>Not quite{showAnswer && right ? <>: it is <span lang="es">{right}</span></> : ''}.{can ? ' Try again.' : ''}</>}</motion.p>}
+            {answer && <motion.p initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={`mt-4 inline-block rounded-full px-4 py-2 text-lg font-semibold ${answer.correct ? 'bg-olive text-white' : 'bg-terracotta-50 text-terracotta-dark'}`} role="status" data-testid={`verdict-${block.id}`}>{answer.correct ? '¡Correcto!' : <>{word('notQuite', wording)}{showAnswer && right ? <>: {word('itIs', wording)} <span lang="es">{right}</span></> : ''}.{can ? ` ${word('tryAgain', wording)}` : ''}</>}</motion.p>}
             {!answer && block.reveal && <p className="mt-3 text-lg font-semibold text-olive">{right}</p>}
           </>
         )}
 
         {block.type === 'choice' && (
           <>
-            <p className="mt-4 whitespace-pre-wrap font-display text-2xl font-medium leading-snug sm:text-4xl" lang="es">{block.body.includes('___') ? <GapSentence body={block.body} fill={answer ? answer.value : block.reveal ? block.answer : undefined} tone={answer && answer.correct === false ? 'wrong' : 'right'} /> : block.body}</p>
+            <div className="mt-4"><Prompt body={block.body} gap={(l) => <GapSentence body={l} fill={answer ? answer.value : block.reveal ? block.answer : undefined} tone={answer && answer.correct === false ? 'wrong' : 'right'} />} /></div>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {(block.options ?? []).map((o, i) => {
                 const picked = answer?.value === o, isRight = showAnswer && o === block.answer;
@@ -183,7 +233,7 @@ export function BlockView({ block, mode, answer, onAnswer, current }: { block: L
                 );
               })}
             </div>
-            {answer && <motion.p initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={`mt-4 inline-block rounded-full px-4 py-2 text-lg font-semibold ${answer.correct ? 'bg-olive text-white' : 'bg-terracotta-50 text-terracotta-dark'}`} role="status" data-testid={`verdict-${block.id}`}>{answer.correct ? '¡Correcto!' : 'Not quite.'}</motion.p>}
+            {answer && <motion.p initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={`mt-4 inline-block rounded-full px-4 py-2 text-lg font-semibold ${answer.correct ? 'bg-olive text-white' : 'bg-terracotta-50 text-terracotta-dark'}`} role="status" data-testid={`verdict-${block.id}`}>{answer.correct ? '¡Correcto!' : `${word('notQuite', wording)}.`}</motion.p>}
           </>
         )}
       </div>
@@ -207,5 +257,30 @@ export function LessonTrail({ blocks, answers, current, onGo }: { blocks: Lesson
       </div>
       {marked > 0 && <span className="inline-flex items-center gap-1.5 rounded-full bg-saffron px-3 py-1 text-sm font-bold text-ink" data-testid="lesson-stars"><Icon name="star" size={14} filled /> {right} / {marked}</span>}
     </div>
+  );
+}
+
+const clock = (ms: number) => { const t = Math.max(0, Math.floor(ms / 1000)); const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), sec = t % 60; return `${h ? `${h}:${String(m).padStart(2, '0')}` : m}:${String(sec).padStart(2, '0')}`; };
+
+/** How long the lesson has been going, against the time the plan gives it, and the stage it is on. */
+export function LessonClock({ startedAt, blocks, current, compact }: { startedAt?: string; blocks: LessonBlock[]; current?: string | null; compact?: boolean }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { const iv = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(iv); }, []);
+  const stages: { no: number; name: string; minutes: number }[] = [];
+  for (const b of blocks) { const s = stageOf(b.title); if (s && !stages.some((x) => x.no === s.no)) stages.push(s); }
+  const planned = stages.reduce((n, s) => n + s.minutes, 0);
+  const here = stageOf(blocks.find((b) => b.id === current)?.title ?? '');
+  const elapsed = startedAt ? now - new Date(startedAt).getTime() : 0;
+  const over = planned > 0 && elapsed > planned * 60000;
+  // Where the plan says the lesson should be by now: the minutes of the stages before this one.
+  const due = here ? stages.filter((s) => s.no <= here.no).reduce((n, s) => n + s.minutes, 0) : 0;
+  const behind = !!here && here.minutes > 0 && elapsed > due * 60000;
+  if (!startedAt) return null;
+  return (
+    <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold ring-1 ${over ? 'bg-terracotta-50 text-terracotta-dark ring-terracotta/40' : 'bg-white text-ink ring-ink/10'}`} data-testid="lesson-clock" title="How long the lesson has been going">
+      <Icon name="clock" size={15} /> <span className="tabular-nums" data-testid="lesson-elapsed">{clock(elapsed)}</span>
+      {planned > 0 && <span className="font-normal text-ink-mute">/ {planned} min</span>}
+      {!compact && here && here.minutes > 0 && <span className={`rounded-full px-2 py-0.5 text-xs ${behind ? 'bg-saffron text-ink' : 'bg-cream-100 text-ink-soft'}`} data-testid="lesson-stage">{here.no}/{here.of} {here.name} · {here.minutes} min{behind ? ' · time to move on' : ''}</span>}
+    </span>
   );
 }

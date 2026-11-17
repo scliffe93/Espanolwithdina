@@ -255,3 +255,15 @@ A plan written for a class (a phrase table, a timed procedure, worksheets with a
 ### The lesson on screen
 
 Each kind of part has its own colour, icon and Spanish name (`BLOCK_THEME` in `src/screens/room/Blocks.tsx`). Word lists are cards that speak and turn over; multiple choice is four coloured tiles; a conversation is drawn as speech bubbles that can be tapped to hear; role-play identities are name cards; a right answer brings confetti on both screens. A trail of dots shows where the lesson is and how many answers are right. On Present, Full screen to share shows only the stage, the arrow keys move through the parts, and Show each part as I go opens the next part for the student when the teacher moves on. The parts list no longer runs under the stage.
+
+### Lessons built from a plan, the plan library and the clock
+
+**The builder** (`src/lib/platform/lessonAdapt.ts`) composes a classroom plan into a lesson for two, stage by stage in the plan's own order. Each timed stage becomes a run of activities sized to its minutes, and every part carries its stage in its heading ("2/5 Presentation · 14 min"). The phrase table becomes cards to hear and then quick checks made only from the plan's own phrases; questions the teacher is told to ask become speaking turns with the words to start the answer; worksheet exercises go where the procedure uses them and are marked from the answer key; a personal writing task is released a step at a time; role-play cards become rounds for two; the lesson opens with a summary and ends with the wrap-up. Timings, board work and pronunciation notes go to the teacher's own notes. It invents no Spanish: only the short instructions are added.
+
+**Wording by level.** The added instructions exist in English and Spanish (`P` in the same file). `wordingFor(level)` gives English at A1, Spanish with English beside it at A2, and Spanish alone from B1; `reword` rewrites a lesson's instructions without touching the plan's Spanish. The small words on the lesson screens follow the same wording. The teacher can change it in the table at the top of a plan or a lesson. The Spanish instructions should be proofread by the teacher.
+
+**The library.** Uploaded or pasted plans are filed in the teacher's library by level (`LibraryPlan`), as "To review" until she marks them "Ready". A plan can be used for any student, as often as she likes; using it makes a lesson in the wording that suits that student. The library is stored in the teacher's own settings rows (kind `config`, ids `lib-…`), so it needed no server change; a deleted plan is emptied and hidden because those rows cannot be removed.
+
+**The clock.** Once a lesson is started, both screens show how long it has been going against the planned minutes, and the teacher's screen shows the stage with its minutes and a nudge when it is time to move on.
+
+Tested by `tests/lesson-adapt.test.ts`, `tests/lesson-api.test.ts`, `scripts/library-e2e.cjs` (demo) and `scripts/library-cloud-e2e.cjs` (real accounts).

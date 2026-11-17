@@ -319,7 +319,31 @@ export interface PlatformData {
   credits?: Credit[];
   students?: StudentSettings[];
   lessons?: LessonPlan[];
+  library?: LibraryPlan[];
   lessonWork?: LessonWork[];
+}
+
+/**
+ * A lesson plan in the teacher's library: filed by level, not yet tied to a student. An uploaded plan arrives here
+ * as "to review"; once the teacher has checked it she marks it ready and uses it for any student at that level.
+ */
+export interface LibraryPlan {
+  id: string;
+  teacherId: string;
+  title: string;
+  level: import('../../types').Cefr;
+  status: 'review' | 'ready';
+  blocks: import('../../../supabase/functions/_shared/lesson').LessonBlock[];
+  /** The teacher's own notes: timings and steps from the plan. */
+  notes: string;
+  /** Planned length, when the plan gave timings. */
+  minutes?: number;
+  /** The language of the instructions in `blocks`: English, both, or Spanish. */
+  wording: 'en' | 'both' | 'es';
+  /** The file it came from. */
+  source?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export const DEMO_TEACHER_ID = 'demo-dina';

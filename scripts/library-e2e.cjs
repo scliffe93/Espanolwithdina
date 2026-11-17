@@ -1,0 +1,63 @@
+// The plan library, the builder and the lesson clock, in the demo: a classroom plan is uploaded, filed under its
+// level as "to review", checked, marked ready, used for a student in the wording of their level, and taught with
+// the clock running. Needs a build served on :4173. Usage: node scripts/library-e2e.cjs <outDir> [a real plan .pdf]
+const path = require('path'); const { execSync } = require('child_process');
+const { chromium } = require(path.join(execSync('npm root -g').toString().trim(), 'playwright'));
+const BASE = 'http://localhost:4173/'; const OUT = process.argv[2] || '.';
+const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCode = 1; };
+const PLAN = ['# Spanish A1 — Lesson 3: Food and Drink', '', 'CEFR Level:\tA1\tDuration:\t25 Minutes', 'Learning Objectives:\tOrder a drink politely; name five foods.', '', '# 1. Key Phrases', '', 'Spanish Expression\tEnglish Meaning\tUsage Note', 'el pan / el agua\tbread / water\tAgua takes el but is feminine.', '¿Qué quieres? — Quiero...\tWhat do you want? — I want...\tQuiero comes from querer.', 'la cuenta\tthe bill\tAsk with por favor.', '', '# 2. Lesson Procedure', '', '0–5 MINS\tStage 1: Warm-Up — Menu Words', 'Board Setup: Write five words on the board: menú, café, tomate, limón, sal.', '', '5–20 MINS\tStage 2: Presentation', 'Modeling: Say "Quiero un café con leche, por favor." slowly.', 'Drill: Ask "¿Qué quieres?" around the class. Students complete Exercises A and B.', '', '20–25 MINS\tStage 3: Wrap-Up', 'Exit Check: Ask each student "¿Qué quieres beber?" at the door.', '', '# Student Worksheet', '', 'Exercise A: Match the Word to the Meaning', 'Write the matching letter.', '1. el pan\t[ ___ ]\ta. water', '2. el agua\t[ ___ ]\tb. the bill', '3. la cuenta\t[ ___ ]\tc. bread', '', 'Exercise B: Complete the Order', 'Fill in the blanks using the words from the box.', 'quiero • favor • cuenta • quieres', 'Camarero: ¿Qué\t?', 'Ana:\tun café, por\t.', 'Ana: La\t, por favor.', 'Camarero: ¡Claro!', '', 'Answer Key (Teacher Reference): Ex A: 1-c, 2-a, 3-b | Ex B: quieres, Quiero, favor, cuenta'].join('\n');
+(async () => {
+  const b = await chromium.launch(); const errors = [];
+  const p = await (await b.newContext({ viewport: { width: 1366, height: 800 } })).newPage(); p.on('pageerror', (e) => errors.push(String(e)));
+  const as = async (who) => { await p.goto(BASE + '#/demo'); await p.waitForTimeout(800); await p.getByTestId('demo-' + who).click(); await p.waitForTimeout(1600); };
+  await as('dina');
+  await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1500);
+  await p.getByTestId('room-student').selectOption({ label: 'Sam' }); await p.waitForTimeout(600);
+  ok(/Level [ABC][12]/.test(await p.getByTestId('room-student-level').innerText()), `the student’s level and wording are shown (${(await p.getByTestId('room-student-level').innerText()).trim()})`);
+  ok(await p.getByTestId('library-none').count() === 1, 'the library starts empty');
+  await p.getByTestId('room-file').setInputFiles({ name: 'A1 Food and Drink.txt', mimeType: 'text/plain', buffer: Buffer.from(PLAN, 'utf8') });
+  await p.getByTestId('import-review').waitFor({ timeout: 15000 });
+  ok((await p.getByTestId('review-level').inputValue()) === 'A1' && /25 minutes · 3 stages/.test(await p.getByTestId('review-facts').innerText()), 'the review opens with the plan’s level and timings in a table at the top');
+  ok((await p.getByTestId('review-stages').locator('li').count()) === 3 && /Presentation/.test(await p.getByTestId('review-stages').innerText()), 'the stages are set out with their minutes');
+  ok(/Every gap and choice has its answer/.test(await p.getByTestId('review-missing').innerText()), 'every answer was found');
+  ok((await p.getByTestId('review-adapted').locator('li').count()) >= 4, 'it lists what was built from the plan');
+  const bodies = () => p.getByTestId('block-body').evaluateAll((els) => els.map((e) => e.value));
+  ok((await bodies()).some((x) => x === '¿Qué quieres?\nStart with: Quiero...'), 'a speaking turn has the words to start the answer');
+  ok((await bodies()).every((x) => !/Board Setup|Agua takes el/.test(x)), 'nothing written for the teacher is in the lesson');
+  await p.getByTestId('review-wording').selectOption('es'); await p.waitForTimeout(300);
+  ok((await bodies()).some((x) => x === '¿Qué quieres?\nEmpieza con: Quiero...'), 'changing the wording rewrites the instructions in Spanish');
+  await p.getByTestId('review-wording').selectOption('en'); await p.waitForTimeout(300);
+  await p.screenshot({ path: OUT + '/library-review.png', fullPage: true });
+  await p.getByTestId('review-cancel').click(); await p.getByTestId('room-list').waitFor(); await p.waitForTimeout(800);
+  ok((await p.getByTestId('library-plan').count()) === 1 && (await p.getByTestId('library-plan').getAttribute('data-status')) === 'review' && /1 to review/.test(await p.getByTestId('library-waiting').innerText()), 'the plan is filed in the library as “To review”');
+  await p.getByTestId('library-B1').click(); await p.waitForTimeout(200);
+  ok(await p.getByTestId('library-plan').count() === 0, 'it is filed by level: nothing under B1');
+  await p.getByTestId('library-A1').click(); await p.waitForTimeout(200);
+  ok(await p.getByTestId('library-plan').count() === 1, 'and it is under A1');
+  await p.getByTestId('library-review').click(); await p.getByTestId('import-review').waitFor();
+  await p.getByTestId('review-ready').click(); await p.waitForTimeout(900);
+  await p.getByTestId('review-cancel').isVisible(); await p.getByText('Close without saving').click(); await p.waitForTimeout(600);
+  ok((await p.getByTestId('library-plan').getAttribute('data-status')) === 'ready' && await p.getByTestId('library-waiting').count() === 0, 'she marks it ready');
+  await p.screenshot({ path: OUT + '/library-list.png', fullPage: true });
+  await p.getByTestId('library-use').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(800);
+  ok(/Sam · level/.test(await p.getByTestId('plan-for').innerText()) && /25 minutes/.test(await p.getByTestId('plan-facts').innerText()), 'the lesson has its table at the top: who it is for, their level, the wording, the time');
+  await p.screenshot({ path: OUT + '/library-plan-tab.png' });
+  await p.getByTestId('to-present').click(); await p.getByTestId('start-lesson').click(); await p.waitForTimeout(2300);
+  const t1 = await p.getByTestId('lesson-elapsed').innerText(); await p.waitForTimeout(2200); const t2 = await p.getByTestId('lesson-elapsed').innerText();
+  ok(/^0:0\d$/.test(t1) && t2 > t1 && /\/ 25 min/.test(await p.getByTestId('lesson-clock').innerText()), `the clock runs once the lesson starts (${t1} then ${t2}, of 25 min)`);
+  await p.getByTestId('open-all').click(); await p.waitForTimeout(500);
+  for (let k = 0; k < 3; k++) { await p.keyboard.press('ArrowRight'); await p.waitForTimeout(250); }
+  ok(/2\/3 Presentation · 15 min/.test(await p.getByTestId('lesson-stage').innerText()), 'it shows the stage and its planned minutes');
+  await p.getByTestId('stage').screenshot({ path: OUT + '/library-stage.png' });
+  await as('sam');
+  await p.goto(BASE + '#/student'); await p.waitForTimeout(1500); await p.getByTestId('join-lesson').click(); await p.getByTestId('student-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(1800);
+  const txt = await p.getByTestId('student-room').innerText();
+  ok(await p.getByTestId('lesson-clock').count() === 1 && !/Board Setup|Exit Check|Agua takes el/.test(txt), 'the student sees the clock too, and none of the teacher’s lines');
+  const tile = p.locator('[data-type="choice"]').filter({ hasText: 'el pan' }).filter({ has: p.locator('[data-testid^="option-"]', { hasText: 'bread' }) }).first(); await tile.scrollIntoViewIfNeeded();
+  await tile.locator('[data-testid^="option-"]').filter({ hasText: 'bread' }).first().click(); await p.waitForTimeout(900);
+  ok(/Correcto/.test(await tile.innerText()), 'and can answer from their own screen');
+  await p.setViewportSize({ width: 820, height: 1100 }); await p.waitForTimeout(300);
+  await p.screenshot({ path: OUT + '/library-student.png' });
+  ok(errors.length === 0, `no page errors${errors.length ? ': ' + errors[0] : ''}`);
+  await b.close();
+})();

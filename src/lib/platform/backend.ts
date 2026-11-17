@@ -1,6 +1,6 @@
 import { DEMO_TEACHER_ID } from './types';
 import type { AppState } from '../../types';
-import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, Marking, PlatformData, Person, StudentSettings, TeacherConfig } from './types';
+import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, Marking, PlatformData, Person, StudentSettings, TeacherConfig, LibraryPlan } from './types';
 import { settingsId } from './level';
 import { DEFAULT_TEACHER_CONFIG } from './types';
 import { overlaps } from './time';
@@ -71,6 +71,10 @@ export interface PlatformBackend {
   /** Teacher only. */
   saveStudentSettings(input: StudentSettingsInput): Promise<StudentSettings>;
   // ── the lesson room ──
+  /** The teacher's library of lesson plans, filed by level. */
+  libraryPlans(): Promise<LibraryPlan[]>;
+  saveLibraryPlan(input: LibraryInput): Promise<LibraryPlan>;
+  deleteLibraryPlan(id: string): Promise<void>;
   /** The teacher's plans (all, or one student's); for a student, their own lessons as far as they have been opened. */
   lessons(studentId?: string): Promise<LessonPlan[]>;
   saveLesson(input: LessonInput): Promise<LessonPlan>;
@@ -79,6 +83,7 @@ export interface PlatformBackend {
   syncLesson(id: string, answer?: { blockId: string; value: string }): Promise<{ plan: LessonPlan; work: LessonWork | null; now: string }>;
 }
 
+export type LibraryInput = Omit<LibraryPlan, 'id' | 'teacherId' | 'createdAt' | 'updatedAt'> & { id?: string };
 export interface LessonInput { id?: string; studentId: string; title: string; date?: string; notes?: string; blocks: LessonBlock[]; live: LessonPlan['live'] }
 
 /** What the teacher saves for a student. The whole row is replaced, so pass every field you want to keep. */
@@ -359,6 +364,22 @@ export class DemoBackend implements PlatformBackend {
     const all = this.data.lessons ?? [];
     if (this.isTeacher()) return all.filter((l) => l.teacherId === this.actor.id && (!studentId || l.studentId === studentId)).sort((a, b) => (b.date ?? b.createdAt).localeCompare(a.date ?? a.createdAt));
     return all.filter((l) => l.studentId === this.actor.id).map((l) => studentView(l, (this.data.lessonWork ?? []).find((w) => w.lessonId === l.id) ?? null)).sort((a, b) => (b.date ?? b.createdAt).localeCompare(a.date ?? a.createdAt));
+  }
+  async libraryPlans() {
+    await this.refresh();
+    return (this.data.library ?? []).filter((p) => p.teacherId === this.actor.id).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }
+  async saveLibraryPlan(input: LibraryInput) {
+    this.assertTeacher();
+    await this.refresh();
+    const prev = (this.data.library ?? []).find((p) => p.id === input.id);
+    const plan: LibraryPlan = { ...input, id: input.id ?? `lib-${uid()}`, teacherId: this.actor.id, blocks: cleanPlan(input as unknown as Record<string, unknown>).blocks, createdAt: prev?.createdAt ?? this.iso(), updatedAt: this.iso() };
+    await this.commit((d) => { d.library = [...(d.library ?? []).filter((p) => p.id !== plan.id), plan]; });
+    return plan;
+  }
+  async deleteLibraryPlan(id: string) {
+    this.assertTeacher();
+    await this.commit((d) => { d.library = (d.library ?? []).filter((p) => p.id !== id); });
   }
   async saveLesson(input: LessonInput) {
     this.assertTeacher();

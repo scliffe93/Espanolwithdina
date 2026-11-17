@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { adaptPlan, looksLikeClassPlan } from '../src/lib/platform/lessonAdapt';
+import { adaptPlan, looksLikeClassPlan, reword, stageOf, wordingFor } from '../src/lib/platform/lessonAdapt';
 import { layoutPdfItems } from '../src/lib/pdfLayout';
 
 // A classroom plan as the PDF reader gives it: table cells and blanks arrive as tabs.
 const PLAN = [
   '# Spanish A1 — Lesson 3: Food and Drink',
   '',
-  'Level:\tA1\tDuration:\t45 Minutes',
+  'CEFR Level:\tA1\tDuration:\t45 Minutes',
   'Learning Objectives:\tOrder a drink politely; name five foods.',
   '',
   '# 1. Key Phrases',
@@ -65,60 +65,94 @@ const PLAN = [
   'Goal: Order it!',
 ].join('\n');
 
-describe('adapting a classroom plan', () => {
+describe('building a lesson from a classroom plan', () => {
   const p = adaptPlan(PLAN);
   const of = (type: string) => p.blocks.filter((b) => b.type === type);
+  const inStage = (n: number) => p.blocks.filter((b) => stageOf(b.title)?.no === n);
   it('recognises a class plan and leaves an ordinary one to the plain reader', () => {
     expect(looksLikeClassPlan(PLAN)).toBe(true);
     const plain = adaptPlan('El pretérito\n\nCalentamiento\n¿Qué hiciste ayer?\n\nPráctica:\nAyer yo ___ al cine. [fui]\n');
-    expect(plain.adapted).toEqual([]); expect(plain.notes).toBe('');
+    expect(plain.adapted).toEqual([]); expect(plain.notes).toBe(''); expect(plain.stages).toEqual([]);
     expect(plain.blocks.map((b) => b.type)).toEqual(['question', 'gap']);
   });
-  it('takes the title and gives the aims to the student', () => {
+  it('reads the title, the level and the timings, and opens with a summary', () => {
     expect(p.title).toBe('Spanish A1 — Lesson 3: Food and Drink');
-    expect(p.blocks[0]).toMatchObject({ type: 'text', title: 'Today’s goals' });
+    expect(p.level).toBe('A1'); expect(p.wording).toBe('en');
+    expect(p.minutes).toBe(25);
+    expect(p.stages.map((s) => [s.title, s.minutes])).toEqual([['Warm-Up', 5], ['Presentation', 15], ['Wrap-Up', 5]]);
+    expect(p.blocks[0]).toMatchObject({ type: 'text', title: 'Lesson summary' });
     expect(p.blocks[0].body).toContain('• Order a drink politely');
+    expect(p.blocks[0].body).toContain('2. Presentation · 15 min');
   });
-  it('turns the phrase table into a word list, splitting cells that list several', () => {
-    const v = of('vocab')[0];
+  it('follows the stages in order, every part carrying its stage and minutes', () => {
+    const order = p.blocks.map((b) => stageOf(b.title)?.no ?? 0);
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    expect(stageOf(inStage(2)[0].title)).toEqual({ no: 2, of: 3, name: 'Presentation', minutes: 15 });
+    expect(inStage(1).length).toBeGreaterThan(0); expect(inStage(3).length).toBeGreaterThan(0);
+  });
+  it('makes the warm-up words into cards to say aloud', () => {
+    expect(inStage(1)[0]).toMatchObject({ type: 'vocab' });
+    expect(inStage(1)[0].pairs!.map((x) => x.es)).toEqual(['menú', 'café', 'tomate', 'limón', 'sal']);
+  });
+  it('turns the phrase table into cards, splitting cells that list several, and keeps the usage notes for the teacher', () => {
+    const v = inStage(2).find((b) => b.type === 'vocab')!;
     expect(v.pairs).toEqual([{ es: 'el pan', en: 'bread' }, { es: 'el agua', en: 'water' }, { es: '¿Qué quieres?', en: 'What do you want?' }, { es: 'Quiero...', en: 'I want...' }, { es: 'la cuenta', en: 'the bill' }]);
-    expect(of('text').some((b) => b.title === 'Pronunciation and usage' && /Agua takes el/.test(b.body))).toBe(true);
+    expect(p.blocks.every((b) => !/Agua takes el/.test(b.body))).toBe(true);
+    expect(p.notes).toMatch(/Agua takes el but is feminine/);
+  });
+  it('makes a speaking turn of each question, with the words to start the answer', () => {
+    expect(inStage(2).some((b) => b.type === 'question' && b.body === '¿Qué quieres?\nStart with: Quiero...')).toBe(true);
+    expect(inStage(2).some((b) => b.type === 'question' && /Now you\. Say it about yourself:\nQuiero un café con leche/.test(b.body))).toBe(true);
+    expect(inStage(2).some((b) => b.type === 'text' && /^Grammar\nQuiero \(I want\)/.test(b.body))).toBe(true);
+  });
+  it('makes quick checks from the plan’s own phrases, each with its answer among the options', () => {
+    const checks = inStage(2).filter((b) => b.type === 'choice' && /Choose the right reply|What does it mean|How do you say it/.test(b.body));
+    expect(checks.length).toBeGreaterThanOrEqual(2);
+    for (const c of checks) { expect(c.options).toContain(c.answer); expect(new Set(c.options).size).toBe(c.options!.length); }
+    expect(checks.some((c) => c.body === 'Choose the right reply.\n¿Qué quieres?' && c.answer === 'Quiero...')).toBe(true);
   });
   it('turns matching into multiple choice with the answers from the key', () => {
-    const a = of('choice').filter((b) => /Exercise A/.test(b.title));
+    const a = of('choice').filter((b) => ['el pan', 'el agua', 'la cuenta'].includes(b.body));
     expect(a.map((b) => [b.body, b.answer])).toEqual([['el pan', 'bread'], ['el agua', 'water'], ['la cuenta', 'the bill']]);
     expect(a[0].options).toEqual(['water', 'the bill', 'bread']);
   });
-  it('turns blanks with a word box into multiple choice, one part for each blank', () => {
-    const b = of('choice').filter((x) => /Exercise B/.test(x.title));
+  it('turns blanks with a word box into multiple choice, one part for each blank, then the conversation to read', () => {
+    const b = of('choice').filter((x) => /^(Camarero|Ana):/.test(x.body));
     expect(b.map((x) => [x.body, x.answer])).toEqual([
       ['Camarero: ¿Qué ___?', 'quieres'],
       ['Ana: ___ un café, por ….', 'quiero'],
       ['Ana: Quiero un café, por ___.', 'favor'],
       ['Ana: La ___, por favor.', 'cuenta'],
     ]);
-    expect(b.every((x) => x.options!.length === 4)).toBe(true);
-    expect(of('text').some((x) => /read it aloud/.test(x.title) && /Camarero: ¿Qué quieres\?/.test(x.body) && /¡Claro!/.test(x.body))).toBe(true);
+    expect(of('text').some((x) => /Read the finished conversation aloud/.test(x.body) && /Camarero: ¿Qué quieres\?/.test(x.body) && /¡Claro!/.test(x.body))).toBe(true);
   });
-  it('makes an open question of a personal exercise and leaves no answer missing', () => {
-    expect(of('question').some((b) => /Exercise C/.test(b.title) && /Hoy quiero ___\./.test(b.body))).toBe(true);
+  it('releases a personal writing task a step at a time and leaves no answer missing', () => {
+    const steps = of('question').filter((b) => /Step \d\/2/.test(b.body));
+    expect(steps.map((b) => b.body)).toEqual(['Write about yourself. Step 1/2\nHoy quiero ___.', 'Now put it all together and say it aloud. Step 2/2\nHoy quiero ___.']);
     expect(p.needAnswers).toBe(0);
   });
-  it('makes speaking prompts, a warm-up and a grammar note from the procedure, and keeps the procedure for the teacher', () => {
-    expect(of('question').some((b) => b.title === 'Speaking' && b.body === '¿Qué quieres?')).toBe(true);
-    expect(of('question').some((b) => /menú, café, tomate, limón, sal/.test(b.body))).toBe(true);
-    expect(of('text').some((b) => b.title === 'Grammar Spotlight' && /^Quiero \(I want\)/.test(b.body))).toBe(true);
-    expect(of('text').some((b) => b.title === 'Listen and repeat' && /Quiero un café con leche/.test(b.body))).toBe(true);
+  it('makes rounds for two from the cards and ends with the wrap-up', () => {
+    const rounds = of('text').filter((b) => /^Round \d\/\d/.test(b.body));
+    expect(rounds.length).toBeGreaterThanOrEqual(1);
+    expect(rounds[0].body).toMatch(/You are: Marta, un té/); expect(rounds[0].body).toMatch(/Your teacher is: Luis, un zumo/);
+    const lastTwo = p.blocks.slice(-2);
+    expect(lastTwo[0].body).toBe('Answer in a full sentence:\n¿Qué quieres beber?');
+    expect(lastTwo[1].body).toBe('Write one thing you can say in Spanish now.');
+  });
+  it('keeps everything written for the teacher out of the lesson', () => {
+    expect(p.blocks.every((b) => !/Board Setup|Ask learners|Exit Check|Fecha|_{5,}|Duration/.test(`${b.title} ${b.body}`))).toBe(true);
     expect(p.notes).toMatch(/0–5 min · Warm-Up — Menu Words/);
     expect(p.notes).toMatch(/Duration: 45 Minutes/);
-    expect(p.blocks.every((b) => !/Board Setup|Ask learners|Exit Check/.test(b.body))).toBe(true);
-    expect(p.blocks[p.blocks.length - 1]).toMatchObject({ type: 'question', title: 'Wrap-Up' });
   });
-  it('makes a role play for two from the cards and drops the name-and-date line', () => {
-    const r = of('text').find((b) => b.title === 'Role play')!;
-    expect(r.body).toMatch(/You are: Marta, un té\./); expect(r.body).toMatch(/Your teacher is: Luis, un zumo\./);
-    expect(p.blocks.every((b) => !/Fecha|_{5,}/.test(b.body))).toBe(true);
-    expect(p.adapted.length).toBeGreaterThanOrEqual(6);
+  it('writes the instructions in the wording asked for, and can change it later without touching the Spanish', () => {
+    const es = adaptPlan(PLAN, 'Lesson', 'es'), both = adaptPlan(PLAN, 'Lesson', 'both');
+    expect(es.blocks[0].title).toBe('Resumen de la clase');
+    expect(es.blocks.some((b) => b.body === '¿Qué quieres?\nEmpieza con: Quiero...')).toBe(true);
+    expect(both.blocks.some((b) => b.body === '¿Qué quieres?\nEmpieza con: · Start with: Quiero...')).toBe(true);
+    const strip = (bs: typeof p.blocks) => bs.map((b) => [b.type, b.title, b.body, b.answer, b.options]);
+    expect(strip(reword(p.blocks, 'es'))).toEqual(strip(es.blocks));
+    expect(strip(reword(reword(p.blocks, 'both'), 'en'))).toEqual(strip(p.blocks));
+    expect(wordingFor('A1')).toBe('en'); expect(wordingFor('A2')).toBe('both'); expect(wordingFor('B1')).toBe('es'); expect(wordingFor(null)).toBe('en');
   });
 });
 
