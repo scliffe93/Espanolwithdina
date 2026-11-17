@@ -43,7 +43,7 @@ export function Marked({ h, teacher = 'Dina' }: { h: Homework; teacher?: string 
               const n = m.items?.find((x) => x.index === i);
               return (
                 <li key={i} className={`rounded-lg px-2.5 py-1.5 ${ok ? '' : 'bg-terracotta-50'}`}>
-                  <span className="mr-1 text-xs text-ink-mute">{i + 1}.</span><span className="text-ink-soft">{it.prompt}</span>{' '}
+                  <span className="mr-1 text-xs text-ink-mute">{i + 1}.</span><span className="text-ink-soft">{it.prompt.replace(/«([^»]+)»/g, '“$1”')}</span>{' '}
                   <span lang="es" className={`font-semibold ${ok ? 'text-olive' : 'text-terracotta-dark'}`}>{it.given || '—'}</span>
                   {!ok && it.expected && <span lang="es" className="text-ink-soft"> → <b className="text-ink">{it.expected}</b></span>}
                   {!ok && it.category && <span className="ml-1 text-xs text-ink-mute">{categoryLabel(it.category)}</span>}

@@ -16,9 +16,9 @@ const TAGS = Object.keys(FOCUS_TAG_LABEL) as FocusTag[];
 function whatItWas(prompt: string, kind: string): string {
   if (/^Match /.test(prompt)) return 'A matching exercise: tap a pronoun, then tap the verb form that goes with it. Every wrong pairing tried is listed.';
   if (/^Grow the sentence:/.test(prompt)) return 'A sentence that gets longer step by step. The sentence so far was on screen and they typed the part that is missing: the verb, a time word, or a linking phrase such as pero, porque or sin embargo.';
-  if (/^Fill the gap:/.test(prompt)) return 'A Spanish sentence with the verb missing, and its English meaning as the clue. They typed the verb.';
-  if (/^Build( the sentence)?:/.test(prompt)) return 'The words of a sentence in a jumbled order. They tapped them into the right order.';
-  if (/^Fix the mistake:/.test(prompt)) return 'A Spanish sentence with one wrong verb form. They had to spot it and type the right form.';
+  if (/^Fill the gap:/.test(prompt)) return 'A Spanish sentence with the verb missing, shown here with its gap, the verb to use and the English meaning. They typed the verb.';
+  if (/^Build( the sentence)?:/.test(prompt)) return 'The words of a sentence in a jumbled order, shown here as they were given. They tapped them into the right order.';
+  if (/^Fix the mistake:/.test(prompt)) return 'A Spanish sentence with one wrong verb form, shown here struck through. They chose the form that should replace it.';
   if (/^Translate:/.test(prompt)) return 'An English sentence to write in Spanish.';
   if (/^Dictation:/.test(prompt)) return 'They heard the sentence read aloud and typed what they heard. Accents and punctuation are forgiven.';
   if (/^Meaning of /.test(prompt) || /^¿Qué significa/.test(prompt)) return 'A Spanish word with several English meanings to choose from.';
@@ -29,6 +29,12 @@ function whatItWas(prompt: string, kind: string): string {
   if (/^.+ \+ .+ \(.+\)$/.test(prompt)) return 'A pronoun and a verb in a given tense. They had to give the right form of the verb.';
   if (/___/.test(prompt)) return 'A sentence with a gap. They typed or chose what goes in it.';
   return kind === 'vocabulary' ? 'A card from their memory deck: they recall the Spanish and the app checks it.' : 'One question from this homework.';
+}
+
+/** The question as the student saw it: a word marked «like this» is the mistake they were shown, drawn struck through. */
+function Asked({ text }: { text: string }) {
+  const parts = text.split(/(«[^»]+»)/);
+  return <>{parts.map((x, i) => (/^«.+»$/.test(x) ? <s key={i} className="rounded bg-terracotta-50 px-1 font-semibold text-terracotta-dark decoration-2">{x.slice(1, -1)}</s> : <span key={i}>{x}</span>))}</>;
 }
 
 const categoryLabel = (c?: string) => (c && c in CATEGORY_LABEL ? CATEGORY_LABEL[c as ErrorCategory] : c ?? '');
@@ -250,7 +256,7 @@ export function HomeworkReview({ homework, people, viewZone, onClose }: { homewo
                         <li key={i} className={`rounded-xl px-3 py-2 ring-1 ${open && m?.ok === undefined ? 'bg-azul-50 ring-azul/20' : ok ? 'bg-white ring-ink/5' : 'bg-terracotta-50 ring-terracotta/20'}`} data-testid={`rv-answer-${i}`}>
                           <div className="flex cursor-pointer flex-wrap items-baseline gap-x-2 gap-y-0.5" onClick={(e) => { if (!(e.target as HTMLElement).closest('button,input')) setExpanded(expanded === i ? null : i); }} data-testid={`rv-row-${i}`}>
                             <span className="w-5 shrink-0 text-xs text-ink-mute">{i + 1}.</span>
-                            <span className="text-ink-soft">{it.prompt}</span>
+                            <span className="text-ink-soft" lang="es"><Asked text={it.prompt} /></span>
                             <span lang="es" className={`font-semibold ${ok ? 'text-olive' : 'text-terracotta-dark'}`}>{it.given || '—'}</span>
                             {!ok && it.expected && !isMatch && <span lang="es" className="text-ink-soft">→ <b className="text-ink">{it.expected}</b></span>}
                             {!ok && it.category && !slip && <span className="text-xs text-ink-mute">{categoryLabel(it.category)}</span>}
@@ -268,7 +274,7 @@ export function HomeworkReview({ homework, people, viewZone, onClose }: { homewo
                           {expanded === i && (
                             <dl className="mt-2 grid gap-x-3 gap-y-1 rounded-xl bg-cream-100 p-3 text-sm sm:grid-cols-[auto_1fr]" data-testid={`rv-detail-${i}`}>
                               <dt className="text-ink-mute">The exercise</dt><dd className="text-ink-soft">{whatItWas(it.prompt, h.activity.kind)}</dd>
-                              <dt className="text-ink-mute">Asked</dt><dd lang="es">{it.prompt}</dd>
+                              <dt className="text-ink-mute">Asked</dt><dd lang="es" data-testid={`rv-asked-${i}`}><Asked text={it.prompt} /></dd>
                               <dt className="text-ink-mute">{name} answered</dt><dd lang="es" className="font-semibold">{it.given || (it.correct ? 'Completed. This kind of exercise does not keep each answer.' : 'No answer was kept.')}</dd>
                               {it.expected && !isMatch && <><dt className="text-ink-mute">Right answer</dt><dd lang="es" className="font-semibold">{it.expected}</dd></>}
                               {it.expected && isMatch && <><dt className="text-ink-mute">The right pairs</dt><dd lang="es" className="flex flex-wrap gap-1.5">{it.expected.split(' · ').map((pair) => { const [pro, ...form] = pair.includes(' → ') ? pair.split(' → ') : [pair]; const missed = !!it.given && it.given.startsWith('Mixed up') && (it.given.includes(`: ${pro} + `) || it.given.includes(`, ${pro} + `)); return <span key={pair} className={`rounded-full px-2.5 py-1 ring-1 ${missed ? 'bg-terracotta-50 ring-terracotta/40' : 'bg-white ring-ink/10'}`}>{pro} <b>{form.join(' → ')}</b>{missed ? ' ✗' : ''}</span>; })}</dd></>}

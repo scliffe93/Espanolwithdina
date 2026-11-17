@@ -6,22 +6,16 @@ const BASE = 'http://localhost:4173/'; const OUT = process.argv[2] || '.';
 const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCode = 1; };
 const tap = (loc) => loc.click({ force: true });
 // Answers every exercise of a verb session (ported from scripts/platform-e2e.cjs): typed forms get "tengo", choices take the first option.
+// Plays a verb session to its end, answering each kind of exercise (the helper is shared with the verb gym test).
+const vsrc = require('fs').readFileSync(require('path').join(__dirname, 'verbs-e2e.cjs'), 'utf8');
+const answerAny = eval('(' + vsrc.slice(vsrc.indexOf('async function answer'), vsrc.indexOf('async function playThrough')).trim() + ')');
 async function completeVerbSession(page) {
-  for (let s = 0; s < 300; s++) {
-    if (await page.getByText(/correct ·/).isVisible().catch(() => false)) break;
-    const cont = page.getByRole('button', { name: /^Continue/ });
-    if (await cont.isVisible().catch(() => false)) { await tap(cont); await page.waitForTimeout(150); continue; }
-    const input = page.getByLabel('Your answer');
-    if (await input.isVisible().catch(() => false)) { await input.fill('tengo'); await tap(page.getByRole('button', { name: /^(Check|Comprobar)$/ })); await page.waitForTimeout(150); continue; }
-    if (await page.getByText('Tap the words in order.').isVisible().catch(() => false)) { const tiles = page.locator('div.mt-3.flex.flex-wrap.gap-2 > button:not(.invisible)'); while (await tiles.count()) { await tiles.first().click(); } await tap(page.getByRole('button', { name: /^(Check|Comprobar)$/ })); continue; }
-    if (await page.getByText(/Match each pronoun/).isVisible().catch(() => false)) {
-      const left = page.locator('div.grid.grid-cols-2 > div:first-child > button:not([disabled])'), right = page.locator('div.grid.grid-cols-2 > div:last-child > button:not([disabled])');
-      for (let g = 0; g < 20 && (await left.count()); g++) { await left.first().click(); const n = await right.count(); for (let r = 0; r < n; r++) { await right.nth(r).click(); await page.waitForTimeout(60); if ((await left.count()) < n) break; } }
-      continue;
-    }
-    const opt = page.locator('div.mt-5.grid button:not([disabled])').first();
-    if (await opt.isVisible().catch(() => false)) { await tap(opt); await page.waitForTimeout(150); continue; }
-    await page.waitForTimeout(200);
+  for (let s = 0; s < 70; s++) {
+    if (await page.getByText(/of \d+ correct/).count() || await page.getByRole('button', { name: /Homework done/ }).count()) break;
+    if (await page.getByTestId('extend').count()) { await page.getByTestId('extend-input').fill('x'); await page.getByRole('button', { name: /^(Check|Comprobar)$/ }).click(); }
+    else await answerAny(page);
+    await page.getByRole('button', { name: /Continu(e|ar)/ }).click({ timeout: 8000 }).catch(() => {});
+    await page.waitForTimeout(330);
   }
 }
 const asActor = async (p, who) => { await p.goto(BASE + '#/demo'); await p.waitForTimeout(800); await p.getByTestId(`demo-${who}`).click(); await p.waitForTimeout(1600); };
@@ -88,6 +82,16 @@ const asActor = async (p, who) => { await p.goto(BASE + '#/demo'); await p.waitF
     if (await row.count()) {
       await row.getByRole('button', { name: /Review|Details/ }).click(); await p.waitForTimeout(900);
       const answers = await p.locator('[data-testid^="rv-answer-"]').count();
+      // The teacher sees each question as the student saw it: the sentence with its gap, the jumbled words, the mistake.
+      const sheet = await p.getByTestId('rv-answers').innerText();
+      const kinds = { gap: /Fill the gap: .*___.* \(\w+\) · /.test(sheet), build: /Build the sentence: .+ \/ .+ · /.test(sheet), fix: /Fix the mistake: .+ · /.test(sheet) };
+      console.log('- in this session:', Object.entries(kinds).filter(([, v]) => v).map(([k]) => k).join(', ') || 'none of the three');
+      if (kinds.gap) ok(true, 'a fill-the-gap answer shows the Spanish sentence with its gap, the verb and the meaning');
+      if (kinds.build) ok(true, 'a build-the-sentence answer shows the jumbled words that were given');
+      if (kinds.fix) ok((await p.getByTestId('rv-answers').locator('s').count()) >= 1, 'a fix-the-mistake answer shows the sentence with the mistake struck through');
+      const match = p.locator('[data-testid^="rv-answer-"]').filter({ hasText: 'Match each pronoun' }).first();
+      if (await match.count()) ok(/Mixed up: .+ \+ .+|Matched every pair first time/.test(await match.innerText()), 'a matching answer says what was matched or mixed up');
+      await p.getByTestId('rv-answers').screenshot({ path: OUT + '/rv-original.png' });
       ok(answers > 0, `review sheet lists ${answers} answers from the verb session`);
       if (answers) {
         await p.getByTestId('rv-note-0').click(); await p.getByTestId('rv-note-input-0').fill('Watch the ending here.');
@@ -109,7 +113,7 @@ const asActor = async (p, who) => { await p.goto(BASE + '#/demo'); await p.waitF
   await p.goto(BASE + '#/teach/student/demo-sam'); await p.waitForTimeout(1500);
   await p.getByTestId('lesson-debrief').click(); await p.waitForTimeout(800);
   ok(/Ser vs estar/.test(await p.getByTestId('marked-slips').innerText()), 'debrief shows the marked slips');
-  ok((await p.getByTestId('fix-ser-estar').getAttribute('aria-pressed')) === 'true', '"Ser vs estar" is pre-ticked in what to fix');
+  ok((await p.locator('[data-testid^="fix-"][aria-pressed="true"]').count()) === 2, 'the two most frequent slips are pre-ticked in what to fix');
   ok(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   await b.close();
 })().catch((e) => { console.error(e); process.exit(1); });

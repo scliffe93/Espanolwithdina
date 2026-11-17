@@ -55,9 +55,10 @@ function promptFor(ex: Exercise): string {
   const tenseLabel = (t: Tense) => TENSES.find((x) => x.id === t)?.label.toLowerCase() ?? t;
   switch (ex.kind) {
     case 'type': case 'choice': case 'listen': return `${ex.pronoun} + ${ex.verb} (${tenseLabel(ex.tense)})`;
-    case 'context': return `Fill the gap: ${ex.example.en}`;
-    case 'build': return `Build the sentence: ${ex.example.en}`;
-    case 'fix': return `Fix the mistake: ${ex.example.en}`;
+    // The sentence itself goes on the answer sheet, as the student saw it, so the teacher can see the question.
+    case 'context': { const pe = parseExample(ex.example); return `Fill the gap: ${pe.before}___${pe.after} (${ex.verb}) · ${ex.example.en}`; }
+    case 'build': return `Build the sentence: ${ex.tiles.join(' / ')} · ${ex.example.en}`;
+    case 'fix': { const pe = parseExample(ex.example); const wrong = pe.answer[0] === pe.answer[0].toUpperCase() ? ex.wrong[0].toUpperCase() + ex.wrong.slice(1) : ex.wrong; return `Fix the mistake: ${pe.before}«${wrong}»${pe.after} · ${ex.example.en}`; }
     case 'translate': return `Translate: ${ex.example.en}`;
     case 'match': return `Match each pronoun with its form of ${ex.verb} (${tenseLabel(ex.tense)}): ${ex.pronouns.join(', ')}`;
     case 'serEstar': return `${ex.item.before} ___ ${ex.item.after}`.trim();
