@@ -13,6 +13,7 @@ import { allVerbMastery } from '../lib/analytics';
 import { CATEGORY_LABEL, CATEGORY_TIP, checkAnswer, classifyVerbError, normalize } from '../lib/answer';
 import { levelIndex } from '../lib/assessmentScore';
 import { LADDER_BY_ID, SENTENCE_STEPS, parseRung } from '../data/ladders';
+import { topicsOf } from '../data/topics';
 import { EX_LABEL, buildSession, cardKeyFor, pronounFor, shuffle, type Exercise } from '../lib/exercises';
 import { navigate } from '../lib/router';
 import { addSpeakingAttempt, completeLesson, recordAttempt } from '../lib/state';
@@ -721,7 +722,7 @@ export function Verbs({ params }: { params: URLSearchParams }) {
     if (!opts.mode && tenseLocked(TENSES.find((x) => x.id === t)!)) return;
     const f = opts.focus ?? (focus.length ? focus : undefined);
     setSaved(null); setRound((r) => r + 1);
-    setSession({ ex: buildSession({ state, focus: f, tense: t, mode: opts.mode, maxLevel: ceiling, allowed: released, sentence: access.sentence }), tense: t, again: { focus: f, mode: opts.mode } });
+    setSession({ ex: buildSession({ state, focus: f, tense: t, mode: opts.mode, maxLevel: ceiling, allowed: released, sentence: access.sentence, topics: access.topics }), tense: t, again: { focus: f, mode: opts.mode } });
   };
 
   // Deep links (coach, scene completion) start a session immediately.
@@ -774,6 +775,7 @@ export function Verbs({ params }: { params: URLSearchParams }) {
             <p className="eyebrow !text-saffron-light">Verbos</p>
             <h1 className="mt-1 font-display text-4xl font-semibold leading-tight sm:text-5xl">{t('Verb gym')}</h1>
             <p className="mt-2 max-w-xl text-cream/80">{focus.length ? <>Next session: <b className="text-cream" lang="es">{focus.join(', ')}</b> in the {tenseNow.label.toLowerCase()}.</> : <>Next session: the {tenseNow.label.toLowerCase()}, on the forms you are due to see again and up to two new verbs.</>}</p>
+            {topicsOf(access.topics).length > 0 && <p className="mt-2 inline-flex flex-wrap items-center gap-1.5 rounded-full bg-cream/10 px-3 py-1 text-sm text-cream/90 ring-1 ring-cream/15" data-testid="verbs-topics"><Icon name="star" size={14} /> Made for you: sentences about {topicsOf(access.topics).map((t) => t.blurb).join(', ').replace(/, ([^,]*)$/, ' and $1')}.</p>}
             <div className="mt-5 flex flex-wrap gap-2">
               {saved ? (
                 <span className="flex flex-wrap items-center gap-2" data-testid="session-resume">

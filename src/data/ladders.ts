@@ -8,6 +8,8 @@ import type { Tense } from './verbs';
 
 export interface Rung { es: string; en: string }
 export interface Ladder { id: string; tense: Tense; verb: string; rungs: Rung[] }
+/** Ladders that belong to a topic a student loves (data/topics.ts) register here, so they are found by id like any other. */
+export function registerLadders(list: Ladder[]) { for (const l of list) LADDER_BY_ID[l.id] = l; }
 
 export const SENTENCE_STEPS: { level: number; label: string; adds: string; example: string }[] = [
   { level: 1, label: 'Short sentences', adds: 'the verb', example: 'Como en casa.' },
@@ -25,6 +27,7 @@ export function sentenceLevelFor(level: Cefr | null | undefined): number {
   return level === 'A1' ? 2 : level === 'A2' ? 3 : level === 'B1' ? 4 : level ? 5 : 2;
 }
 
+export const LADDER_BY_ID: Record<string, Ladder> = {};
 export const LADDERS: Ladder[] = [
   { id: 'pres-comer', tense: 'present', verb: 'comer', rungs: [
     { es: '[Como] en casa.', en: 'I eat at home.' },
@@ -119,5 +122,5 @@ export function parseRung(r: Rung): { before: string; add: string; after: string
   return { before: m[1], add: m[2], after: m[3], plain: m[1] + m[2] + m[3] };
 }
 
-export const LADDER_BY_ID: Record<string, Ladder> = Object.fromEntries(LADDERS.map((l) => [l.id, l]));
+for (const l of LADDERS) LADDER_BY_ID[l.id] = l;
 export const laddersFor = (tense: Tense) => LADDERS.filter((l) => l.tense === tense);

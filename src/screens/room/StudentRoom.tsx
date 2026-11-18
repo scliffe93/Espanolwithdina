@@ -12,6 +12,8 @@ import { SYS, bankOf, boardOf, deckKeysFor, partsOf, summaryOf } from '../../lib
 import { useLesson } from './useLesson';
 import { useStore } from '../../lib/store';
 import { addToDeck } from '../../lib/state';
+import { topicsOf, topicWordId } from '../../data/topics';
+import { vocabKey } from '../../data/vocab';
 
 /** The student's side of a lesson: what the teacher has opened, following the part she is on, with their answers. */
 export function StudentRoom({ id }: { id: string }) {
@@ -126,6 +128,13 @@ export function RoomCard() {
   const deckKeys = deckKeysFor(bankWords).filter((k) => !state.srs[k]);
   const deckSig = deckKeys.join(',');
   useEffect(() => { if (ready && deckKeys.length) update((st) => addToDeck(st, deckKeys)); }, [ready, deckSig]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Words from the topics the student loves join the deck four at a time: the next four once these have been seen.
+  const access = useLevelAccess();
+  const topicKeys = topicsOf(access.topics).flatMap((t) => t.words.map((_, i) => vocabKey(topicWordId(t.id, i))));
+  const waiting = topicKeys.filter((k) => state.srs[k] && state.srs[k].attempts === 0).length;
+  const nextTopic = waiting === 0 ? topicKeys.filter((k) => !state.srs[k]).slice(0, 4) : [];
+  const topicSig = nextTopic.join(',');
+  useEffect(() => { if (ready && nextTopic.length) update((st) => addToDeck(st, nextTopic)); }, [ready, topicSig]); // eslint-disable-line react-hooks/exhaustive-deps
   const [showAll, setShowAll] = useState(false);
   const past = showAll ? all : all.slice(0, 3);
   const dayOf = (l: (typeof all)[number]) => new Date(`${l.date || l.createdAt.slice(0, 10)}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });

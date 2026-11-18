@@ -6,6 +6,8 @@ import { useStore } from '../store';
 import type { StudentSettings } from './types';
 import { sentenceLevelFor } from '../../data/ladders';
 
+const EMPTY: string[] = [];
+
 export interface LevelAccess {
   /** The ceiling for the person using the app right now, or null when there is none (guests, the teacher, students without a ceiling). */
   maxLevel: Cefr | null;
@@ -20,6 +22,8 @@ export interface LevelAccess {
   levelFrom: 'teacher' | 'confirmed' | 'own';
   /** How long sentences get in practice, 1 to 5: the teacher's setting, else what suits the level. */
   sentence: number;
+  /** What the student loves: their practice sentences come from these topics. */
+  topics: string[];
 }
 
 /** The current actor's level ceiling. Only students have one; everyone else gets null. */
@@ -28,10 +32,10 @@ export function useLevelAccess(): LevelAccess {
   const isStudent = me?.role === 'student';
   const q = usePlatformQuery<StudentSettings | null>((b) => (isStudent ? b.studentSettings(me!.id) : Promise.resolve(null)), [me?.id, isStudent]);
   const s = isStudent ? q.data : null;
-  const key = `${s?.stepped ? 1 : 0}|${(s?.unlocked ?? []).join(',')}`;
+  const key = `${s?.stepped ? 1 : 0}|${(s?.unlocked ?? []).join(',')}|${(s?.verbs ?? []).join(',')}`;
   const verbs = useMemo(() => allowedVerbs(s), [key]); // eslint-disable-line react-hooks/exhaustive-deps
   const packs = useMemo(() => allowedPacks(s), [key]); // eslint-disable-line react-hooks/exhaustive-deps
   const { state } = useStore();
   const level = s?.maxLevel ?? s?.verified?.level ?? overallLevel(state.profile?.levels);
-  return { maxLevel: s?.maxLevel ?? null, loading: isStudent && q.loading, settings: q.data, verbs, packs, level, levelFrom: s?.maxLevel ? 'teacher' : s?.verified?.level ? 'confirmed' : 'own', sentence: s?.sentence ?? sentenceLevelFor(level) };
+  return { maxLevel: s?.maxLevel ?? null, loading: isStudent && q.loading, settings: q.data, verbs, packs, level, levelFrom: s?.maxLevel ? 'teacher' : s?.verified?.level ? 'confirmed' : 'own', topics: s?.topics ?? EMPTY, sentence: s?.sentence ?? sentenceLevelFor(level) };
 }

@@ -342,7 +342,10 @@ class CloudBackend implements PlatformBackend {
   }
   async saveStudentSettings(input: StudentSettingsInput) {
     this.assertTeacher();
-    const s: StudentSettings = { id: settingsId(input.studentId), studentId: input.studentId, teacherId: this.actor.id, maxLevel: input.maxLevel, ...(input.note?.trim() ? { note: input.note.trim() } : {}), ...(input.stepped ? { stepped: true } : {}), ...(input.unlocked?.length ? { unlocked: [...new Set(input.unlocked)] } : {}), ...(input.verified ? { verified: input.verified } : {}), ...(input.notYet ? { notYet: input.notYet } : {}), ...(input.sentence ? { sentence: Math.max(1, Math.min(5, Math.round(input.sentence))) } : {}), ...(input.verbs?.length ? { verbs: [...new Set(input.verbs)].slice(0, 600) } : {}), updatedAt: this.iso() };
+    // Topics are set on their own; a save that does not mention them keeps the ones the student has.
+    const kept = input.topics ?? (await this.studentSettings(input.studentId).catch(() => null))?.topics;
+    const topics = [...new Set(kept ?? [])].slice(0, 6);
+    const s: StudentSettings = { id: settingsId(input.studentId), studentId: input.studentId, teacherId: this.actor.id, maxLevel: input.maxLevel, ...(input.note?.trim() ? { note: input.note.trim() } : {}), ...(input.stepped ? { stepped: true } : {}), ...(input.unlocked?.length ? { unlocked: [...new Set(input.unlocked)] } : {}), ...(input.verified ? { verified: input.verified } : {}), ...(input.notYet ? { notYet: input.notYet } : {}), ...(input.sentence ? { sentence: Math.max(1, Math.min(5, Math.round(input.sentence))) } : {}), ...(input.verbs?.length ? { verbs: [...new Set(input.verbs)].slice(0, 600) } : {}), updatedAt: this.iso(), ...(topics.length ? { topics } : {}) };
     return this.put('student', s.id, s.studentId, s);
   }
 

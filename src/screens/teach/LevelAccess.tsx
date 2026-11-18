@@ -8,6 +8,7 @@ import { overallLevel } from '../../lib/platform/level';
 import { ReleaseBlocks } from './ReleaseBlocks';
 import { SENTENCE_SHARE, SENTENCE_STEPS, sentenceLevelFor } from '../../data/ladders';
 import { ErrorText, useAction } from './shared';
+import { TOPICS, topicsOf } from '../../data/topics';
 
 /** The teacher's level ceiling for one student: the highest level of work they can open on their own. */
 export function LevelAccess({ studentId, name, state }: { studentId: string; name: string; state?: AppState | null }) {
@@ -32,6 +33,12 @@ export function LevelAccess({ studentId, name, state }: { studentId: string; nam
   };
 
   /** How long the student's practice sentences get. Undefined goes back to following their level. */
+  /** What the student loves: their practice sentences and some new words then come from these topics. */
+  const saveTopics = async (topics: string[]) => {
+    if (!backend) return;
+    const saved = await run(() => backend.saveStudentSettings({ studentId, maxLevel: current, note: q.data?.note, stepped: q.data?.stepped, unlocked: q.data?.unlocked, verified: q.data?.verified, notYet: q.data?.notYet, verbs: q.data?.verbs, sentence: q.data?.sentence, topics }));
+    if (saved) { q.reload(); notify('Saved', topics.length ? `${name}'s practice is now about ${topicsOf(topics).map((t) => t.label.toLowerCase()).join(', ')}.` : `${name}'s practice uses the app's everyday sentences again.`); }
+  };
   const saveSentence = async (step: number | undefined) => {
     if (!backend) return;
     const saved = await run(() => backend.saveStudentSettings({ studentId, maxLevel: current, note: q.data?.note, stepped: q.data?.stepped, unlocked: q.data?.unlocked, verified: q.data?.verified, notYet: q.data?.notYet, verbs: q.data?.verbs, sentence: step }));
@@ -93,6 +100,15 @@ export function LevelAccess({ studentId, name, state }: { studentId: string; nam
           )}
         </div>
       )}
+      <div className="mb-3 rounded-2xl bg-white p-3 ring-1 ring-ink/5" data-testid="student-topics">
+        <p><span className="eyebrow mr-2 !text-[10px]">What {name} loves</span><b data-testid="topics-current">{topicsOf(q.data?.topics).length ? topicsOf(q.data?.topics).map((t) => t.label).join(', ') : 'Nothing chosen'}</b></p>
+        <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label={`What ${name} loves`}>
+          {TOPICS.map((t) => { const on = (q.data?.topics ?? []).includes(t.id); return (
+            <button key={t.id} type="button" disabled={busy} aria-pressed={on} onClick={() => void saveTopics(on ? (q.data?.topics ?? []).filter((x) => x !== t.id) : [...(q.data?.topics ?? []), t.id])} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm ring-1 transition ${on ? 'bg-ink text-cream ring-ink' : 'bg-cream-100 text-ink ring-ink/10 hover:ring-ink/40'}`} data-testid={`topic-${t.id}`}>{on && <Icon name="check" size={13} />}{t.label}</button>
+          ); })}
+        </div>
+        <p className="mt-2 text-xs text-ink-mute">Tick what {name} is into. Their verb practice then uses sentences about it, each session ends with a growing sentence about it, and its words join their memory cards a few at a time. For example: <span lang="es" className="text-ink-soft">{(topicsOf(q.data?.topics)[0] ?? TOPICS[0]).ladders[0].rungs[1].es.replace(/[\[\]]/g, '')}</span></p>
+      </div>
       <div className="mb-3 rounded-2xl bg-white p-3 ring-1 ring-ink/5" data-testid="sentence-level">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="min-w-0 flex-1"><span className="eyebrow mr-2 !text-[10px]">From words to sentences</span><b data-testid="sentence-current">{SENTENCE_STEPS[sentence - 1].label}</b> <span className="text-ink-mute">· step {sentence} of 5{q.data?.sentence ? ', set by you' : `, the usual for ${working}`}</span></p>

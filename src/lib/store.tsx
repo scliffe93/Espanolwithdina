@@ -1,3 +1,4 @@
+import '../data/topics'; // registers the topic words and sentences with the app
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AppState } from '../types';
 import { ACHIEVEMENTS, newlyUnlocked, type AchievementDef } from './achievements';

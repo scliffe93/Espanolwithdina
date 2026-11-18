@@ -328,3 +328,14 @@ Tested by `tests/lesson-extras.test.ts`, `scripts/extras-e2e.cjs` (two logged-in
 "End the lesson" asks what the student gets afterwards: a summary (drafted from what the lesson covered, the words and verbs, and for one student how many answers were right; the teacher edits it; prompts she leaves unfilled are not sent) and the whiteboard. Whatever she ticks is published with the lesson. The student finds it in Feedback, under "From your lessons", with a button to open the lesson, and the summary also sits at the top of the lesson itself. "End without publishing" ends the lesson and sends nothing.
 
 The same review offers **words and verbs to release**. They are found in the lesson's word lists, on the whiteboard, in the teacher's notes and in each student's notes; a verb is recognised in whatever form it was written ("fuimos" offers *ir*, "me gusta" offers *gustar*). Nothing is ticked to begin with and nothing reaches the student until the teacher ticks it. Ticked words go to the student's word bank, and any the app has a card for join their memory deck. Ticked verbs go to their verb bank and, for a student on gradual release, into the verbs they practise (`StudentSettings.verbs`). The same choice can be changed later from the Plan tab. In a group lesson the release goes to everyone in the group.
+
+### What a student loves: personal practice
+
+On a student's profile, "What {name} loves" lets the teacher tick topics (golf, tennis, classic cars, football, cooking, music, travel). They are saved in the student's settings (`StudentSettings.topics`) and other saves keep them. For that student:
+
+- sentence questions in the verb gym (in context, build, fix, translate) mostly use sentences about their topics, and often switch to a verb that has one;
+- each session ends with a growing sentence about a topic, in the tense being practised when the topic has one;
+- the topic's words join their memory cards four at a time, the next four once those have been seen;
+- the verb gym says "Made for you".
+
+Level ceilings and gradual release still apply: a topic sentence is only used when its verb is one the student may practise. The content lives in `src/data/topics.ts`; a new topic is a new entry there (example sentences by verb, growing sentences, words). Check with `npx vitest run tests/topics.test.ts` and `scripts/topics-e2e.cjs`.

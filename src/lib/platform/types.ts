@@ -305,6 +305,8 @@ export interface StudentSettings {
   notYet?: { level: Cefr; at: string };
   /** How long the sentences in the student's practice get, 1 to 5. Unset = follows their level. */
   sentence?: number;
+  /** What the student loves (ids from data/topics.ts): their practice sentences and some new words come from these. */
+  topics?: string[];
   updatedAt: string;
 }
 

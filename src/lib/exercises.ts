@@ -1,4 +1,5 @@
 import { SENTENCE_SHARE, laddersFor } from '../data/ladders';
+import { topicsOf } from '../data/topics';
 import type { Activity, AppState, Cefr, Region } from '../types';
 import { withinLevel } from './platform/level';
 import { HABER_FORMS, VERBS, VERB_BY_INF, conjugate, getActiveVariety, isCompound, parseExample, personsForTense, verbKey, type Tense, type Verb, type VerbExample } from '../data/verbs';
@@ -174,6 +175,8 @@ export interface PlanInput {
   allowed?: Set<string> | null;
   /** How long sentences get, 1 to 5 (see data/ladders.ts). Follows the student's level unless the teacher sets it. */
   sentence?: number;
+  /** What the student loves (data/topics.ts): sentences come from these topics whenever there is one for the verb. */
+  topics?: string[];
 }
 
 /** Picks which verbs to practise: due → weak → in-progress → new (by frequency, within level). */
@@ -209,7 +212,7 @@ const KIND_PREF: Record<Activity, ExKind[]> = {
 };
 
 /** Builds a varied session. Preferences tilt the mix but every learner sees every kind. */
-export function buildSession({ state, focus, tense, length = 12, now = Date.now(), rng = Math.random, mode, maxLevel = null, allowed = null, sentence }: PlanInput): Exercise[] {
+export function buildSession({ state, focus, tense, length = 12, now = Date.now(), rng = Math.random, mode, maxLevel = null, allowed = null, sentence, topics }: PlanInput): Exercise[] {
   const region = state.profile?.region ?? 'spain';
   if (mode === 'ser-estar') {
     const items = shuffle(SER_ESTAR, rng).slice(0, Math.min(length, SER_ESTAR.length));
@@ -264,14 +267,27 @@ export function buildSession({ state, focus, tense, length = 12, now = Date.now(
     return attempts >= 6 && cards.reduce((a, c) => a + c!.correct, 0) / attempts >= 0.8;
   };
   const known = share === null ? [] : (focus?.length ? verbs : VERBS.filter((v) => (allowed ? allowed.has(v.inf) : withinLevel(v.level, maxLevel))).sort((a, b) => a.frequencyRank - b.frequencyRank).map((v) => v.inf)).filter((inf) => VERB_BY_INF[inf] && knows(inf)).slice(0, 4);
+  // Personal topics: sentences about what the student loves. Most sentence questions use one when the verb has it,
+  // and a sentence question whose verb has none often swaps to a verb that does (among the verbs the student may use).
+  const mine = topicsOf(topics);
+  const themed: Record<string, VerbExample[]> = {};
+  for (const t of mine) for (const [inf, list] of Object.entries(t.examples)) {
+    const v = VERB_BY_INF[inf]; if (!v || (allowed ? !allowed.has(inf) : !withinLevel(v.level, maxLevel))) continue;
+    const ok = list.filter((e) => (region !== 'mexico' || e.person !== 4) && parseExample(e).answer.toLowerCase() === v.present[e.person]);
+    if (ok.length) themed[inf] = [...(themed[inf] ?? []), ...ok];
+  }
+  const themedVerbs = Object.keys(themed);
   let k = 0;
   const picks = deck.slice(0, length).sort((a, b) => order(a) - order(b));
   for (const kind of picks) {
-    const inf = known.length && ['context', 'build', 'fix', 'translate'].includes(kind) ? known[k++ % known.length] : verbs[i++ % verbs.length];
+    let inf = known.length && ['context', 'build', 'fix', 'translate'].includes(kind) ? known[k++ % known.length] : verbs[i++ % verbs.length];
+    const wantsSentence = ['context', 'build', 'fix', 'translate'].includes(kind) && tense === 'present';
+    if (wantsSentence && themedVerbs.length && !themed[inf] && !focus?.length && rng() < 0.6) inf = themedVerbs[Math.floor(rng() * themedVerbs.length)];
     const verb = VERB_BY_INF[inf];
     const persons = personsWithForm(verb, tense, region);
     const examples = verb.examples.filter((e) => e.person >= 0 && (region !== 'mexico' || e.person !== 4) && !!parseExample(e).answer && !!verb.present[e.person]);
-    const ex = examples.length ? examples[Math.floor(rng() * examples.length)] : undefined;
+    const own = wantsSentence && themed[inf] && rng() < 0.8 ? themed[inf] : null;
+    const ex = own ? own[Math.floor(rng() * own.length)] : examples.length ? examples[Math.floor(rng() * examples.length)] : undefined;
     const person = persons[Math.floor(rng() * persons.length)];
     const typed: Exercise = { kind: 'type', verb: inf, tense, person, pronoun: '' };
     const needsExample = ['context', 'build', 'fix', 'translate'].includes(kind);
@@ -322,8 +338,10 @@ export function buildSession({ state, focus, tense, length = 12, now = Date.now(
   const ladders = laddersFor(tense).filter((l) => !allowed || allowed.has(l.verb));
   if (ladders.length && sentence !== 0) {
     // A sentence built on one of the verbs being practised, when there is one.
-    const mine = ladders.filter((l) => verbs.includes(l.verb));
-    const from = mine.length ? mine : ladders;
+    const onVerbs = ladders.filter((l) => verbs.includes(l.verb));
+    // A growing sentence about what the student loves, when there is one in this tense.
+    const loved = mine.flatMap((t) => t.ladders).filter((l) => l.tense === tense && VERB_BY_INF[l.verb] && (allowed ? allowed.has(l.verb) : withinLevel(VERB_BY_INF[l.verb].level, maxLevel)));
+    const from = loved.length && rng() < 0.75 ? loved : onVerbs.length ? onVerbs : ladders;
     const ladder = from[Math.floor(rng() * from.length)];
     const top = Math.max(1, Math.min(ladder.rungs.length, sentence ?? 2));
     for (let r = 0; r < top; r++) out.push({ kind: 'extend', verb: ladder.verb, tense, ladder: ladder.id, rung: r });
