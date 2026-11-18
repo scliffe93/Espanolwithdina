@@ -13,7 +13,7 @@ import { allVerbMastery } from '../lib/analytics';
 import { CATEGORY_LABEL, CATEGORY_TIP, checkAnswer, classifyVerbError, normalize } from '../lib/answer';
 import { levelIndex } from '../lib/assessmentScore';
 import { LADDER_BY_ID, SENTENCE_STEPS, parseRung } from '../data/ladders';
-import { topicsOf } from '../data/topics';
+import { matchTopics, topicsOf } from '../data/topics';
 import { EX_LABEL, buildSession, cardKeyFor, pronounFor, shuffle, type Exercise } from '../lib/exercises';
 import { navigate } from '../lib/router';
 import { addSpeakingAttempt, completeLesson, recordAttempt } from '../lib/state';
@@ -684,6 +684,37 @@ function WayCard({ icon, tone = '', title, text, onClick, testid, primary, badge
   );
 }
 
+/** The student says what they are into, in their own words. Their sentences follow it wherever the app has a topic for it. */
+function Likes() {
+  const { state, update } = useStore();
+  const saved = state.profile?.likes ?? '';
+  const [text, setText] = useState(saved);
+  const [open, setOpen] = useState(false);
+  useEffect(() => { setText(saved); }, [saved]);
+  if (!state.profile) return null;
+  const found = matchTopics(saved);
+  const save = () => { const v = text.trim().slice(0, 300); update((s) => (s.profile ? { ...s, profile: { ...s.profile, likes: v } } : s)); setOpen(false); };
+  return (
+    <section className="card mt-5 p-4" data-testid="likes">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-saffron/25 text-ink"><Icon name="star" size={18} /></span>
+        <div className="min-w-0 flex-1 basis-56">
+          <b className="block">{saved ? 'What you are into' : 'What are you into?'}</b>
+          <span className="text-sm text-ink-soft" data-testid="likes-status">{saved ? <>“{saved}”{found.topics.length > 0 && <> · your sentences are about {topicsOf(found.topics).map((t) => t.label.toLowerCase()).join(', ')}.</>}{found.unmatched.length > 0 && <> We do not have sentences about {found.unmatched.join(', ')} yet: it has been noted and they will be added.</>}</> : 'Tell us your hobbies and passions and your practice sentences will be about them.'}</span>
+        </div>
+        {!open && <button type="button" className="btn-soft" onClick={() => setOpen(true)} data-testid="likes-open">{saved ? 'Change' : 'Tell us'}</button>}
+      </div>
+      {open && (
+        <form className="mt-3 border-t border-ink/5 pt-3" onSubmit={(e) => { e.preventDefault(); save(); }}>
+          <textarea className="input min-h-[80px] w-full" value={text} onChange={(e) => setText(e.target.value)} maxLength={300} placeholder="For example: golf, tennis, old Jaguars, cooking for friends" data-testid="likes-text" />
+          <div className="mt-2 flex flex-wrap gap-2"><button type="submit" className="btn-primary" data-testid="likes-save">Save</button><button type="button" className="btn-ghost" onClick={() => { setText(saved); setOpen(false); }}>Cancel</button></div>
+          <p className="mt-2 text-xs text-ink-mute">Your teacher can see this. Please do not write anything private.</p>
+        </form>
+      )}
+    </section>
+  );
+}
+
 export function Verbs({ params }: { params: URLSearchParams }) {
   const { t, stage } = useT();
   const { state } = useStore();
@@ -801,6 +832,8 @@ export function Verbs({ params }: { params: URLSearchParams }) {
           </div>
         </div>
       </section>
+
+      <Likes />
 
       {/* Step 1: the tense, set out by level so only what suits you is in front of you. */}
       <section className="card mt-5 p-5" data-testid="verbs-tense">

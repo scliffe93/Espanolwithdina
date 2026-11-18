@@ -39,6 +39,19 @@ const ABOUT = /golf|hoyo|torneo|hándicap|tenis|raqueta|saque|Wimbledon|pista|Ja
   ok(themed >= 2, `the session asks questions about what they love (${themed} seen)`);
   ok(ABOUT.test(grow), `and ends with a growing sentence about it (${grow.replace(/\s+/g, ' ').slice(0, 70)})`);
   await p.screenshot({ path: OUT + '/topics-grow.png' });
+  // The student says what they are into, in their own words.
+  await p.goto(BASE + '#/world'); await p.waitForTimeout(300); await p.goto(BASE + '#/verbs'); await p.getByTestId('likes').waitFor({ timeout: 10000 });
+  await p.getByTestId('likes-open').click(); await p.getByTestId('likes-text').fill('Cooking for friends, sailing and golf'); await p.getByTestId('likes-save').click(); await p.waitForTimeout(800);
+  const st = await p.getByTestId('likes-status').innerText();
+  ok(/about golf, cooking/.test(st) && /sailing/.test(st) && /will be added/.test(st), `their own words are matched to topics, and what is missing is noted (${st.slice(0, 90)})`);
+  ok(/cooking and food/.test(await p.getByTestId('verbs-topics').innerText()), 'cooking joins the topics their teacher ticked');
+  await p.getByTestId('likes').screenshot({ path: OUT + '/topics-likes.png' });
+  await p.waitForTimeout(1500);
+  await as(p, 'dina');
+  await p.goto(BASE + '#/teach/student/demo-sam'); await p.getByTestId('student-topics').waitFor({ timeout: 10000 }); await p.waitForTimeout(800);
+  const own = await p.getByTestId('student-topics').innerText();
+  ok(/Cooking for friends, sailing and golf/.test(own) && /No sentences yet for: sailing/.test(own), 'the teacher sees their words and that sailing still needs writing');
+  await p.getByTestId('student-topics').screenshot({ path: OUT + '/topics-teacher.png' });
   ok(errors.length === 0, `no page errors${errors.length ? ': ' + errors[0] : ''}`);
   await b.close();
 })();

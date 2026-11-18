@@ -339,3 +339,5 @@ On a student's profile, "What {name} loves" lets the teacher tick topics (golf, 
 - the verb gym says "Made for you".
 
 Level ceilings and gradual release still apply: a topic sentence is only used when its verb is one the student may practise. The content lives in `src/data/topics.ts`; a new topic is a new entry there (example sentences by verb, growing sentences, words). Check with `npx vitest run tests/topics.test.ts` and `scripts/topics-e2e.cjs`.
+
+**In the student's own words.** At the top of the verb gym a student can write what they are into in an open box (`profile.likes`, up to 300 characters, visible to their teacher). `matchTopics` reads it: topics the app has are used straight away, alongside any the teacher ticked. Anything it has no topic for is shown to the student as noted, and to the teacher on the student's profile as "No sentences yet for…", which is the list of topics to write next.

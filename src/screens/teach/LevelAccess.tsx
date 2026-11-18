@@ -8,7 +8,7 @@ import { overallLevel } from '../../lib/platform/level';
 import { ReleaseBlocks } from './ReleaseBlocks';
 import { SENTENCE_SHARE, SENTENCE_STEPS, sentenceLevelFor } from '../../data/ladders';
 import { ErrorText, useAction } from './shared';
-import { TOPICS, topicsOf } from '../../data/topics';
+import { TOPICS, matchTopics, topicsOf } from '../../data/topics';
 
 /** The teacher's level ceiling for one student: the highest level of work they can open on their own. */
 export function LevelAccess({ studentId, name, state }: { studentId: string; name: string; state?: AppState | null }) {
@@ -102,6 +102,13 @@ export function LevelAccess({ studentId, name, state }: { studentId: string; nam
       )}
       <div className="mb-3 rounded-2xl bg-white p-3 ring-1 ring-ink/5" data-testid="student-topics">
         <p><span className="eyebrow mr-2 !text-[10px]">What {name} loves</span><b data-testid="topics-current">{topicsOf(q.data?.topics).length ? topicsOf(q.data?.topics).map((t) => t.label).join(', ') : 'Nothing chosen'}</b></p>
+        {state?.profile?.likes ? (() => { const m = matchTopics(state.profile!.likes); return (
+          <div className="mt-2 rounded-xl bg-cream-100 px-3 py-2 text-sm" data-testid="topics-own-words">
+            <p><span className="text-ink-mute">In {name}’s own words:</span> “{state.profile!.likes}”</p>
+            {m.topics.length > 0 && <p className="mt-1 text-xs text-ink-soft">Recognised and already in use: <b>{topicsOf(m.topics).map((t) => t.label).join(', ')}</b>.</p>}
+            {m.unmatched.length > 0 && <p className="mt-1 text-xs text-terracotta-dark" data-testid="topics-missing">No sentences yet for: <b>{m.unmatched.join(', ')}</b>. These need writing.</p>}
+          </div>
+        ); })() : <p className="mt-2 text-xs text-ink-mute">{name} has not written what they are into yet. They can, at the top of their verb gym.</p>}
         <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label={`What ${name} loves`}>
           {TOPICS.map((t) => { const on = (q.data?.topics ?? []).includes(t.id); return (
             <button key={t.id} type="button" disabled={busy} aria-pressed={on} onClick={() => void saveTopics(on ? (q.data?.topics ?? []).filter((x) => x !== t.id) : [...(q.data?.topics ?? []), t.id])} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm ring-1 transition ${on ? 'bg-ink text-cream ring-ink' : 'bg-cream-100 text-ink ring-ink/10 hover:ring-ink/40'}`} data-testid={`topic-${t.id}`}>{on && <Icon name="check" size={13} />}{t.label}</button>

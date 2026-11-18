@@ -53,6 +53,8 @@ export interface LearnerProfile {
   destinationCity: string;
   relocation: 'moving-soon' | 'within-year' | 'someday' | 'already-there' | 'not-moving';
   interests: Interest[];
+  /** What the learner is into, in their own words. Their practice sentences follow it where the app has a matching topic. */
+  likes?: string;
   career: string;
   socialGoals: ('friends' | 'dating' | 'colleagues' | 'neighbours' | 'family')[];
   reasons: Reason[];

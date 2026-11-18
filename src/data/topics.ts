@@ -9,6 +9,8 @@ import { registerVocab, type VocabItem } from './vocab';
 
 export interface Topic {
   id: string;
+  /** Words that mean this topic when a student writes what they are into. */
+  keywords: string[];
   label: string;
   /** A short line for the student: what their practice is about. */
   blurb: string;
@@ -22,7 +24,7 @@ const L = (id: string, tense: Ladder['tense'], verb: string, rungs: [string, str
 
 export const TOPICS: Topic[] = [
   {
-    id: 'golf', label: 'Golf', blurb: 'the golf course',
+    id: 'golf', keywords: ['golf', 'golfing', 'golfer'], label: 'Golf', blurb: 'the golf course',
     examples: {
       jugar: [{ es: 'Yo {juego} al golf todos los sábados.', en: 'I play golf every Saturday.', person: 0 }, { es: 'Mi amigo y yo {jugamos} dieciocho hoyos.', en: 'My friend and I play eighteen holes.', person: 3 }],
       tener: [{ es: 'Yo {tengo} unos palos de golf nuevos.', en: 'I have some new golf clubs.', person: 0 }],
@@ -69,7 +71,7 @@ export const TOPICS: Topic[] = [
     ],
   },
   {
-    id: 'tennis', label: 'Tennis', blurb: 'the tennis court',
+    id: 'tennis', keywords: ['tennis', 'tenis', 'wimbledon', 'padel', 'pádel'], label: 'Tennis', blurb: 'the tennis court',
     examples: {
       jugar: [{ es: 'Yo {juego} al tenis los martes.', en: 'I play tennis on Tuesdays.', person: 0 }, { es: 'Ellos {juegan} un partido de dobles.', en: 'They are playing a doubles match.', person: 5 }],
       tener: [{ es: 'Tú {tienes} una raqueta muy buena.', en: 'You have a very good racket.', person: 1 }],
@@ -116,7 +118,7 @@ export const TOPICS: Topic[] = [
     ],
   },
   {
-    id: 'classic-cars', label: 'Classic cars', blurb: 'classic cars and old Jaguars',
+    id: 'classic-cars', keywords: ['classic car', 'old car', 'vintage car', 'jaguar', 'e-type', 'cars', 'car', 'coches', 'coche', 'motoring'], label: 'Classic cars', blurb: 'classic cars and old Jaguars',
     examples: {
       conducir: [{ es: 'Yo {conduzco} un Jaguar antiguo.', en: 'I drive an old Jaguar.', person: 0 }],
       tener: [{ es: 'Mi vecino {tiene} un Jaguar de 1965.', en: 'My neighbour has a 1965 Jaguar.', person: 2 }],
@@ -164,7 +166,7 @@ export const TOPICS: Topic[] = [
     ],
   },
   {
-    id: 'football', label: 'Football', blurb: 'football',
+    id: 'football', keywords: ['football', 'fútbol', 'futbol', 'soccer', 'premier league'], label: 'Football', blurb: 'football',
     examples: {
       jugar: [{ es: 'Nosotros {jugamos} al fútbol los domingos.', en: 'We play football on Sundays.', person: 3 }],
       ver: [{ es: 'Yo {veo} el partido con mis amigos.', en: 'I watch the match with my friends.', person: 0 }],
@@ -183,7 +185,7 @@ export const TOPICS: Topic[] = [
     words: [{ es: 'el equipo', en: 'the team', gender: 'm' }, { es: 'el estadio', en: 'the stadium', gender: 'm' }, { es: 'el gol', en: 'the goal', gender: 'm' }, { es: 'el portero', en: 'the goalkeeper', gender: 'm' }, { es: 'la liga', en: 'the league', gender: 'f' }, { es: 'el aficionado', en: 'the fan', gender: 'm' }],
   },
   {
-    id: 'cooking', label: 'Cooking', blurb: 'cooking and food',
+    id: 'cooking', keywords: ['cooking', 'cook', 'cocinar', 'cocina', 'baking', 'food', 'recipes'], label: 'Cooking', blurb: 'cooking and food',
     examples: {
       cocinar: [{ es: 'Yo {cocino} para mi familia los viernes.', en: 'I cook for my family on Fridays.', person: 0 }],
       comprar: [{ es: 'Tú {compras} verduras en el mercado.', en: 'You buy vegetables at the market.', person: 1 }],
@@ -202,7 +204,7 @@ export const TOPICS: Topic[] = [
     words: [{ es: 'la receta', en: 'the recipe', gender: 'f' }, { es: 'la sartén', en: 'the frying pan', gender: 'f' }, { es: 'el horno', en: 'the oven', gender: 'm' }, { es: 'el cuchillo', en: 'the knife', gender: 'm' }, { es: 'el aceite de oliva', en: 'the olive oil', gender: 'm' }, { es: 'el ajo', en: 'the garlic', gender: 'm' }],
   },
   {
-    id: 'music', label: 'Music', blurb: 'music',
+    id: 'music', keywords: ['music', 'música', 'guitar', 'piano', 'singing', 'concerts', 'gigs'], label: 'Music', blurb: 'music',
     examples: {
       escuchar: [{ es: 'Yo {escucho} música en el coche.', en: 'I listen to music in the car.', person: 0 }],
       tocar: [{ es: 'Mi hermana {toca} la guitarra.', en: 'My sister plays the guitar.', person: 2 }],
@@ -221,7 +223,7 @@ export const TOPICS: Topic[] = [
     words: [{ es: 'la canción', en: 'the song', gender: 'f' }, { es: 'el concierto', en: 'the concert', gender: 'm' }, { es: 'la guitarra', en: 'the guitar', gender: 'f' }, { es: 'el cantante', en: 'the singer', gender: 'm' }, { es: 'la letra', en: 'the lyrics', gender: 'f' }, { es: 'el grupo', en: 'the band', gender: 'm' }],
   },
   {
-    id: 'travel', label: 'Travel', blurb: 'travel',
+    id: 'travel', keywords: ['travel', 'travelling', 'traveling', 'viajar', 'holidays', 'trips'], label: 'Travel', blurb: 'travel',
     examples: {
       viajar: [{ es: 'Yo {viajo} a España cada verano.', en: 'I travel to Spain every summer.', person: 0 }],
       visitar: [{ es: 'Nosotros {visitamos} un pueblo diferente cada día.', en: 'We visit a different village every day.', person: 3 }],
@@ -252,3 +254,17 @@ export const topicWordId = (topic: string, i: number) => `tp-${topic}-${i + 1}`;
 export const TOPIC_VOCAB: VocabItem[] = TOPICS.flatMap((t) => t.words.map((w, i) => ({ id: topicWordId(t.id, i), es: w.es, en: w.en, theme: 'everyday' as const, level: 'A1' as const, ...(w.gender ? { gender: w.gender } : {}) })));
 registerVocab(TOPIC_VOCAB);
 registerLadders(TOPIC_LADDERS);
+
+/**
+ * Reads what a student wrote about themselves ("I love golf, tennis and old Jaguars, and sailing") and finds the
+ * topics the app has for it. The things it has no topic for come back too, so they can be written next.
+ */
+export function matchTopics(text: string | null | undefined): { topics: string[]; unmatched: string[] } {
+  const clean = (text ?? '').toLowerCase().replace(/[.!?;:()"“”]/g, ',');
+  if (!clean.trim()) return { topics: [], unmatched: [] };
+  const has = (t: Topic, phrase: string) => t.keywords.some((k) => new RegExp(`(^|[^a-záéíóúñü])${k.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}s?($|[^a-záéíóúñü])`).test(phrase));
+  const topics = TOPICS.filter((t) => has(t, clean)).map((t) => t.id);
+  const filler = /^(i|i'm|im|i am|me|my|we|really|also|just|a|an|the|big|massive|huge|fan|fans|lover|of|love|loves|like|likes|enjoy|into|keen|on|especially|mainly|mostly|playing|watching|doing|going|to|lots|lot|some|old|very|much|too|as well|well|as|and|y|me gusta|me gustan|me encanta|el|la|los|las)$/;
+  const unmatched = clean.split(/,|\band\b|\by\b|\bbut\b|\bplus\b|&|\n|\//).map((ph) => ph.trim().split(/\s+/).filter((w) => w && !filler.test(w)).join(' ')).filter((ph) => ph.length > 2 && ph.length <= 40 && !TOPICS.some((t) => has(t, ph)));
+  return { topics, unmatched: [...new Set(unmatched)].slice(0, 8) };
+}

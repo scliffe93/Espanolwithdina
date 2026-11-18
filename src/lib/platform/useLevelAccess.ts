@@ -5,6 +5,7 @@ import { allowedPacks, allowedVerbs, overallLevel } from './level';
 import { useStore } from '../store';
 import type { StudentSettings } from './types';
 import { sentenceLevelFor } from '../../data/ladders';
+import { matchTopics } from '../../data/topics';
 
 const EMPTY: string[] = [];
 
@@ -36,6 +37,10 @@ export function useLevelAccess(): LevelAccess {
   const verbs = useMemo(() => allowedVerbs(s), [key]); // eslint-disable-line react-hooks/exhaustive-deps
   const packs = useMemo(() => allowedPacks(s), [key]); // eslint-disable-line react-hooks/exhaustive-deps
   const { state } = useStore();
+  // What the student loves: the teacher's ticks, plus whatever the app recognises in the student's own words.
+  const likes = state.profile?.likes ?? '';
+  const topicKey = `${(s?.topics ?? []).join(',')}|${likes}`;
+  const topics = useMemo(() => { const all = [...new Set([...(s?.topics ?? []), ...matchTopics(likes).topics])]; return all.length ? all : EMPTY; }, [topicKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const level = s?.maxLevel ?? s?.verified?.level ?? overallLevel(state.profile?.levels);
-  return { maxLevel: s?.maxLevel ?? null, loading: isStudent && q.loading, settings: q.data, verbs, packs, level, levelFrom: s?.maxLevel ? 'teacher' : s?.verified?.level ? 'confirmed' : 'own', topics: s?.topics ?? EMPTY, sentence: s?.sentence ?? sentenceLevelFor(level) };
+  return { maxLevel: s?.maxLevel ?? null, loading: isStudent && q.loading, settings: q.data, verbs, packs, level, levelFrom: s?.maxLevel ? 'teacher' : s?.verified?.level ? 'confirmed' : 'own', topics, sentence: s?.sentence ?? sentenceLevelFor(level) };
 }
