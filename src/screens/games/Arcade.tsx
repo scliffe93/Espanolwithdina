@@ -1,3 +1,4 @@
+import { topicsOf } from '../../data/topics';
 import { useT } from '../../lib/i18n';
 import { motion } from 'motion/react';
 import { useMemo, useState } from 'react';
@@ -43,7 +44,7 @@ export function Arcade() {
   const { t } = useT();
   const [area, setArea] = useState<GameArea | 'all'>('all');
   // Games the device cannot run (speaking without speech recognition) are left out, not shown broken.
-  const { level } = useLevelAccess();
+  const { level, topics } = useLevelAccess();
   const open = (g: GameInfo) => levelIdx(g.minLevel) <= levelIdx(level);
   // Only the games of the learner's level and below are listed. Higher ones are not shown at all: they appear,
   // marked as just unlocked, when the teacher moves the learner up.
@@ -66,6 +67,7 @@ export function Arcade() {
           </button>
         }
       />
+      {topicsOf(topics).length > 0 && <p className="mb-5 inline-flex flex-wrap items-center gap-1.5 rounded-full bg-saffron/20 px-3 py-1.5 text-sm text-ink ring-1 ring-saffron/40" data-testid="arcade-topics"><Icon name="star" size={14} /> Made for you: the games use words, verbs and sentences about {topicsOf(topics).map((x) => x.blurb).join(', ').replace(/, ([^,]*)$/, ' and $1')}.</p>}
       {picks.length > 0 && (
         <section className="mb-7" data-testid="arcade-picks">
           <p className="eyebrow mb-2">Para ti · Picked for you</p>

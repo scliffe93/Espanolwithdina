@@ -93,3 +93,25 @@ describe('what a student writes about themselves', () => {
     expect(matchTopics(undefined)).toEqual({ topics: [], unmatched: [] });
   });
 });
+
+import { topicSentences, topicVerbs, topicWordIds } from '../src/data/topics';
+import { buildDeck } from '../src/screens/games/SwipeCheck';
+describe('games made for what a student loves', () => {
+  it('gives the games verbs, words and short sentences from the topics', () => {
+    expect(topicVerbs(['golf', 'classic-cars'])).toEqual(expect.arrayContaining(['jugar', 'ganar', 'conducir']));
+    expect(topicVerbs([])).toEqual([]);
+    expect(topicWordIds(['tennis'])).toHaveLength(10);
+    const s = topicSentences(['golf', 'tennis', 'classic-cars']);
+    expect(s.length).toBeGreaterThan(30);
+    for (const x of s) { expect(x.es.split(' ').length).toBeLessThanOrEqual(9); expect(x.es).not.toMatch(/[{}.]$|[{}]/); }
+  });
+  it('the right-or-wrong game has cards about the topics, right and wrong, and keeps to released verbs', async () => {
+    const { topicExamples } = await import('../src/data/topics');
+    const deck = buildDeck(null, topicExamples(['classic-cars']));
+    const mine = deck.filter((c) => c.mine);
+    expect(mine.some((c) => c.isCorrect && /Jaguar/.test(c.shown))).toBe(true);
+    expect(mine.some((c) => !c.isCorrect)).toBe(true);
+    expect(buildDeck(null).some((c) => c.mine)).toBe(false);
+    expect(buildDeck(new Set(['ser']), topicExamples(['classic-cars'])).every((c) => c.verb === 'ser' || c.verb === 'estar')).toBe(true);
+  });
+});

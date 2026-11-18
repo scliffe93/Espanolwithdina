@@ -1,3 +1,5 @@
+import { useLevelAccess } from '../../lib/platform/useLevelAccess';
+import { topicSentences } from '../../data/topics';
 import { motion } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FOOTBALL, commentarySentences } from '../../data/football';
@@ -18,7 +20,9 @@ function Field({ api }: { api: GameApi }) {
   const region = state.profile?.region ?? 'spain';
   const cityId = state.profile?.city ?? 'madrid';
   const city = FOOTBALL[cityId];
-  const sentences = useMemo(() => commentarySentences(cityId, region), [cityId, region]);
+  // A learner who loves something other than football puts sentences about that in order, with some commentary mixed in.
+  const { topics } = useLevelAccess();
+  const sentences = useMemo(() => { const all = commentarySentences(cityId, region); const own = topicSentences(topics.filter((t) => t !== 'football')); return own.length >= 4 ? [...own, ...all.slice(0, Math.ceil(own.length / 3))] : all; }, [cityId, region, topics]);
   const idRef = useRef(0);
   const used = useRef<number[]>([]);
   const make = (): Round => {
@@ -34,6 +38,9 @@ function Field({ api }: { api: GameApi }) {
   const [placed, setPlaced] = useState<number[]>([]);
   const [shake, setShake] = useState<number | null>(null);
   const [done, setDone] = useState(false);
+  // The learner's topics arrive a moment after the game opens: start again on their sentences once they are in.
+  const sig = topics.join(','); const firstSig = useRef(sig);
+  useEffect(() => { if (firstSig.current === sig) return; firstSig.current = sig; used.current = []; setPlaced([]); setRound(make()); }, [sig]); // eslint-disable-line react-hooks/exhaustive-deps
   const startedAt = useRef(Date.now());
 
   useEffect(() => { say(round.es); startedAt.current = Date.now(); }, [round, say]);
@@ -61,7 +68,7 @@ function Field({ api }: { api: GameApi }) {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-        <p className="font-semibold">{city.derby} · Listen, then line up the words</p>
+        <p className="font-semibold">{topicSentences(topics.filter((t) => t !== 'football')).length >= 4 ? 'Made for you' : city.derby} · Listen, then line up the words</p>
         <button type="button" className="ctrl" onClick={() => say(round.es)}>Repeat</button>
       </div>
       <div className="min-h-[72px] rounded-3xl bg-cream-100 p-3" aria-live="polite">

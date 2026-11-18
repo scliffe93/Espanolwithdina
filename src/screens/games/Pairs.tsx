@@ -1,6 +1,7 @@
+import { topicWordIds } from '../../data/topics';
 import { useT } from '../../lib/i18n';
 import { motion } from 'motion/react';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { VOCAB, vocabForm, vocabKey, type VocabItem } from '../../data/vocab';
 import { shuffle } from '../../lib/exercises';
 import { useSay } from '../../hooks/useSpeech';
@@ -19,17 +20,18 @@ function Board({ api }: { api: GameApi }) {
   const say = useSay();
   const region = state.profile?.region ?? 'spain';
   const { t } = useT();
-  const { maxLevel } = useLevelAccess();
+  const { maxLevel, topics } = useLevelAccess();
   const pool = useMemo(() => {
     const ok = VOCAB.filter((v) => withinLevel(v.level, maxLevel) && v.en.length <= 26 && vocabForm(v, region).length <= 26);
     const mine = ok.filter((v) => state.srs[vocabKey(v.id)]);
     const liked = ok.filter((v) => (state.profile?.interests ?? []).includes(v.theme as never));
+    const lovedIds = new Set(topicWordIds(topics)); const loved = ok.filter((v) => lovedIds.has(v.id));
     const easy = ok.filter((v) => v.level === 'A1' || v.level === 'A2');
     // Their own words first, then their interests, then the everyday ones: at least forty to draw from.
-    const out = [...new Set([...shuffle(mine), ...shuffle(liked), ...shuffle(easy), ...shuffle(ok)])];
+    const out = [...new Set([...shuffle(loved), ...shuffle(mine), ...shuffle(liked), ...shuffle(easy), ...shuffle(ok)])];
     return out.slice(0, Math.max(40, mine.length));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [maxLevel, region]);
+  }, [maxLevel, region, topics]);
   const cursor = useRef(0);
   const draw = (avoid: VocabItem[]): VocabItem => {
     for (let i = 0; i < pool.length; i++) {
@@ -41,6 +43,9 @@ function Board({ api }: { api: GameApi }) {
   const [left, setLeft] = useState<VocabItem[]>(() => { const first: VocabItem[] = []; while (first.length < SLOTS) first.push(draw(first)); return first; });
   const [right, setRight] = useState<VocabItem[]>(() => shuffle(left));
   const [sel, setSel] = useState<{ l: number | null; r: number | null }>({ l: null, r: null });
+  // The learner's topics arrive a moment after the game opens: deal the board again with their words once they are in.
+  const sig = topics.join(','); const firstSig = useRef(sig);
+  useEffect(() => { if (firstSig.current === sig) return; firstSig.current = sig; cursor.current = 0; const board: VocabItem[] = []; while (board.length < SLOTS) board.push(draw(board)); setLeft(board); setRight(shuffle(board)); setSel({ l: null, r: null }); }, [sig]); // eslint-disable-line react-hooks/exhaustive-deps
   const [flash, setFlash] = useState<{ l: number; r: number; ok: boolean } | null>(null);
 
   const tryMatch = (l: number, r: number, e: React.MouseEvent) => {

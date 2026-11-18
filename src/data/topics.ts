@@ -4,7 +4,7 @@
 // Everything here is ordinary content in the same shapes as the rest of the app (verb examples, ladders, words),
 // so marking, homework review and the memory deck treat it like any other.
 import { registerLadders, type Ladder } from './ladders';
-import type { VerbExample } from './verbs';
+import { parseExample, type VerbExample } from './verbs';
 import { registerVocab, type VocabItem } from './vocab';
 
 export interface Topic {
@@ -268,3 +268,15 @@ export function matchTopics(text: string | null | undefined): { topics: string[]
   const unmatched = clean.split(/,|\band\b|\by\b|\bbut\b|\bplus\b|&|\n|\//).map((ph) => ph.trim().split(/\s+/).filter((w) => w && !filler.test(w)).join(' ')).filter((ph) => ph.length > 2 && ph.length <= 40 && !TOPICS.some((t) => has(t, ph)));
   return { topics, unmatched: [...new Set(unmatched)].slice(0, 8) };
 }
+
+/** For the games: the verbs a student's topics use, their example sentences by verb, and whole sentences to put in order. */
+export function topicExamples(ids: string[] | null | undefined): Record<string, VerbExample[]> {
+  const out: Record<string, VerbExample[]> = {};
+  for (const t of topicsOf(ids)) for (const [inf, list] of Object.entries(t.examples)) out[inf] = [...(out[inf] ?? []), ...list];
+  return out;
+}
+export const topicVerbs = (ids: string[] | null | undefined): string[] => Object.keys(topicExamples(ids));
+export function topicSentences(ids: string[] | null | undefined, maxWords = 9): { es: string; en: string }[] {
+  return Object.values(topicExamples(ids)).flat().map((e) => ({ es: parseExample(e).plain.replace(/[.]$/, ''), en: e.en.replace(/[.]$/, '') })).filter((x) => x.es.split(' ').length <= maxWords);
+}
+export const topicWordIds = (ids: string[] | null | undefined): string[] => topicsOf(ids).flatMap((t) => t.words.map((_, i) => topicWordId(t.id, i)));

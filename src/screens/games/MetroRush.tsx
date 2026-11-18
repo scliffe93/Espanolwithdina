@@ -1,3 +1,5 @@
+import { withinLevel } from '../../lib/platform/level';
+import { topicVerbs } from '../../data/topics';
 import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CITY_THEMES } from '../../data/cityThemes';
@@ -14,7 +16,7 @@ interface Round { id: number; verb: Verb; person: number; pronoun: string; optio
 
 export function useVerbPool(): Verb[] {
   const { state } = useStore();
-  const { verbs: released } = useLevelAccess();
+  const { verbs: released, topics, maxLevel } = useLevelAccess();
   const focus = (new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('focus') ?? '').split(',').filter(Boolean);
   return useMemo(() => {
     if (focus.length) { const f = VERBS.filter((v) => focus.includes(v.inf)); if (f.length) return f; }
@@ -22,10 +24,12 @@ export function useVerbPool(): Verb[] {
     const open = released ? VERBS.filter((v) => released.has(v.inf)) : VERBS;
     const started = open.filter((v) => Object.keys(state.srs).some((k) => k.startsWith(`verb:${v.inf}|`)));
     const base = [...open].sort((a, b) => a.frequencyRank - b.frequencyRank).slice(0, 16);
-    const pool = [...new Set([...started, ...base])];
+    // The verbs of what the learner loves (jugar, ganar, conducir) are always in the game.
+    const loved = topicVerbs(topics); const mine = open.filter((v) => loved.includes(v.inf) && withinLevel(v.level, maxLevel));
+    const pool = [...new Set([...started, ...mine, ...base])];
     return pool;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [released]);
+  }, [released, topics, maxLevel]);
 }
 
 function Track({ api }: { api: GameApi }) {

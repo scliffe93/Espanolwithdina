@@ -39,6 +39,16 @@ const ABOUT = /golf|hoyo|torneo|hándicap|tenis|raqueta|saque|Wimbledon|pista|Ja
   ok(themed >= 2, `the session asks questions about what they love (${themed} seen)`);
   ok(ABOUT.test(grow), `and ends with a growing sentence about it (${grow.replace(/\s+/g, ' ').slice(0, 70)})`);
   await p.screenshot({ path: OUT + '/topics-grow.png' });
+  // The games follow the same topics.
+  await p.goto(BASE + '#/games'); await p.getByTestId('arcade-topics').waitFor({ timeout: 10000 });
+  ok(/golf course/.test(await p.getByTestId('arcade-topics').innerText()), 'the arcade says the games are made for them');
+  for (const [game, label] of [['swipe', 'the right-or-wrong game'], ['lineup', 'the sentence-order game'], ['pairs', 'the word pairs game']]) {
+    await p.goto(BASE + '#/game/' + game); await p.waitForTimeout(900);
+    await p.locator('main button.bg-white.rounded-full').first().click(); await p.waitForTimeout(5200);
+    const text = await p.locator('main').innerText();
+    ok(ABOUT.test(text) || /el palo|la pelota|la bandera|césped|gorra|la red|el punto|volante|la rueda|carretera|la pieza|mecánico|entrenador|árbitro|la final|el jugador|carrocería|el golpe|el partido/i.test(text) || (game === 'lineup' && !/derbi/.test(text)), `${label} opens on something they love (${text.replace(/\s+/g, ' ').slice(0, 80)})`);
+    await p.screenshot({ path: OUT + `/topics-game-${game}.png` });
+  }
   // The student says what they are into, in their own words.
   await p.goto(BASE + '#/world'); await p.waitForTimeout(300); await p.goto(BASE + '#/verbs'); await p.getByTestId('likes').waitFor({ timeout: 10000 });
   await p.getByTestId('likes-open').click(); await p.getByTestId('likes-text').fill('Cooking for friends, sailing and golf'); await p.getByTestId('likes-save').click(); await p.waitForTimeout(800);
