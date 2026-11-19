@@ -4,4 +4,4 @@
 -- The setup script re-applies every migration on each run, so this list must never be narrower than a later
 -- migration's: it carries 'student' (added in 20261112) so a re-run cannot reject rows that already exist.
 alter table public.lwd_platform drop constraint if exists lwd_platform_kind_check;
-alter table public.lwd_platform add constraint lwd_platform_kind_check check (kind in ('booking', 'homework', 'feedback', 'activity', 'invoice', 'config', 'credit', 'student', 'lesson', 'lessonwork'));
+alter table public.lwd_platform add constraint lwd_platform_kind_check check (kind in ('booking', 'homework', 'feedback', 'activity', 'invoice', 'config', 'credit', 'student', 'lesson', 'lessonwork', 'resource'));

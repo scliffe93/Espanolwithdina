@@ -1,8 +1,8 @@
 import type { AppState } from '../../types';
 import { ApiError, platformApi, type PlatformKind, type Session } from '../cloud';
 import { migrate } from '../state';
-import { PlatformError, findOverlap, uid, validateBooking, type LessonInput, type LibraryInput, type PlatformBackend, type StudentSettingsInput } from './backend';
-import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, Marking, Person, StudentSettings, TeacherConfig } from './types';
+import { PlatformError, fileProblem, fileTitle, findOverlap, uid, validateBooking, type LessonInput, type LibraryInput, type PlatformBackend, type StudentSettingsInput } from './backend';
+import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, Marking, Person, StudentSettings, TeacherConfig, FileRef, Resource } from './types';
 import { settingsId } from './level';
 import type { LessonGroup, LessonPlan, LessonWork, LibraryPlan, StudentGroup } from './types';
 import { cleanPlan } from '../../../supabase/functions/_shared/lesson';
@@ -135,6 +135,48 @@ class CloudBackend implements PlatformBackend {
   async homework(opts: { studentId?: string } = {}) {
     const list = await this.records<Homework>('homework', opts.studentId);
     return [...list].sort((a, b) => a.dueAt.localeCompare(b.dueAt));
+  }
+
+  async uploadFile(file: File): Promise<FileRef> {
+    this.assertTeacher();
+    const problem = fileProblem(file);
+    if (problem) throw new PlatformError('invalid', problem);
+    const made = await this.wrap(() => platformApi.newFile(this.token, { name: file.name.slice(0, 120), mime: file.type, size: file.size }));
+    // Straight to the file store with the one-time link the server signed: the file never passes through the function.
+    const form = new FormData();
+    form.append('cacheControl', '3600');
+    form.append('', file);
+    const res = await fetch(made.uploadUrl, { method: 'PUT', body: form }).catch(() => null);
+    if (!res) throw new PlatformError('offline', 'The upload didn’t get through. Check your connection and try again.');
+    if (!res.ok) throw new PlatformError('invalid', `“${file.name}” couldn’t be uploaded. Please try again.`);
+    return made.file;
+  }
+  async fileBlob(id: string) {
+    // The server checks who is asking and signs a short-lived link; the file is then read straight from the store.
+    const { url } = await this.wrap(() => platformApi.fileUrl(this.token, id));
+    const res = await fetch(url).catch(() => null);
+    if (!res) throw new PlatformError('offline', 'You appear to be offline. The file needs a connection.');
+    if (!res.ok) throw new PlatformError('not_found', 'That file could not be opened.');
+    return res.blob();
+  }
+  async resources(opts: { studentId?: string } = {}) {
+    const list = await this.records<Resource>('resource', opts.studentId);
+    return [...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+  async shareResources(input: { studentIds: string[]; files: FileRef[] }) {
+    this.assertTeacher();
+    if (!input.studentIds.length) throw new PlatformError('invalid', 'Choose at least one student.');
+    const items: Resource[] = [];
+    for (const studentId of input.studentIds) for (const file of input.files) {
+      const r: Resource = { id: `res-${uid()}`, teacherId: this.actor.id, studentId, title: fileTitle(file.name), file: { id: file.id, name: file.name, mime: file.mime, size: file.size }, createdAt: this.iso() };
+      items.push(await this.put('resource', r.id, studentId, r));
+    }
+    return items;
+  }
+  async deleteResource(id: string) {
+    this.assertTeacher();
+    await this.wrap(() => platformApi.remove(this.token, id));
+    this.cache.clear();
   }
 
   async assignHomework(input: { studentIds: string[]; activity: HomeworkActivity; instructions: string; dueAt: string; plan?: Homework['plan'] }) {

@@ -16,6 +16,7 @@ Ahora vivo en un piso pequeño cerca del metro. Me gusta mucho el barrio.
   await asActor(p, 'dina');
   await p.goto(BASE + '#/teach/student/demo-sam'); await p.waitForTimeout(1500);
   await p.getByRole('button', { name: 'Assign homework' }).first().click(); await p.waitForTimeout(900);
+  if (await p.getByTestId('hw-mode-list').count()) { await p.getByTestId('hw-mode-list').click(); await p.waitForTimeout(300); }
   await p.locator('#hw-template').selectOption({ label: 'From a document or text (your own material)' }); await p.waitForTimeout(400);
   ok(await p.getByTestId('material-builder').isVisible(), 'the assignment form shows the material builder');
   await p.getByTestId('material-text').fill(TEXT);

@@ -70,6 +70,27 @@ export interface HomeworkActivity {
   minWords?: number;
   /** material: exercises built from the teacher's own document or text. */
   material?: MaterialSet;
+  /** The teacher's own files (PDFs, photos of a page): explanations to learn from and the questions to answer. */
+  files?: HomeworkFile[];
+}
+
+/** A file the teacher uploaded. The file itself lives in the file store; this is what points at it. */
+export interface FileRef { id: string; name: string; mime: string; size: number }
+/** 'learning' explains something and stays in the student's learning bank; 'questions' is the work to do. */
+export type FileRole = 'learning' | 'questions';
+export interface HomeworkFile extends FileRef { role: FileRole }
+export const FILE_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+export const FILE_MAX_BYTES = 10 * 1024 * 1024;
+export const FILE_ID = /^f-[A-Za-z0-9-]{8,60}$/;
+
+/** One item in a student's learning bank: an explanation from the teacher that stays there to come back to. */
+export interface Resource {
+  id: string;
+  teacherId: string;
+  studentId: string;
+  title: string;
+  file: FileRef;
+  createdAt: string;
 }
 
 export type HomeworkStatus = 'assigned' | 'submitted' | 'reviewed';
@@ -327,6 +348,7 @@ export interface PlatformData {
   groups?: LessonGroup[];
   classes?: StudentGroup[];
   lessonWork?: LessonWork[];
+  resources?: Resource[];
 }
 
 /**

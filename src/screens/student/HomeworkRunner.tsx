@@ -14,6 +14,7 @@ import { mediaEnd, mediaStart, useStore } from '../../lib/store';
 import { DemoChip, ErrorCard, HomeworkStatus, Loading } from './shared';
 import { Marked } from './Marked';
 import { MaterialRunner } from './MaterialRunner';
+import { FileCard } from '../../components/Files';
 
 // ───────────────────────────────────────────────────────────────
 // Homework runner — performs written and speaking homework in place.
@@ -179,9 +180,27 @@ function WrittenRunner({ h, now, readOnly }: { h: Homework; now: number; readOnl
   };
 
   if (done) return <Submitted h={h} summary={done} />;
+  const learning = (h.activity.files ?? []).filter((f) => f.role === 'learning');
+  const questions = (h.activity.files ?? []).filter((f) => f.role === 'questions');
   return (
     <>
       <PromptCard h={h} />
+      {learning.length > 0 && (
+        <section className="card mt-4 p-5" aria-label="Learning" data-testid="hw-learning-files">
+          <p className="eyebrow">1 · Read this first</p>
+          <h2 className="mt-1 font-semibold">The learning</h2>
+          <p className="mt-1 text-sm text-ink-soft">{readOnly ? 'This also sits in the student’s learning bank.' : <>You can come back to this at any time in <button type="button" className="font-semibold text-azul underline-offset-2 hover:underline" onClick={() => navigate('student/learning')}>your learning bank</button>.</>}</p>
+          <div className="mt-3 grid gap-2">{learning.map((f, i) => <FileCard key={f.id} file={f} defaultOpen={i === 0 && !h.result} />)}</div>
+        </section>
+      )}
+      {questions.length > 0 && (
+        <section className="card mt-4 p-5" aria-label="Questions" data-testid="hw-question-files">
+          <p className="eyebrow">{learning.length ? '2 · ' : ''}Then answer</p>
+          <h2 className="mt-1 font-semibold">The questions</h2>
+          <p className="mt-1 text-sm text-ink-soft">Read the questions here and type your answers in the box below. Number them so Dina can follow.</p>
+          <div className="mt-3 grid gap-2">{questions.map((f, i) => <FileCard key={f.id} file={f} defaultOpen={i === 0 && !learning.length} />)}</div>
+        </section>
+      )}
       <Previous h={h} now={now} />
       <section className="card mt-4 p-5" aria-label="Your answer">
         <div className="flex flex-wrap items-center justify-between gap-2">

@@ -18,6 +18,7 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
   await p.screenshot({ path: OUT + '/level-teacher.png', fullPage: false });
   // The assignment form flags a tense above the ceiling but still allows it.
   await p.getByRole('button', { name: 'Assign homework' }).first().click(); await p.waitForTimeout(600);
+  if (await p.getByTestId('hw-mode-list').count()) { await p.getByTestId('hw-mode-list').click(); await p.waitForTimeout(300); }
   await p.locator('#hw-template').selectOption({ index: 0 });
   await p.locator('#hw-tense').selectOption('perfect'); await p.waitForTimeout(300);
   ok(await p.getByTestId('above-ceiling').isVisible(), 'assignment form flags a tense above the ceiling');

@@ -11,7 +11,8 @@ import { allVerbMastery, currentStreak, totalActiveSeconds, weekSummary } from '
 import { addDays, dayKey, formatMinutes, weekStart } from '../../lib/dates';
 import { usePlatform, usePlatformQuery, type AppState } from '../../lib/platform/context';
 import { LessonBrief, lastLessonBefore } from './LessonBrief';
-import { fmtDateTime, relative } from '../../lib/platform/time';
+import { fmtDate, fmtDateTime, relative } from '../../lib/platform/time';
+import { FileCard } from '../../components/Files';
 import type { Booking, Feedback, FeedbackKind, Homework, Role } from '../../lib/platform/types';
 import { buildTeacherReport } from '../../lib/report';
 import { navigate } from '../../lib/router';
@@ -137,6 +138,7 @@ export function StudentProfile({ id, params }: { id: string; params: URLSearchPa
       {tab === 'lessons' && balance && config.data && <div className="mb-4"><BalanceCard balance={balance} currency={config.data.currency} onSell={() => setSelling(true)} /></div>}
       {tab === 'lessons' && <LessonsTab bookings={bookings.data} people={people} zone={zone} onEdit={(b) => setBooking({ open: true, edit: b })} onBook={() => setBooking({ open: true })} />}
       {tab === 'homework' && <HomeworkTab homework={homework.data} people={people} zone={zone} onOpen={setReview} onAssign={() => setAssign(true)} />}
+      {tab === 'homework' && <LearningBank studentId={id} name={person.firstName} />}
       {tab === 'feedback' && <FeedbackTab studentId={id} name={person.firstName} feedback={feedback.data} zone={zone} />}
       {tab === 'activity' && (
         <Section title="Recent activity" eyebrow="From the app">
@@ -353,6 +355,25 @@ function HomeworkTab({ homework, people, zone, onOpen, onAssign }: { homework: H
           </Section>
         );
       })}
+    </div>
+  );
+}
+
+/** The explanations shared with this student. They stay until the teacher removes them. */
+function LearningBank({ studentId, name }: { studentId: string; name: string }) {
+  const { backend, bump } = usePlatform();
+  const bank = usePlatformQuery((b) => b.resources({ studentId }), [studentId]);
+  const { run, busy, error } = useAction();
+  return (
+    <div className="mt-4" data-testid="teach-learning-bank">
+      <Section title="Learning bank" eyebrow={`What ${name} can always go back to`}>
+        {!bank.data ? <Loading /> : bank.data.length ? (
+          <div className="grid gap-2">
+            {bank.data.map((r) => <FileCard key={r.id} file={r.file} label={`Shared ${fmtDate(r.createdAt)}`} right={<ConfirmButton confirmLabel="Remove it?" disabled={busy} onConfirm={async () => { await run(() => backend!.deleteResource(r.id)); bump(); }}><Icon name="trash" size={15} /> Remove</ConfirmButton>} />)}
+          </div>
+        ) : <p className="text-sm text-ink-mute">Nothing yet. Choose Assign homework, then Assign my own homework, and upload the learning.</p>}
+        <ErrorText error={error} />
+      </Section>
     </div>
   );
 }

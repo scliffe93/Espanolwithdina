@@ -46,6 +46,7 @@ async function shot(p, name, opts = {}) { await clean(p); await p.waitForTimeout
   await p.goto(BASE + '#/demo'); await p.waitForTimeout(800); await p.getByTestId('demo-dina').click(); await p.waitForTimeout(1800);
   await p.goto(BASE + '#/teach/student/demo-sam'); await p.waitForTimeout(1500);
   await p.getByRole('button', { name: 'Assign homework' }).first().click(); await p.waitForTimeout(900);
+  if (await p.getByTestId('hw-mode-list').count()) { await p.getByTestId('hw-mode-list').click(); await p.waitForTimeout(300); }
   await p.locator('#hw-template').selectOption({ label: 'From a document or text (your own material)' }); await p.waitForTimeout(400);
   await p.getByTestId('material-text').fill(TEXT); await p.getByTestId('material-title').fill('Mi semana en Madrid');
   await p.getByTestId('material-analyse').click(); await p.waitForTimeout(1200);
@@ -53,6 +54,7 @@ async function shot(p, name, opts = {}) { await clean(p); await p.waitForTimeout
   await shot(p, 't-material');
   await p.getByTestId('hw-assign-submit').click({ noWaitAfter: true }); await p.waitForTimeout(1800);
   await p.getByRole('button', { name: 'Assign homework' }).first().click(); await p.waitForTimeout(900);
+  if (await p.getByTestId('hw-mode-list').count()) { await p.getByTestId('hw-mode-list').click(); await p.waitForTimeout(300); }
   await p.locator('#hw-template').selectOption({ label: 'Written homework' }); await p.waitForTimeout(300);
   await p.locator('#hw-prompt').fill('Preséntate: de dónde eres y qué haces.'); await p.locator('#hw-minwords').fill('5'); await p.locator('#hw-title').fill('Written: present yourself');
   await p.getByTestId('hw-assign-submit').click({ noWaitAfter: true }); await p.waitForTimeout(1800);

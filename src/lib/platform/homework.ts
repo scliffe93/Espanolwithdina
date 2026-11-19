@@ -51,7 +51,12 @@ export function describeActivity(a: HomeworkActivity): string {
     case 'listening': return `Listening game: ${{ metro: 'Metro Rush', order: 'Order Up!', swipe: '¿Sí o no?', serestar: 'Ser o Estar', penalty: 'Penalty Shoot-out', derbi: 'The Derby Quiz', lineup: 'Line-up' }[a.game ?? 'order']}`;
     case 'vocabulary': return a.game ? `Vocabulary game: ${a.game}` : a.pack && PACK_BY_ID[a.pack] ? `Word pack: ${PACK_BY_ID[a.pack].title} (${PACK_BY_ID[a.pack].level})` : 'Memory review of the vocabulary deck';
     case 'speaking': return 'Speaking challenge (record yourself)';
-    case 'written': return `Written homework${a.minWords ? ` (${a.minWords}+ words)` : ''}`;
+    case 'written': {
+      if (!a.files?.length) return `Written homework${a.minWords ? ` (${a.minWords}+ words)` : ''}`;
+      const n = (role: 'learning' | 'questions') => a.files!.filter((f) => f.role === role).length;
+      const part = (count: number, one: string, many: string) => (count ? `${count} ${count === 1 ? one : many}` : '');
+      return `From your teacher: ${[part(n('learning'), 'explanation to read', 'explanations to read'), part(n('questions'), 'file of questions', 'files of questions')].filter(Boolean).join(' and ') || 'a task to answer'}`;
+    }
     case 'material': return a.material ? `${a.material.items.length} exercise${a.material.items.length === 1 ? '' : 's'} from “${a.material.title}”` : 'Exercises from your material';
   }
 }

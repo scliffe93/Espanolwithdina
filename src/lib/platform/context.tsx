@@ -98,6 +98,8 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
   const demoStorage = useMemo<DemoStorage>(() => ({
     loadData: loadDemoData,
     saveData: async (d) => { await saveDemoData(d); setDemoData(d); }, // keep the live view in step with what was saved
+    saveFile: async (id, file) => { const { openDB } = await import('idb'); await (await openDB('viva', 1)).put('kv', file, `file:${id}`); },
+    loadFile: async (id) => { const { openDB } = await import('idb'); return ((await (await openDB('viva', 1)).get('kv', `file:${id}`)) as Blob | undefined) ?? null; },
     loadStudentState: async (id) => {
       const key = demoStateKey(id);
       if (storeRef.current.storageKey() === key) return storeRef.current.getState();

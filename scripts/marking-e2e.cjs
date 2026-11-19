@@ -26,6 +26,7 @@ const asActor = async (p, who) => { await p.goto(BASE + '#/demo'); await p.waitF
   await asActor(p, 'dina');
   await p.goto(BASE + '#/teach/student/demo-sam'); await p.waitForTimeout(1500);
   await p.getByRole('button', { name: 'Assign homework' }).first().click(); await p.waitForTimeout(900);
+  if (await p.getByTestId('hw-mode-list').count()) { await p.getByTestId('hw-mode-list').click(); await p.waitForTimeout(300); }
   await p.locator('#hw-template').selectOption({ label: 'Written homework' }); await p.waitForTimeout(300);
   await p.locator('#hw-prompt').fill('Preséntate: de dónde eres y qué haces.');
   await p.locator('#hw-minwords').fill('5');
@@ -33,6 +34,7 @@ const asActor = async (p, who) => { await p.goto(BASE + '#/demo'); await p.waitF
   await p.getByTestId('hw-assign-submit').click({ noWaitAfter: true }); await p.waitForTimeout(1800);
   // ...and a short verb session with two verbs.
   await p.getByRole('button', { name: 'Assign homework' }).first().click(); await p.waitForTimeout(900);
+  if (await p.getByTestId('hw-mode-list').count()) { await p.getByTestId('hw-mode-list').click(); await p.waitForTimeout(300); }
   await p.locator('#hw-template').selectOption({ index: 0 }); await p.waitForTimeout(200);
   await p.locator('#hw-verb-search').fill('tener'); await p.waitForTimeout(200); await p.getByRole('group', { name: 'Verbs' }).getByRole('button').first().click();
   await p.locator('#hw-verb-search').fill('hablar'); await p.waitForTimeout(200); await p.getByRole('group', { name: 'Verbs' }).getByRole('button').first().click();
