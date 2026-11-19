@@ -6,7 +6,7 @@ import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedba
 import { settingsId } from './level';
 import type { LessonGroup, LessonPlan, LessonWork, LibraryPlan, StudentGroup } from './types';
 import { cleanPlan } from '../../../supabase/functions/_shared/lesson';
-import { DEFAULT_TEACHER_CONFIG } from './types';
+import { DEFAULT_TEACHER_CONFIG, fileMime } from './types';
 
 // ───────────────────────────────────────────────────────────────
 // The teaching platform for real accounts: every record lives in the
@@ -141,11 +141,12 @@ class CloudBackend implements PlatformBackend {
     this.assertTeacher();
     const problem = fileProblem(file);
     if (problem) throw new PlatformError('invalid', problem);
-    const made = await this.wrap(() => platformApi.newFile(this.token, { name: file.name.slice(0, 120), mime: file.type, size: file.size }));
+    const mime = fileMime(file);
+    const made = await this.wrap(() => platformApi.newFile(this.token, { name: file.name.slice(0, 120), mime, size: file.size })).catch((e: PlatformError) => { throw e.code === 'not_found' ? new PlatformError('invalid', 'File uploads are not switched on yet for real accounts. The server needs its update first.') : e; });
     // Straight to the file store with the one-time link the server signed: the file never passes through the function.
     const form = new FormData();
     form.append('cacheControl', '3600');
-    form.append('', file);
+    form.append('', file.type === mime ? file : new File([file], file.name, { type: mime })); // the store checks the type, and some devices give none
     const res = await fetch(made.uploadUrl, { method: 'PUT', body: form }).catch(() => null);
     if (!res) throw new PlatformError('offline', 'The upload didn’t get through. Check your connection and try again.');
     if (!res.ok) throw new PlatformError('invalid', `“${file.name}” couldn’t be uploaded. Please try again.`);

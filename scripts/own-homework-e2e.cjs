@@ -16,6 +16,15 @@ const sheet = (title, body) => `<html><body style="font-family:sans-serif;paddin
   await maker.setContent(sheet('Ejercicios', '<ol><li>___ soy de Londres.</li><li>¿___ eres de Madrid?</li></ol>'));
   await maker.pdf({ path: OUT + '/Ejercicios.pdf' });
   await maker.close();
+  // A small Word file with a table, as a teacher would make.
+  const { zipSync, strToU8 } = require('fflate');
+  const W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
+  const cell = (t) => `<w:tc><w:p><w:r><w:t>${t}</w:t></w:r></w:p></w:tc>`;
+  require('fs').writeFileSync(OUT + '/Tabla de pronombres.docx', Buffer.from(zipSync({
+    '[Content_Types].xml': strToU8('<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>'),
+    '_rels/.rels': strToU8('<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>'),
+    'word/document.xml': strToU8(`<?xml version="1.0" encoding="UTF-8"?><w:document ${W}><w:body><w:p><w:r><w:t>Pronombres de sujeto</w:t></w:r></w:p><w:tbl><w:tr>${cell('yo')}${cell('I')}</w:tr><w:tr>${cell('nosotros')}${cell('we')}</w:tr></w:tbl></w:body></w:document>`),
+  })));
 
   // A short, wide window, like a small laptop with the browser's bars taking room.
   const ctx = await b.newContext({ viewport: { width: 1280, height: 620 } }); const p = await ctx.newPage(); p.on('pageerror', (e) => errors.push(String(e)));
@@ -45,7 +54,7 @@ const sheet = (title, body) => `<html><body style="font-family:sans-serif;paddin
   await p.getByTestId('hw-questions-input').setInputFiles([OUT + '/Ejercicios.pdf']); await p.waitForTimeout(900);
   ok((await p.getByTestId('hw-learning-item').count()) === 1 && (await p.getByTestId('hw-questions-item').count()) === 1, 'both files are uploaded and listed');
   await p.getByTestId('hw-questions-input').setInputFiles({ name: 'notes.zip', mimeType: 'application/zip', buffer: Buffer.from('x') }); await p.waitForTimeout(400);
-  ok(await p.getByText('can’t be used').count() > 0, 'a file that is not a PDF or a photo is refused with a reason');
+  ok(await p.getByText('can’t be used').count() > 0, 'a file the app cannot take is refused with a reason');
   ok((await p.locator('#hw-title').inputValue()) === 'Ejercicios', 'the title comes from the questions file');
   await p.screenshot({ path: OUT + '/own-3-form.png', fullPage: true });
   await p.getByTestId('hw-assign-submit').click({ noWaitAfter: true }); await p.waitForTimeout(1800);
@@ -61,6 +70,12 @@ const sheet = (title, body) => `<html><body style="font-family:sans-serif;paddin
   ok(/learning bank/.test(await p.getByTestId('hw-assign-submit').innerText()), 'the button says it goes to the learning bank');
   await p.getByTestId('hw-assign-submit').click({ noWaitAfter: true }); await p.waitForTimeout(1500);
   ok((await p.getByTestId('teach-learning-bank').getByTestId('file-card').count()) === 2, 'the bank now holds two items');
+
+  // Straight into the bank from the student's page: a Word file and a JPEG whose type the device does not give.
+  await p.getByTestId('bank-add-input').setInputFiles(OUT + '/Tabla de pronombres.docx'); await p.waitForTimeout(1500);
+  await p.getByTestId('bank-add-input').setInputFiles({ name: 'Foto de la pizarra.JPG', mimeType: '', buffer: Buffer.from('/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/yQALCAABAAEBAREA/8wABgAQEAX/2gAIAQEAAD8A0s8g/9k=', 'base64') }); await p.waitForTimeout(1500);
+  ok((await p.getByTestId('teach-learning-bank').getByTestId('file-card').count()) === 4, 'a Word file and a JPEG go straight into the bank from Sam’s page');
+  await p.screenshot({ path: OUT + '/own-3b-teacher-bank.png', fullPage: true });
 
   // Sam: reads the learning, sees the questions, answers.
   await asActor(p, 'sam');
@@ -81,11 +96,16 @@ const sheet = (title, body) => `<html><body style="font-family:sans-serif;paddin
 
   // The learning bank: always there.
   await p.goto(BASE + '#/student/learning'); await p.waitForTimeout(1500);
-  ok((await p.getByTestId('student-learning').getByTestId('file-card').count()) === 2, 'Sam’s learning bank holds both explanations');
+  ok((await p.getByTestId('student-learning').getByTestId('file-card').count()) === 4, 'Sam’s learning bank holds all four');
   await p.getByTestId('file-card').filter({ hasText: 'Los pronombres' }).getByTestId('file-open').click(); await p.waitForTimeout(2000);
   ok((await p.getByTestId('file-page').count()) >= 1, 'an explanation opens from the bank');
   await p.getByTestId('file-card').filter({ hasText: 'Ser y estar' }).getByTestId('file-open').click(); await p.waitForTimeout(800);
   ok(await p.getByTestId('file-image').isVisible(), 'a photo opens too');
+  await p.getByTestId('file-card').filter({ hasText: 'Tabla de pronombres' }).getByTestId('file-open').click(); await p.waitForTimeout(2500);
+  ok(/nosotros/.test(await p.getByTestId('file-word').innerText()) && (await p.getByTestId('file-word').locator('table').count()) === 1, 'a Word file is shown in the page with its table');
+  ok((await p.getByTestId('file-card').filter({ hasText: 'Foto de la pizarra' }).innerText()).includes('Photo'), 'the JPEG with no type is taken as a photo');
+  const [dl] = await Promise.all([p.waitForEvent('download'), p.getByTestId('file-card').filter({ hasText: 'Tabla de pronombres' }).getByTestId('file-download').first().click()]);
+  ok(dl.suggestedFilename() === 'Tabla de pronombres.docx', 'Download saves the file under its own name: ' + dl.suggestedFilename());
   await p.screenshot({ path: OUT + '/own-5-bank.png', fullPage: true });
 
   // Dina deletes the homework: the explanation stays in the bank. She can mark the answers first.

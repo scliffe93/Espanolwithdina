@@ -40,12 +40,13 @@ const put = (token: string, rec: { kind: string; id: string; studentId: string; 
 const pdf = { name: 'Los pronombres.pdf', mime: 'application/pdf', size: 120_000 };
 
 describe('teacher files and the learning bank', () => {
-  it('only the teacher uploads, and only PDFs or photos up to 10 MB', async () => {
+  it('only the teacher uploads, and only documents and photos up to 20 MB', async () => {
     const dina = await register('dina');
     const sam = await register('sam');
     expect((await call('platform/files', { token: sam.token, body: pdf })).status).toBe(403);
     expect((await call('platform/files', { token: dina.token, body: { ...pdf, mime: 'application/zip' } })).status).toBe(400);
-    expect((await call('platform/files', { token: dina.token, body: { ...pdf, size: 11 * 1024 * 1024 } })).status).toBe(400);
+    expect((await call('platform/files', { token: dina.token, body: { ...pdf, size: 21 * 1024 * 1024 } })).status).toBe(400);
+    for (const mime of ['image/jpeg', 'image/heic', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword']) expect((await call('platform/files', { token: dina.token, body: { ...pdf, mime } })).status).toBe(201);
     const made = await call('platform/files', { token: dina.token, body: pdf });
     expect(made.status).toBe(201);
     expect(made.json.file).toMatchObject(pdf);

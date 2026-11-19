@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { usePlatform } from '../lib/platform/context';
 import { fileProblem } from '../lib/platform/backend';
-import type { FileRef } from '../lib/platform/types';
+import { FILE_KIND_LABEL, fileKind, type FileRef } from '../lib/platform/types';
 
 // ───────────────────────────────────────────────────────────────
 // The teacher's own files: choosing and uploading them (teacher), and
@@ -14,6 +14,27 @@ import type { FileRef } from '../lib/platform/types';
 const MAX_PAGES = 40;
 export const fileSize = (n: number) => (n >= 1_048_576 ? `${(n / 1_048_576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 const isPdf = (f: FileRef) => f.mime === 'application/pdf';
+const kindLabel = (f: FileRef) => FILE_KIND_LABEL[f.mime] ?? (fileKind(f.mime) === 'image' ? 'Photo' : 'File');
+
+/** Saves the file onto the device, under its own name. */
+export function DownloadButton({ file, className = 'ctrl' }: { file: FileRef; className?: string }) {
+  const { backend } = usePlatform();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(false);
+  const save = async () => {
+    if (!backend) return;
+    setBusy(true); setError(false);
+    try {
+      const blob = await backend.fileBlob(file.id);
+      const url = URL.createObjectURL(blob.slice(0, blob.size, file.mime));
+      const a = document.createElement('a');
+      a.href = url; a.download = file.name; a.rel = 'noopener';
+      document.body.appendChild(a); a.click(); a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch { setError(true); } finally { setBusy(false); }
+  };
+  return <button type="button" className={className} onClick={save} disabled={busy} data-testid="file-download" title={`Save ${file.name} on this device`}><Icon name="download" size={15} /> {busy ? 'Getting it…' : error ? 'Try again' : 'Download'}</button>;
+}
 
 /** Shows a file in the page: every page of a PDF, or the photo. */
 export function FileViewer({ file }: { file: FileRef }) {
@@ -22,13 +43,14 @@ export function FileViewer({ file }: { file: FileRef }) {
   const [error, setError] = useState<string | null>(null);
   const [state, setState] = useState<'loading' | 'ready'>('loading');
   const [more, setMore] = useState(0);
+  const [broken, setBroken] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!backend) return;
     let off = false;
     let made: string | null = null;
-    setUrl(null); setError(null); setState('loading'); setMore(0);
+    setUrl(null); setError(null); setState('loading'); setMore(0); setBroken(false);
     (async () => {
       try {
         const blob = await backend.fileBlob(file.id);
@@ -36,7 +58,23 @@ export function FileViewer({ file }: { file: FileRef }) {
         const link = URL.createObjectURL(isPdf(file) ? blob : blob.slice(0, blob.size, file.mime));
         made = link;
         setUrl(link);
-        if (!isPdf(file)) return setState('ready');
+        const kind = fileKind(file.mime);
+        if (kind === 'word') {
+          // A Word file is laid out in the page (tables, colours, pictures) by docx-preview; nothing is sent anywhere.
+          const { renderAsync } = await import('docx-preview');
+          const host = box.current;
+          if (off || !host) return;
+          host.replaceChildren();
+          await renderAsync(blob, host, undefined, { inWrapper: false, ignoreWidth: true, ignoreHeight: true, useBase64URL: true, breakPages: false });
+          return setState('ready');
+        }
+        if (kind === 'text') {
+          const text = await blob.text();
+          if (off || !box.current) return;
+          box.current.textContent = text.slice(0, 200_000);
+          return setState('ready');
+        }
+        if (kind !== 'pdf') return setState('ready');
         const data = new Uint8Array(await blob.arrayBuffer());
         const pdfjs = await import('pdfjs-dist');
         const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
@@ -76,9 +114,13 @@ export function FileViewer({ file }: { file: FileRef }) {
     <div className="grid gap-2" data-testid="file-viewer">
       {error && <p role="alert" className="rounded-xl bg-terracotta-50 px-3 py-2 text-sm text-terracotta-dark">{error}</p>}
       {!error && state === 'loading' && <p className="text-sm text-ink-mute">Opening {file.name}…</p>}
-      {isPdf(file) ? <div ref={box} className="grid gap-2" /> : url && <img src={url} alt={file.name} className="block w-full rounded-xl ring-1 ring-ink/10" data-testid="file-image" />}
+      {fileKind(file.mime) === 'pdf' && <div ref={box} className="grid gap-2" />}
+      {fileKind(file.mime) === 'word' && <div ref={box} className="docx-host overflow-x-auto rounded-xl bg-white p-4 text-ink ring-1 ring-ink/10 sm:p-6" data-testid="file-word" />}
+      {fileKind(file.mime) === 'text' && <div ref={box} className="whitespace-pre-wrap rounded-xl bg-white p-4 text-sm leading-relaxed ring-1 ring-ink/10" data-testid="file-text" />}
+      {fileKind(file.mime) === 'image' && url && !broken && <img src={url} alt={file.name} className="block w-full rounded-xl ring-1 ring-ink/10" onError={() => setBroken(true)} data-testid="file-image" />}
+      {(fileKind(file.mime) === 'other' || broken) && state === 'ready' && <p className="rounded-xl bg-cream-100 px-3 py-2 text-sm text-ink-soft" data-testid="file-download-only">This {kindLabel(file).toLowerCase()} can’t be shown inside the app on this device. Download it to open it.</p>}
       {more > 0 && <p className="text-xs text-ink-mute">The first {MAX_PAGES} pages are shown. Open the file to see the other {more}.</p>}
-      {url && <p><a className="text-sm font-semibold text-azul underline-offset-2 hover:underline" href={url} target="_blank" rel="noreferrer" download={file.name}>Download or open on its own</a></p>}
+      {state === 'ready' && <div><DownloadButton file={file} className="btn-soft !py-2" /></div>}
     </div>
   );
 }
@@ -92,9 +134,10 @@ export function FileCard({ file, label, defaultOpen = false, right }: { file: Fi
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-cream-100 text-ink-soft" aria-hidden><Icon name="book" size={17} /></span>
         <span className="min-w-0 flex-1">
           <span className="block truncate font-semibold">{file.name}</span>
-          <span className="block text-xs text-ink-mute">{label ? `${label} · ` : ''}{isPdf(file) ? 'PDF' : 'Photo'} · {fileSize(file.size)}</span>
+          <span className="block text-xs text-ink-mute">{label ? `${label} · ` : ''}{kindLabel(file)} · {fileSize(file.size)}</span>
         </span>
         {right}
+        <DownloadButton file={file} />
         <button type="button" className="ctrl" onClick={() => setOpen(!open)} aria-expanded={open} data-testid="file-open"><Icon name={open ? 'x' : 'eye'} size={15} /> {open ? 'Close' : 'Open'}</button>
       </div>
       {open && <div className="mt-3"><FileViewer file={file} /></div>}
@@ -103,7 +146,7 @@ export function FileCard({ file, label, defaultOpen = false, right }: { file: Fi
 }
 
 /** Teacher: choose one or more PDFs or photos. Each is uploaded as soon as it is chosen. */
-export function FilePicker({ id, files, onChange, onBusy, button = 'Upload a PDF or photo' }: { id: string; files: FileRef[]; onChange: (f: FileRef[]) => void; onBusy?: (busy: boolean) => void; button?: string }) {
+export function FilePicker({ id, files, onChange, onBusy, button = 'Upload a file' }: { id: string; files: FileRef[]; onChange: (f: FileRef[]) => void; onBusy?: (busy: boolean) => void; button?: string }) {
   const { backend } = usePlatform();
   const input = useRef<HTMLInputElement>(null);
   const [sending, setSending] = useState<string | null>(null);
@@ -152,8 +195,9 @@ export function FilePicker({ id, files, onChange, onBusy, button = 'Upload a PDF
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" className="btn-soft !py-2" onClick={() => input.current?.click()} disabled={!!sending}><Icon name="upload" size={16} /> {sending ? 'Uploading…' : files.length ? 'Add another' : button}</button>
         {sending && <span className="text-xs text-ink-mute" aria-live="polite">Uploading {sending}…</span>}
-        <input ref={input} id={`${id}-input`} type="file" multiple accept="application/pdf,image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => add(e.target.files)} data-testid={`${id}-input`} />
+        <input ref={input} id={`${id}-input`} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.heic,.heif,.docx,.doc,.pptx,.ppt,.xlsx,.xls,.txt,application/pdf,image/*" className="sr-only" onChange={(e) => add(e.target.files)} data-testid={`${id}-input`} />
       </div>
+      <p className="text-xs text-ink-mute">PDF, photos (JPG, PNG), Word, PowerPoint, Excel or text. Up to 20 MB each.</p>
       {error && <p role="alert" className="rounded-xl bg-terracotta-50 px-3 py-2 text-sm text-terracotta-dark">{error}</p>}
     </div>
   );

@@ -187,7 +187,7 @@ export function HomeworkAssignForm({ open, onClose, people, progress, initialStu
           <button type="button" className="card flex flex-col items-start gap-2 p-5 text-left transition hover:ring-2 hover:ring-azul" onClick={() => { setMode('own'); setPrompt(''); }} data-testid="hw-mode-own">
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-azul text-white" aria-hidden><Icon name="upload" size={20} /></span>
             <span className="text-lg font-semibold">Assign my own homework</span>
-            <span className="text-sm text-ink-soft">Upload your PDFs or photos: an explanation to learn from, the questions to answer, or both.</span>
+            <span className="text-sm text-ink-soft">Upload your own files (PDF, photos, Word): an explanation to learn from, the questions to answer, or both.</span>
           </button>
           <button type="button" className="card flex flex-col items-start gap-2 p-5 text-left transition hover:ring-2 hover:ring-azul" onClick={() => setMode('list')} data-testid="hw-mode-list">
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-ink text-white" aria-hidden><Icon name="dumbbell" size={20} /></span>

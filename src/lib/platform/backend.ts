@@ -1,7 +1,7 @@
 import { DEMO_TEACHER_ID } from './types';
 import type { AppState } from '../../types';
 import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, Marking, PlatformData, Person, StudentSettings, TeacherConfig, LibraryPlan, LessonGroup, StudentGroup, FileRef, Resource } from './types';
-import { FILE_MAX_BYTES, FILE_TYPES } from './types';
+import { FILE_MAX_BYTES, fileMime } from './types';
 import { settingsId } from './level';
 import { DEFAULT_TEACHER_CONFIG } from './types';
 import { overlaps } from './time';
@@ -144,8 +144,8 @@ export interface DemoStorage {
 
 /** Why a file can't be uploaded, or null when it can. */
 export function fileProblem(file: { name: string; type: string; size: number }): string | null {
-  if (!FILE_TYPES.includes(file.type)) return `“${file.name}” can’t be used. Upload a PDF or a photo (JPG or PNG).`;
-  if (file.size > FILE_MAX_BYTES) return `“${file.name}” is too big. The limit is 10 MB for each file.`;
+  if (!fileMime(file)) return `“${file.name}” can’t be used. Upload a PDF, a photo, or a Word, PowerPoint or Excel file.`;
+  if (file.size > FILE_MAX_BYTES) return `“${file.name}” is too big. The limit is 20 MB for each file.`;
   if (!file.size) return `“${file.name}” is empty.`;
   return null;
 }
@@ -248,7 +248,7 @@ export class DemoBackend implements PlatformBackend {
     const problem = fileProblem(file);
     if (problem) throw new PlatformError('invalid', problem);
     if (!this.storage.saveFile) throw new PlatformError('invalid', 'Files can’t be stored here.');
-    const ref: FileRef = { id: `f-${uid()}`, name: file.name.slice(0, 120), mime: file.type, size: file.size };
+    const ref: FileRef = { id: `f-${uid()}`, name: file.name.slice(0, 120), mime: fileMime(file), size: file.size };
     await this.storage.saveFile(ref.id, file);
     return ref;
   }

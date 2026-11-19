@@ -12,7 +12,7 @@ import { addDays, dayKey, formatMinutes, weekStart } from '../../lib/dates';
 import { usePlatform, usePlatformQuery, type AppState } from '../../lib/platform/context';
 import { LessonBrief, lastLessonBefore } from './LessonBrief';
 import { fmtDate, fmtDateTime, relative } from '../../lib/platform/time';
-import { FileCard } from '../../components/Files';
+import { FileCard, FilePicker } from '../../components/Files';
 import type { Booking, Feedback, FeedbackKind, Homework, Role } from '../../lib/platform/types';
 import { buildTeacherReport } from '../../lib/report';
 import { navigate } from '../../lib/router';
@@ -371,7 +371,11 @@ function LearningBank({ studentId, name }: { studentId: string; name: string }) 
           <div className="grid gap-2">
             {bank.data.map((r) => <FileCard key={r.id} file={r.file} label={`Shared ${fmtDate(r.createdAt)}`} right={<ConfirmButton confirmLabel="Remove it?" disabled={busy} onConfirm={async () => { await run(() => backend!.deleteResource(r.id)); bump(); }}><Icon name="trash" size={15} /> Remove</ConfirmButton>} />)}
           </div>
-        ) : <p className="text-sm text-ink-mute">Nothing yet. Choose Assign homework, then Assign my own homework, and upload the learning.</p>}
+        ) : <p className="text-sm text-ink-mute">Nothing yet. Add a file below and {name} can open it at any time.</p>}
+        <div className="mt-3 rounded-2xl bg-cream-50 p-3 ring-1 ring-ink/5">
+          <p className="mb-2 text-sm font-medium">Add to {name}’s learning bank</p>
+          <FilePicker id="bank-add" files={[]} button="Upload a file" onChange={async (files) => { const f = files[files.length - 1]; if (f) await run(() => backend!.shareResources({ studentIds: [studentId], files: [f] })); }} />
+        </div>
         <ErrorText error={error} />
       </Section>
     </div>

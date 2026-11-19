@@ -54,8 +54,8 @@ export interface FileStore {
   signDownload(key: string, seconds: number): Promise<string>;
   remove(keys: string[]): Promise<void>;
 }
-const FILE_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
-const FILE_MAX_BYTES = 10 * 1024 * 1024;
+const FILE_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'text/plain'];
+const FILE_MAX_BYTES = 20 * 1024 * 1024;
 const FILE_ID = /^f-[A-Za-z0-9-]{8,60}$/;
 
 const MIN = 60_000;
@@ -608,8 +608,8 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
       if (!config.files) throw new HttpError(503, 'files_off', 'File uploads are not switched on yet.');
       const b = await body(req);
       const name = str(b.name).replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 120), mime = str(b.mime), size = Number(b.size);
-      if (!name || !FILE_TYPES.includes(mime)) throw new HttpError(400, 'invalid', 'Upload a PDF or a photo (JPG or PNG).');
-      if (!(size > 0) || size > FILE_MAX_BYTES) throw new HttpError(400, 'invalid', 'That file is too big. The limit is 10 MB.');
+      if (!name || !FILE_TYPES.includes(mime)) throw new HttpError(400, 'invalid', 'Upload a PDF, a photo, or a Word, PowerPoint or Excel file.');
+      if (!(size > 0) || size > FILE_MAX_BYTES) throw new HttpError(400, 'invalid', 'That file is too big. The limit is 20 MB.');
       const id = `f-${crypto.randomUUID()}`;
       return { status: 201, json: { file: { id, name, mime, size }, uploadUrl: await config.files.signUpload(id) } };
     }
