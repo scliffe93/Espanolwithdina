@@ -5,12 +5,12 @@ import { usePlatformQuery } from '../../lib/platform/context';
 import type { Homework } from '../../lib/platform/types';
 import { HomeworkAssignForm } from './HomeworkAssignForm';
 import { HomeworkReview } from './HomeworkReview';
-import { DemoChip, HomeworkRow, Loading, Section, StudentPicker, useStudents, useViewZone } from './shared';
+import { DemoChip, HomeworkRow, byHandedIn, useLessonLabel, Loading, Section, StudentPicker, useStudents, useViewZone } from './shared';
 
 const GROUPS: { status: Homework['status']; title: string; eyebrow: string; empty: string }[] = [
-  { status: 'submitted', title: 'Awaiting your review', eyebrow: 'Submitted', empty: 'Nothing waiting for review.' },
+  { status: 'submitted', title: 'Awaiting your review', eyebrow: 'Submitted · latest handed in first', empty: 'Nothing waiting for review.' },
   { status: 'assigned', title: 'Assigned', eyebrow: 'In progress', empty: 'No open homework.' },
-  { status: 'reviewed', title: 'Reviewed', eyebrow: 'Done', empty: 'No reviewed homework yet.' },
+  { status: 'reviewed', title: 'Reviewed', eyebrow: 'Done · latest handed in first', empty: 'No reviewed homework yet.' },
 ];
 
 /** Every homework item across students, grouped by what needs Dina's attention first. */
@@ -19,6 +19,7 @@ export function HomeworkPage({ params }: { params: URLSearchParams }) {
   const students = useStudents();
   const homework = usePlatformQuery((b) => b.homework());
   const [filter, setFilter] = useState<string[]>(() => (params.get('student') ? [params.get('student')!] : []));
+  const lessonOf = useLessonLabel();
   const [assign, setAssign] = useState(false);
   const [review, setReview] = useState<Homework | null>(null);
   const people = students.data?.people ?? [];
@@ -42,10 +43,10 @@ export function HomeworkPage({ params }: { params: URLSearchParams }) {
       {!homework.data || !students.data ? <Loading label="Loading homework…" /> : (
         <div className="grid gap-4">
           {GROUPS.map((g) => {
-            const items = list.filter((h) => h.status === g.status).sort((a, b) => (g.status === 'reviewed' ? b.dueAt.localeCompare(a.dueAt) : a.dueAt.localeCompare(b.dueAt)));
+            const items = list.filter((h) => h.status === g.status).sort(g.status === 'assigned' ? (a, b) => a.dueAt.localeCompare(b.dueAt) : byHandedIn);
             return (
               <Section key={g.status} title={g.title} eyebrow={g.eyebrow} right={items.length ? <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${g.status === 'submitted' ? 'bg-saffron text-ink' : 'bg-cream-100 text-ink-soft'}`}>{items.length}</span> : undefined}>
-                {items.length ? <div className="grid gap-2">{items.map((h) => <HomeworkRow key={h.id} h={h} people={people} zone={zone} onOpen={setReview} />)}</div> : <p className="text-sm text-ink-mute">{g.empty}</p>}
+                {items.length ? <div className="grid gap-2">{items.map((h) => <HomeworkRow key={h.id} h={h} people={people} zone={zone} onOpen={setReview} lesson={lessonOf(h)} />)}</div> : <p className="text-sm text-ink-mute">{g.empty}</p>}
               </Section>
             );
           })}

@@ -13,6 +13,7 @@ Setting homework, the student doing it, and the teacher going through it answer 
 - Learning bank: every explanation shared with a student stays at `student/learning`, and on the teacher's student page under Homework, until the teacher removes it.
 - Files live in a private Supabase Storage bucket (`lwd-files`); the Edge Function signs short-lived links. In the demo they stay on the device.
 - Sheets are sized to the visible window and stop short of the bottom edge.
+- Homework lists run by when it was handed in, latest first, and each item is named after the student's lesson nearest to that date ("Homework for lesson 5"); until handed in, the lesson nearest to when it was set (`lessonFor` in `src/lib/platform/homework.ts`).
 - Lesson debrief feeding an adaptive weekly plan; writing sent to the teacher; Sunday recap.
 
 ## Where

@@ -27,7 +27,7 @@ import { DebriefForm } from './DebriefForm';
 import { LevelAccess } from './LevelAccess';
 import { BalanceCard, BalanceChip, SellPackageSheet, useBalance } from './Packages';
 import { pct, studentInsight, studyAgo } from './insights';
-import { ActivityList, Avatar, ConfirmButton, DemoChip, ErrorText, Field, HomeworkRow, LessonCard, Loading, Section, Stat, toneFor, useAction, useStudents, useViewZone } from './shared';
+import { ActivityList, Avatar, ConfirmButton, DemoChip, ErrorText, Field, HomeworkRow, byHandedIn, useLessonLabel, LessonCard, Loading, Section, Stat, toneFor, useAction, useStudents, useViewZone } from './shared';
 
 type Tab = 'journey' | 'analytics' | 'lessons' | 'homework' | 'feedback' | 'activity';
 const TABS: { value: Tab; label: string }[] = [
@@ -339,19 +339,20 @@ function LessonsTab({ bookings, people, zone, onEdit, onBook }: { bookings: Book
 // ── Homework ────────────────────────────────────────────────────
 
 function HomeworkTab({ homework, people, zone, onOpen, onAssign }: { homework: Homework[] | null; people: { id: string; firstName: string; username: string; role: Role }[]; zone: string; onOpen: (h: Homework) => void; onAssign: () => void }) {
+  const lessonOf = useLessonLabel();
   if (!homework) return <Loading />;
   const groups: { status: Homework['status']; title: string; eyebrow: string; empty: string }[] = [
-    { status: 'submitted', title: 'Awaiting your review', eyebrow: 'Submitted', empty: 'Nothing waiting for review.' },
+    { status: 'submitted', title: 'Awaiting your review', eyebrow: 'Submitted · latest handed in first', empty: 'Nothing waiting for review.' },
     { status: 'assigned', title: 'Assigned', eyebrow: 'In progress', empty: 'No open homework — assign something for the next lesson.' },
-    { status: 'reviewed', title: 'Reviewed', eyebrow: 'Done', empty: 'No reviewed homework yet.' },
+    { status: 'reviewed', title: 'Reviewed', eyebrow: 'Done · latest handed in first', empty: 'No reviewed homework yet.' },
   ];
   return (
     <div className="grid gap-4">
       {groups.map((g, i) => {
-        const items = homework.filter((h) => h.status === g.status).sort((a, b) => (g.status === 'reviewed' ? b.dueAt.localeCompare(a.dueAt) : a.dueAt.localeCompare(b.dueAt)));
+        const items = homework.filter((h) => h.status === g.status).sort(g.status === 'assigned' ? (a, b) => a.dueAt.localeCompare(b.dueAt) : byHandedIn);
         return (
           <Section key={g.status} title={g.title} eyebrow={g.eyebrow} right={i === 0 ? <button type="button" className="btn-primary !py-2" onClick={onAssign}><Icon name="book" size={16} /> Assign homework</button> : undefined}>
-            {items.length ? <div className="grid gap-2">{items.map((h) => <HomeworkRow key={h.id} h={h} people={people} zone={zone} onOpen={onOpen} showStudent={false} />)}</div> : <p className="text-sm text-ink-mute">{g.empty}</p>}
+            {items.length ? <div className="grid gap-2">{items.map((h) => <HomeworkRow key={h.id} h={h} people={people} zone={zone} onOpen={onOpen} showStudent={false} lesson={lessonOf(h)} />)}</div> : <p className="text-sm text-ink-mute">{g.empty}</p>}
           </Section>
         );
       })}
