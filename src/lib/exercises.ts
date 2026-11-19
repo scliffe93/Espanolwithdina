@@ -112,7 +112,8 @@ export function formOptions(verb: Verb, tense: Tense, person: number, region: Re
   if (tense === 'present' && getActiveVariety() === 'argentina' && person === 1 && !verb.pronominal) pool.add(verb.present[1]); // tú form as a distractor for vos
   if (tense === 'present' && verb.group !== 'regular' && !verb.pronominal) {
     const reg = regularPresent(verb.inf, person);
-    if (reg !== answer) pool.add(reg);
+    // "ir" made regular is only an ending (o, es, en…), which reads as another word, not as a verb slip.
+    if (reg !== answer && verb.inf.length > 2) pool.add(reg);
   }
   if (tense !== 'present' && tense !== 'progressive' && tense !== 'negative-imperative' && !isCompound(tense) && verb.group !== 'regular' && !verb.pronominal) {
     // The "regularised" mistake for irregular verbs in the simple tenses (tener → tení, ser → sé…).
@@ -315,7 +316,10 @@ export function buildSession({ state, focus, tense, length = 12, now = Date.now(
         break;
       case 'fix': {
         const right = verb.present[ex!.person];
-        const wrongs = formOptions(verb, 'present', ex!.person, region, rng).filter((f) => f !== right);
+        // The mistake is always a real form of this same verb for another person (Ellos «vamos»), never an
+        // invented form or a word that is not a verb.
+        const real = new Set(verb.present);
+        const wrongs = formOptions(verb, 'present', ex!.person, region, rng).filter((f) => f !== right && real.has(f));
         if (!wrongs.length) { out.push(typed); break; }
         out.push({ kind, verb: inf, example: ex!, wrong: wrongs[0], options: shuffle([right, ...(wrongs.length > 1 ? wrongs.slice(1, 3) : wrongs)], rng) });
         break;

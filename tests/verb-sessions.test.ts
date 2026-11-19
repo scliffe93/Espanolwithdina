@@ -36,6 +36,7 @@ describe('verb sessions', () => {
               if ((ex.kind === 'fix' || ex.kind === 'translate') && (new Set(ex.options).size !== ex.options.length || ex.options.length < 2)) add(`bad ${ex.kind} options ${ex.verb}`);
               if (ex.kind === 'fix' && (!ex.wrong || !ex.options.includes(VERB_BY_INF[ex.verb].present[ex.example.person]))) add(`fix broken ${ex.verb}`);
               if (ex.kind === 'fix' && VERB_BY_INF[ex.verb].present[ex.example.person].toLowerCase() !== pe.answer.toLowerCase()) add(`fix: example form is not the present form ${ex.verb} "${pe.answer}"`);
+              if (ex.kind === 'fix' && [ex.wrong, ...ex.options].some((f) => !VERB_BY_INF[ex.verb].present.includes(f))) add(`fix: the mistake or an option is not a real form of ${ex.verb}: ${[ex.wrong, ...ex.options].join(', ')}`);
             }
           } catch (e) { add(`CRASH ${ex.kind} ${(e as Error).message}`); }
         }
