@@ -43,6 +43,9 @@ export const MADRID_INVITES: Record<Interest | 'default', { es: string; en: stri
   reading: { es: 'Hay un club de lectura en la librería de la esquina. ¿Vienes conmigo?', en: 'There\'s a book club at the bookshop on the corner. Will you come with me?' },
   cinema: { es: 'Aquí cerca hay un cine con películas en versión original. ¿Vamos el martes?', en: 'There\'s a cinema near here showing films in their original language. Shall we go on Tuesday?' },
   nature: { es: 'Los sábados hacemos senderismo en la sierra. ¿Te vienes?', en: 'On Saturdays we go hiking in the mountains. Are you coming?' },
+  golf: { es: 'El sábado juego nueve hoyos en el Club de Campo. Me sobra un sitio en el coche. ¿Te apuntas?', en: 'On Saturday I\'m playing nine holes at the Club de Campo. I\'ve got a spare seat in the car. Want to join?' },
+  tennis: { es: 'Los domingos juego al tenis en unas pistas del barrio y me falta pareja para dobles. ¿Te apuntas?', en: 'On Sundays I play tennis at some courts in the neighbourhood and I need a doubles partner. Want to join?' },
+  'classic-cars': { es: 'Mi tío tiene un Seat 600 de 1968 y el domingo vamos a dar una vuelta por la sierra. ¿Te apuntas?', en: 'My uncle has a 1968 Seat 600 and on Sunday we\'re going for a drive in the mountains. Want to join?' },
   default: { es: 'El viernes quedamos unos amigos para tomar algo. ¿Te apuntas?', en: 'On Friday a few friends are meeting for a drink. Want to join?' },
 };
 

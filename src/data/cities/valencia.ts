@@ -47,6 +47,9 @@ const INVITES: Record<Interest | 'default', { es: string; en: string }> = {
   reading: { es: 'Hay un club de lectura en una librería de Russafa, los martes. ¿Vienes conmigo?', en: 'There\'s a book club at a bookshop in Russafa on Tuesdays. Will you come with me?' },
   cinema: { es: 'En verano hay cine al aire libre en el Turia, la Filmoteca d\'Estiu, con películas en versión original. ¿Vamos el martes?', en: 'In summer there\'s open-air cinema in the Turia Gardens, the Filmoteca d\'Estiu, with films in their original language. Shall we go on Tuesday?' },
   nature: { es: 'El sábado por la tarde vamos a la Albufera a ver el atardecer desde una barca. ¿Te vienes?', en: 'On Saturday evening we\'re going to the Albufera to watch the sunset from a boat. Are you coming?' },
+  golf: { es: 'El sábado juego al golf en El Saler, al lado del mar. ¿Te vienes a jugar nueve hoyos?', en: 'On Saturday I\'m playing golf at El Saler, right by the sea. Are you coming to play nine holes?' },
+  tennis: { es: 'Los martes juego al tenis en unas pistas junto al Turia y necesito pareja para dobles. ¿Te apuntas?', en: 'On Tuesdays I play tennis at some courts by the Turia and I need a doubles partner. Want to join?' },
+  'classic-cars': { es: 'Un amigo tiene un Dos Caballos de los setenta y el domingo vamos a la Albufera con la capota abierta. ¿Te vienes?', en: 'A friend has a 2CV from the seventies and on Sunday we\'re going to the Albufera with the roof open. Are you coming?' },
   default: { es: 'El sábado vamos a la Malvarrosa a jugar al vóley playa y luego a bañarnos. ¿Te apuntas?', en: 'On Saturday we\'re going to Malvarrosa beach to play beach volleyball and then for a swim. Want to join?' },
 };
 

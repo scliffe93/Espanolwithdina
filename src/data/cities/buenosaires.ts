@@ -44,6 +44,9 @@ const INVITES: Record<Interest | 'default', { es: string; en: string }> = {
   reading: { es: '¿Fuiste a El Ateneo Grand Splendid? Es una librería adentro de un teatro antiguo. ¿Vamos el sábado?', en: 'Have you been to El Ateneo Grand Splendid? It\'s a bookshop inside an old theatre. Shall we go on Saturday?' },
   cinema: { es: 'Sobre la avenida Corrientes hay cines y teatros por todos lados. ¿Vamos a ver algo el martes?', en: 'Along Avenida Corrientes there are cinemas and theatres everywhere. Shall we see something on Tuesday?' },
   nature: { es: 'El domingo vamos en bici a la Reserva Ecológica de Costanera Sur. ¿Te prendés?', en: 'On Sunday we\'re cycling to the Costanera Sur nature reserve. Are you in?' },
+  golf: { es: 'Los sábados juego al golf en la cancha de Palermo, al lado de los lagos. ¿Te prendés?', en: 'On Saturdays I play golf at the Palermo course, next to the lakes. Are you in?' },
+  tennis: { es: 'Los martes jugamos al tenis en polvo de ladrillo en un club de Belgrano. ¿Venís?', en: 'On Tuesdays we play tennis on clay at a club in Belgrano. Are you coming?' },
+  'classic-cars': { es: 'Mi viejo tiene un Falcon del 72 y el domingo lo sacamos a pasear por la Costanera. ¿Te sumás?', en: 'My dad has a \'72 Falcon and on Sunday we\'re taking it out for a drive along the Costanera. Want to join?' },
   default: { es: 'El domingo vamos a la feria de San Telmo y después a tomar algo. ¿Te sumás?', en: 'On Sunday we\'re going to the San Telmo street market and then for a drink. Want to join?' },
 };
 

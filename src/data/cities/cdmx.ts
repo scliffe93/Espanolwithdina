@@ -45,6 +45,9 @@ const INVITES: Record<Interest | 'default', { es: string; en: string }> = {
   reading: { es: 'Hay un club de lectura los jueves en una librería de la Condesa. ¿Vienes conmigo?', en: 'There\'s a book club on Thursdays at a bookshop in the Condesa. Will you come with me?' },
   cinema: { es: '¿Vamos a la Cineteca Nacional? Siempre tienen ciclos padrísimos.', en: 'Shall we go to the Cineteca Nacional? They always have brilliant film seasons.' },
   nature: { es: 'El domingo vamos a caminar al Desierto de los Leones. ¿Te animas?', en: 'On Sunday we\'re going hiking in the Desierto de los Leones. Are you up for it?' },
+  golf: { es: 'Mi jefe me invitó a jugar golf el sábado y puedo llevar a alguien. ¿Te late?', en: 'My boss invited me to play golf on Saturday and I can bring someone. Fancy it?' },
+  tennis: { es: 'Los domingos jugamos tenis en un club de la colonia y nos falta uno para dobles. ¿Te animas?', en: 'On Sundays we play tennis at a club in the neighbourhood and we\'re one short for doubles. Are you up for it?' },
+  'classic-cars': { es: 'Mi tío tiene un vocho de 1970 bien cuidado y el domingo vamos a dar una vuelta a Coyoacán. ¿Te late?', en: 'My uncle has a well-kept 1970 Beetle and on Sunday we\'re going for a drive to Coyoacán. Fancy it?' },
   default: { es: 'El viernes vamos a la lucha libre en la Arena México con unos cuates. ¿Te late?', en: 'On Friday we\'re going to the lucha libre at Arena México with some friends. Fancy it?' },
 };
 

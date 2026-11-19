@@ -46,6 +46,9 @@ const INVITES: Record<Interest | 'default', { es: string; en: string }> = {
   reading: { es: 'Hay una librería con café en Laureles que hace club de lectura los jueves. ¿Vamos juntos?', en: 'There\'s a bookshop-café in Laureles with a book club on Thursdays. Shall we go together?' },
   cinema: { es: 'Hay un cineclub en el centro que pasa películas colombianas los martes. ¿Vamos?', en: 'There\'s a film club downtown that shows Colombian films on Tuesdays. Shall we go?' },
   nature: { es: 'El domingo subimos en Metrocable al Parque Arví a caminar por el bosque. ¿Te le medís?', en: 'On Sunday we\'re taking the Metrocable up to Parque Arví to walk in the forest. Are you up for it?' },
+  golf: { es: 'El sábado vamos a jugar golf en el Oriente antioqueño, a una hora de aquí. ¿Te le medís?', en: 'On Saturday we\'re going to play golf in eastern Antioquia, an hour from here. Are you up for it?' },
+  tennis: { es: 'Los domingos jugamos tenis en una cancha del barrio y nos falta uno para dobles. ¿Te le medís?', en: 'On Sundays we play tennis on a court in the neighbourhood and we\'re one short for doubles. Are you up for it?' },
+  'classic-cars': { es: 'Mi abuelo tiene un Renault 4 de los setenta y el domingo lo sacamos a pasear por Las Palmas. ¿Te le medís?', en: 'My grandad has a Renault 4 from the seventies and on Sunday we\'re taking it out for a drive up Las Palmas. Are you up for it?' },
   default: { es: 'El sábado hacemos el tour de grafiti en la Comuna 13 con unos amigos. ¿Te le medís?', en: 'On Saturday some friends and I are doing the graffiti tour in Comuna 13. Are you up for it?' },
 };
 

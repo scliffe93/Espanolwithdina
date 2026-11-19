@@ -13,7 +13,7 @@ import { allVerbMastery } from '../lib/analytics';
 import { CATEGORY_LABEL, CATEGORY_TIP, checkAnswer, classifyVerbError, normalize } from '../lib/answer';
 import { levelIndex } from '../lib/assessmentScore';
 import { LADDER_BY_ID, SENTENCE_STEPS, parseRung } from '../data/ladders';
-import { TOPICS, matchTopics, topicsOf } from '../data/topics';
+import { TOPICS, matchTopics, ownTopics, toggleOwnTopic, topicsOf } from '../data/topics';
 import { EX_LABEL, buildSession, cardKeyFor, pronounFor, shuffle, type Exercise } from '../lib/exercises';
 import { navigate } from '../lib/router';
 import { addSpeakingAttempt, completeLesson, recordAttempt } from '../lib/state';
@@ -694,9 +694,9 @@ function Likes() {
   useEffect(() => { setText(saved); }, [saved]);
   if (!state.profile) return null;
   const found = matchTopics(saved);
-  const picked = state.profile?.topics ?? [];
+  const picked = ownTopics(state.profile);
   const fromTeacher = (access.settings?.topics ?? []);
-  const toggle = (id: string) => update((s) => (s.profile ? { ...s, profile: { ...s.profile, topics: picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id].slice(-8) } } : s));
+  const toggle = (id: string) => update((s) => (s.profile ? { ...s, profile: toggleOwnTopic(s.profile, id) } : s));
   const save = () => { const v = text.trim().slice(0, 300); update((s) => (s.profile ? { ...s, profile: { ...s.profile, likes: v } } : s)); setOpen(false); };
   return (
     <section className="card mt-5 p-4" data-testid="likes">

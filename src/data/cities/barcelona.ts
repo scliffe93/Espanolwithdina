@@ -46,6 +46,9 @@ const INVITES: Record<Interest | 'default', { es: string; en: string }> = {
   reading: { es: 'Aquí en Gràcia hay una librería con club de lectura. Y espera a Sant Jordi: ¡la ciudad se llena de libros y rosas! ¿Vienes al club conmigo?', en: 'There\'s a bookshop here in Gràcia with a book club. And wait until Sant Jordi: the city fills up with books and roses! Will you come to the club with me?' },
   cinema: { es: 'Los cines Verdi, aquí en Gràcia, ponen películas en versión original. ¿Vamos el martes?', en: 'The Verdi cinemas here in Gràcia show films in their original language. Shall we go on Tuesday?' },
   nature: { es: 'El domingo hacemos una ruta por Collserola. ¿Te vienes?', en: 'On Sunday we\'re doing a hike in Collserola. Are you coming?' },
+  golf: { es: 'El sábado voy a jugar al golf a las afueras, a media hora en coche. ¿Te vienes a jugar nueve hoyos?', en: 'On Saturday I\'m going to play golf just outside the city, half an hour by car. Are you coming to play nine holes?' },
+  tennis: { es: 'En abril es el Godó, el gran torneo de tenis de Barcelona. ¿Vamos juntos a ver un partido?', en: 'In April it\'s the Godó, Barcelona\'s big tennis tournament. Shall we go and watch a match together?' },
+  'classic-cars': { es: 'Un amigo tiene un Jaguar de los años sesenta y el domingo vamos a recorrer la costa. ¿Te vienes?', en: 'A friend has a Jaguar from the sixties and on Sunday we\'re driving along the coast. Are you coming?' },
   default: { es: 'Esta tarde subimos a los Búnkers del Carmel a ver la puesta de sol. ¿Te apuntas?', en: 'This evening we\'re going up to the Bunkers del Carmel to watch the sunset. Want to join?' },
 };
 

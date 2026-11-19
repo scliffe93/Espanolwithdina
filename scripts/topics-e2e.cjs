@@ -7,7 +7,7 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
 const src = fs.readFileSync(path.join(__dirname, 'verbs-e2e.cjs'), 'utf8');
 const answer = eval('(' + src.slice(src.indexOf('async function answer'), src.indexOf('async function playThrough')).trim() + ')');
 const as = async (p, who) => { await p.goto(BASE + '#/demo'); await p.waitForTimeout(800); await p.getByTestId('demo-' + who).click(); await p.waitForTimeout(1600); };
-const ABOUT = /golf|hoyo|torneo|hándicap|tenis|raqueta|saque|Wimbledon|pista|Jaguar|coche|motor|garaje/i;
+const ABOUT = /golf|hoyo|torneo|hándicap|tenis|raqueta|saque|Wimbledon|pista|Jaguar|coche|motor|garaje|música|canto|guitarra|concierto|fútbol|partido|equipo|estadio|cocino|receta|sopa|tortilla|mercado/i;
 (async () => {
   const b = await chromium.launch(); const errors = [];
   const p = await (await b.newContext({ viewport: { width: 1100, height: 900 } })).newPage(); p.on('pageerror', (e) => errors.push(String(e)));
@@ -21,7 +21,7 @@ const ABOUT = /golf|hoyo|torneo|hándicap|tenis|raqueta|saque|Wimbledon|pista|Ja
   await p.getByTestId('student-topics').screenshot({ path: OUT + '/topics-teacher.png' });
   await as(p, 'sam');
   await p.goto(BASE + '#/verbs'); await p.getByTestId('verbs-topics').waitFor({ timeout: 10000 });
-  ok(/golf course, the tennis court and classic cars/.test(await p.getByTestId('verbs-topics').innerText()), 'the student’s verb gym says the practice is made for them');
+  { const v = await p.getByTestId('verbs-topics').innerText(); ok(/golf course/.test(v) && /tennis court/.test(v) && /classic cars/.test(v) && /football/.test(v), `the student’s verb gym says the practice is made for them, including the interests they gave at sign-up (${v.slice(0, 120)})`); }
   await p.getByTestId('verbs-hero').screenshot({ path: OUT + '/topics-hero.png' });
   let themed = 0, grow = '', shot = false;
   for (let round = 0; round < 3 && (themed < 2 || !ABOUT.test(grow)); round++) {
@@ -57,14 +57,30 @@ const ABOUT = /golf|hoyo|torneo|hándicap|tenis|raqueta|saque|Wimbledon|pista|Ja
   ok(/cooking and food/.test(await p.getByTestId('verbs-topics').innerText()), 'cooking joins the topics their teacher ticked');
   ok((await p.getByTestId('likes-topics').locator('button').count()) === 20, 'twenty topics are offered to tap');
   await p.getByTestId('like-wine').click(); await p.getByTestId('like-dogs').click(); await p.waitForTimeout(500);
-  ok(/wine, dogs/.test(await p.getByTestId('verbs-topics').innerText()) && (await p.getByTestId('like-golf').isDisabled()), 'the student taps wine and dogs, and the teacher’s golf stays ticked');
+  ok(/wine/.test(await p.getByTestId('verbs-topics').innerText()) && /dogs/.test(await p.getByTestId('verbs-topics').innerText()) && (await p.getByTestId('like-golf').isDisabled()), 'the student taps wine and dogs, and the teacher’s golf stays ticked');
   await p.getByTestId('likes').screenshot({ path: OUT + '/topics-likes.png' });
   await p.waitForTimeout(1500);
   await as(p, 'dina');
   await p.goto(BASE + '#/teach/student/demo-sam'); await p.getByTestId('student-topics').waitFor({ timeout: 10000 }); await p.waitForTimeout(800);
   const own = await p.getByTestId('student-topics').innerText();
-  ok(/Picked by \w+: Dogs, Wine|Picked by \w+: Wine, Dogs/.test(own) && /Cooking for friends, chess and golf/.test(own) && /No sentences yet for: chess/.test(own), 'the teacher sees their words and that chess still needs writing');
+  ok(/Picked by \w+: [^.]*Football[^.]*Wine, Dogs/.test(own) && /Cooking for friends, chess and golf/.test(own) && /No sentences yet for: chess/.test(own), 'the teacher sees their words and that chess still needs writing');
   await p.getByTestId('student-topics').screenshot({ path: OUT + '/topics-teacher.png' });
+  // Anyone can choose what Julian has: golf, tennis and classic cars are in the interests on the Me page.
+  await as(p, 'anneka');
+  await p.goto(BASE + '#/settings'); await p.waitForTimeout(1200);
+  const interests = p.getByRole('group', { name: 'Interests' });
+  ok((await interests.getByRole('button', { name: 'Golf' }).count()) === 1 && (await interests.getByRole('button', { name: 'Tennis' }).count()) === 1 && (await interests.getByRole('button', { name: 'Classic cars' }).count()) === 1, 'golf, tennis and classic cars are in every student’s interests');
+  await interests.getByRole('button', { name: 'Golf' }).click(); await interests.getByRole('button', { name: 'Classic cars' }).click();
+  const more = p.getByRole('group', { name: 'More for your practice' });
+  await more.getByRole('button', { name: 'Sailing' }).click(); await p.waitForTimeout(500);
+  ok((await interests.getByRole('button', { name: 'Golf' }).getAttribute('aria-pressed')) === 'true' && (await more.getByRole('button', { name: 'Sailing' }).getAttribute('aria-pressed')) === 'true' && (await more.getByRole('button', { name: 'Golf' }).count()) === 0, 'another student picks golf and classic cars as interests, and sailing for practice');
+  await p.getByRole('group', { name: 'Interests' }).screenshot({ path: OUT + '/topics-me.png' });
+  await p.goto(BASE + '#/world'); await p.waitForTimeout(300); await p.goto(BASE + '#/verbs'); await p.getByTestId('verbs-topics').waitFor({ timeout: 10000 });
+  { const v = await p.getByTestId('verbs-topics').innerText(); ok(/golf course/.test(v) && /classic cars/.test(v) && /sailing/.test(v), `their verb gym is now made for them too (${v.slice(0, 110)})`); }
+  ok(await p.getByTestId('like-golf').getAttribute('aria-pressed') === 'true' && !(await p.getByTestId('like-golf').isDisabled()), 'golf shows as theirs in the verb gym picker and can be untapped there');
+  await p.getByTestId('like-golf').click(); await p.waitForTimeout(400);
+  await p.goto(BASE + '#/settings'); await p.waitForTimeout(1000);
+  ok((await p.getByRole('group', { name: 'Interests' }).getByRole('button', { name: 'Golf' }).getAttribute('aria-pressed')) === 'false', 'untapping golf in the verb gym takes it off their interests too: one list');
   ok(errors.length === 0, `no page errors${errors.length ? ': ' + errors[0] : ''}`);
   await b.close();
 })();

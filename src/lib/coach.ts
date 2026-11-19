@@ -44,6 +44,9 @@ const INTEREST_CONTEXT: Partial<Record<Interest, string>> = {
   reading: 'your book club',
   cinema: 'choosing a film',
   nature: 'a hike in the sierra',
+  golf: 'chatting at the golf club',
+  tennis: 'booking a tennis court',
+  'classic-cars': 'a Sunday drive in a classic car',
 };
 
 function recentMistakes(state: AppState, now: number, days = 14): Map<ErrorCategory, number> {

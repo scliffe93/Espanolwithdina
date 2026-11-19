@@ -1,3 +1,4 @@
+import { TOPICS, interestForTopic, ownTopics, toggleOwnTopic } from '../data/topics';
 import { NotificationsCard } from '../components/NotificationsCard';
 import { Troubleshooting } from '../components/Troubleshooting';
 import { APP_LANGUAGES, type AppLanguage } from '../lib/i18n';
@@ -257,8 +258,10 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
             {!onboarding && <button className="btn-soft mt-4" onClick={() => navigate('assessment')}><Icon name="refresh" size={16} /> Retake placement</button>}
           </Section>
 
-          <Section title="Interests" hint="Shape invitations, vocabulary packs and coach suggestions.">
+          <Section title="Interests" hint="Shape invitations in your story, coach suggestions, and the sentences, words and games in your practice.">
             <Chips label="Interests" options={INTERESTS} values={p.interests} onToggle={(v) => toggle('interests', v)} />
+            <p className="mb-2 mt-4 text-sm text-ink-soft">More for your practice: your verb sentences, words and games will be about these too.</p>
+            <Chips label="More for your practice" options={TOPICS.filter((t) => !interestForTopic(t.id)).map((t) => ({ value: t.id, label: t.label }))} values={ownTopics(p)} onToggle={(v) => set({ topics: toggleOwnTopic(p, v).topics })} />
           </Section>
           <Section title="Why you’re learning"><Chips label="Reasons" options={REASONS} values={p.reasons} onToggle={(v) => toggle('reasons', v)} /></Section>
           <Section title="Social life" hint="Dating unlocks an extra branch in conversations with Marta."><Chips label="Social goals" options={SOCIAL} values={p.socialGoals} onToggle={(v) => toggle('socialGoals', v)} /></Section>

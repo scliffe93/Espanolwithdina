@@ -39,6 +39,9 @@ export const INTERESTS: { value: Interest; label: string }[] = [
   { value: 'reading', label: 'Books' },
   { value: 'cinema', label: 'Film & TV' },
   { value: 'nature', label: 'Hiking & nature' },
+  { value: 'golf', label: 'Golf' },
+  { value: 'tennis', label: 'Tennis' },
+  { value: 'classic-cars', label: 'Classic cars' },
 ];
 
 export const SOCIAL: { value: LearnerProfile['socialGoals'][number]; label: string }[] = [

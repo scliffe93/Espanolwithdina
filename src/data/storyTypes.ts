@@ -124,6 +124,9 @@ export const INTEREST_YOU: Record<Interest | 'default', { es: string; en: string
   reading: { es: 'Me encanta leer.', en: 'I love reading.' },
   cinema: { es: 'Me encanta el cine.', en: 'I love cinema.' },
   nature: { es: 'Me gusta la naturaleza y hacer senderismo.', en: 'I like nature and hiking.' },
+  golf: { es: 'Me encanta el golf.', en: 'I love golf.' },
+  tennis: { es: 'Me encanta jugar al tenis.', en: 'I love playing tennis.' },
+  'classic-cars': { es: 'Me encantan los coches clásicos.', en: 'I love classic cars.' },
   default: { es: 'Me gusta conocer gente nueva.', en: 'I like meeting new people.' },
 };
 

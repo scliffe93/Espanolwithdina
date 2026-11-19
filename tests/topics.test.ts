@@ -115,3 +115,35 @@ describe('games made for what a student loves', () => {
     expect(buildDeck(new Set(['ser']), topicExamples(['classic-cars'])).every((c) => c.verb === 'ser' || c.verb === 'estar')).toBe(true);
   });
 });
+
+import { INTEREST_TOPIC, interestForTopic, ownTopics, toggleOwnTopic } from '../src/data/topics';
+import { INTERESTS } from '../src/data/profileOptions';
+describe('interests chosen at sign-up or on the Me page', () => {
+  it('golf, tennis and classic cars are in the list everyone chooses from', () => {
+    for (const v of ['golf', 'tennis', 'classic-cars']) expect(INTERESTS.map((i) => i.value)).toContain(v);
+  });
+  it('every interest that maps to a topic maps to a real one, and back again', () => {
+    for (const [interest, topic] of Object.entries(INTEREST_TOPIC)) { expect(TOPICS.some((t) => t.id === topic), interest).toBe(true); expect(interestForTopic(topic!)).toBe(interest); }
+  });
+  it('a student who picks golf at sign-up gets golf in their practice', () => {
+    expect(ownTopics({ interests: ['golf', 'art', 'food'], topics: ['wine', 'nope'] })).toEqual(['golf', 'cooking', 'wine']);
+    expect(ownTopics(null)).toEqual([]);
+  });
+  it('tapping a topic keeps it as an interest when there is one, so the story follows too', () => {
+    const p0 = { interests: ['art'] as never[], topics: [] as string[] };
+    const p1 = toggleOwnTopic(p0, 'tennis');
+    expect(p1).toEqual({ interests: ['art', 'tennis'], topics: [] });
+    const p2 = toggleOwnTopic(p1, 'wine');
+    expect(p2).toEqual({ interests: ['art', 'tennis'], topics: ['wine'] });
+    expect(toggleOwnTopic(toggleOwnTopic(p2, 'tennis'), 'wine')).toEqual({ interests: ['art'], topics: [] });
+    // A topic kept the old way (in topics) that has an interest is removed cleanly too.
+    expect(toggleOwnTopic({ interests: [] as never[], topics: ['golf'] }, 'golf')).toEqual({ interests: [], topics: [] });
+  });
+});
+
+describe('older saved profiles', () => {
+  it('a profile saved before interests or topics existed can still tap a topic', () => {
+    expect(toggleOwnTopic({} as never, 'golf')).toEqual({ interests: ['golf'], topics: [] });
+    expect(ownTopics({} as never)).toEqual([]);
+  });
+});

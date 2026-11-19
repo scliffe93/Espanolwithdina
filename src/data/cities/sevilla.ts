@@ -45,6 +45,9 @@ const INVITES: Record<Interest | 'default', { es: string; en: string }> = {
   reading: { es: 'Los domingos leo en el Parque de María Luisa, a la sombra. ¿Te vienes un día con tu libro?', en: 'On Sundays I read in María Luisa Park, in the shade. Will you come one day with your book?' },
   cinema: { es: 'En verano hay cines al aire libre por la noche, cuando baja el calor, por la noche, cuando baja el calor. ¿Vamos el martes?', en: 'In summer there are open-air cinemas at night, when the heat drops. Shall we go on Tuesday?' },
   nature: { es: 'El sábado temprano vamos en kayak por el Guadalquivir. ¿Te apuntas?', en: 'Early on Saturday we\'re going kayaking on the Guadalquivir. Want to join?' },
+  golf: { es: 'El sábado juego al golf a las ocho, antes del calor. Luego desayunamos en el club. ¿Te vienes?', en: 'On Saturday I\'m playing golf at eight, before the heat. Then we have breakfast at the club. Are you coming?' },
+  tennis: { es: 'Juego al tenis al atardecer, cuando baja el calor, y me falta uno para dobles. ¿Te vienes?', en: 'I play tennis at sunset, when the heat drops, and we\'re one short for doubles. Are you coming?' },
+  'classic-cars': { es: 'Mi padre tiene un Mercedes antiguo y el domingo vamos a dar una vuelta hasta Carmona. ¿Te apuntas?', en: 'My father has an old Mercedes and on Sunday we\'re going for a drive to Carmona. Want to join?' },
   default: { es: 'El viernes subimos unos amigos a las Setas a ver el atardecer. ¿Te vienes?', en: 'On Friday a few friends are going up the Setas to watch the sunset. Are you coming?' },
 };
 

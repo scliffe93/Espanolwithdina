@@ -40,7 +40,7 @@ const STEPS: Step[] = [
   { id: 'city', es: '¿Dónde quieres vivir tu nueva vida?', en: 'Where do you want to live your new life? Each city has its own story, people, colours — and its own Spanish.', kind: 'city', mood: 'happy' },
   { id: 'relocation', es: '¿Y cuándo es la mudanza?', en: 'And when\'s the move?', kind: 'single', field: 'relocation', options: RELOCATION },
   { id: 'reasons', es: '¿Por qué aprendes español?', en: 'Why are you learning Spanish? Pick all that apply.', kind: 'multi', field: 'reasons', options: REASONS },
-  { id: 'interests', es: 'Cuéntame, ¿qué te gusta hacer?', en: 'Tell me — what do you love doing? Your story in Madrid will follow your interests.', kind: 'multi', field: 'interests', options: INTERESTS, mood: 'happy' },
+  { id: 'interests', es: 'Cuéntame, ¿qué te gusta hacer?', en: 'Tell me — what do you love doing? Your story and your practice will follow your interests.', kind: 'multi', field: 'interests', options: INTERESTS, mood: 'happy' },
   { id: 'career', es: '¿A qué te dedicas?', en: 'What do you do for work?', kind: 'text', field: 'career', placeholder: 'e.g. UX designer, nurse, student', optional: true },
   { id: 'social', es: '¿Y tu vida social allí? ¿Qué te importa?', en: 'What matters for your social life there?', kind: 'multi', field: 'socialGoals', options: SOCIAL, optional: true },
   { id: 'minutes', es: '¿Cuánto tiempo tienes al día?', en: 'How much time can you give each day? Little and often wins.', kind: 'single', field: 'dailyMinutes', options: MINUTES.map((m) => ({ value: String(m), label: `${m} min`, hint: m <= 5 ? 'Casual' : m <= 10 ? 'Steady' : m <= 20 ? 'Serious' : 'Intense' })) },

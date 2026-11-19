@@ -23,7 +23,10 @@ export type Interest =
   | 'nightlife'
   | 'reading'
   | 'cinema'
-  | 'nature';
+  | 'nature'
+  | 'golf'
+  | 'tennis'
+  | 'classic-cars';
 
 export type Difficulty =
   | 'verbs'

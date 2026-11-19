@@ -5,7 +5,7 @@ import { allowedPacks, allowedVerbs, overallLevel } from './level';
 import { useStore } from '../store';
 import type { StudentSettings } from './types';
 import { sentenceLevelFor } from '../../data/ladders';
-import { matchTopics } from '../../data/topics';
+import { matchTopics, ownTopics } from '../../data/topics';
 
 const EMPTY: string[] = [];
 
@@ -39,7 +39,7 @@ export function useLevelAccess(): LevelAccess {
   const { state } = useStore();
   // What the student loves: the teacher's ticks, plus whatever the app recognises in the student's own words.
   const likes = state.profile?.likes ?? '';
-  const picked = state.profile?.topics ?? EMPTY;
+  const picked = ownTopics(state.profile);
   const topicKey = `${(s?.topics ?? []).join(',')}|${picked.join(',')}|${likes}`;
   const topics = useMemo(() => { const all = [...new Set([...(s?.topics ?? []), ...picked, ...matchTopics(likes).topics])]; return all.length ? all : EMPTY; }, [topicKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const level = s?.maxLevel ?? s?.verified?.level ?? overallLevel(state.profile?.levels);

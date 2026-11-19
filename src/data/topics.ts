@@ -6,6 +6,7 @@
 import { registerLadders, type Ladder } from './ladders';
 import { parseExample, type VerbExample } from './verbs';
 import { registerVocab, type VocabItem } from './vocab';
+import type { Interest, LearnerProfile } from '../types';
 
 export interface Topic {
   id: string;
@@ -525,3 +526,32 @@ export function topicSentences(ids: string[] | null | undefined, maxWords = 9): 
   return Object.values(topicExamples(ids)).flat().map((e) => ({ es: parseExample(e).plain.replace(/[.]$/, ''), en: e.en.replace(/[.]$/, '') })).filter((x) => x.es.split(' ').length <= maxWords);
 }
 export const topicWordIds = (ids: string[] | null | undefined): string[] => topicsOf(ids).flatMap((t) => t.words.map((_, i) => topicWordId(t.id, i)));
+
+/** The interests a learner picks at sign-up and on their Me page, and the practice topic each one brings. */
+export const INTEREST_TOPIC: Partial<Record<Interest, string>> = {
+  food: 'cooking', football: 'football', fitness: 'running', music: 'music', travel: 'travel', reading: 'reading',
+  cinema: 'films', nature: 'hiking', golf: 'golf', tennis: 'tennis', 'classic-cars': 'classic-cars',
+};
+/** The interest that stands for a topic, when there is one (golf → golf, cooking → food). */
+export const interestForTopic = (topic: string): Interest | undefined => (Object.keys(INTEREST_TOPIC) as Interest[]).find((i) => INTEREST_TOPIC[i] === topic);
+/** Everything the learner chose themselves: their interests and the extra topics they tapped. */
+export function ownTopics(profile: Pick<LearnerProfile, 'interests' | 'topics'> | null | undefined): string[] {
+  if (!profile) return [];
+  const fromInterests = (profile.interests ?? []).map((i) => INTEREST_TOPIC[i]).filter((t): t is string => !!t && !!TOPIC_BY_ID[t]);
+  return [...new Set([...fromInterests, ...(profile.topics ?? []).filter((t) => TOPIC_BY_ID[t])])];
+}
+/**
+ * The learner taps a topic: one that matches an interest is kept as that interest (so their story follows it too);
+ * any other is kept in their extra topics.
+ */
+export function toggleOwnTopic<P extends Pick<LearnerProfile, 'interests' | 'topics'>>(profile: P, topic: string): P {
+  const on = ownTopics(profile).includes(topic);
+  const interest = interestForTopic(topic);
+  const topics = (profile.topics ?? []).filter((t) => t !== topic);
+  if (interest) {
+    const had = profile.interests ?? [];
+    const interests = on ? had.filter((i) => i !== interest) : [...new Set([...had, interest])];
+    return { ...profile, interests, topics };
+  }
+  return { ...profile, topics: on ? topics : [...topics, topic] };
+}

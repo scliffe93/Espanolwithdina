@@ -10,7 +10,7 @@ What the student practises on their own: verbs, sentences, words, games and the 
 - Word packs A1 to C2, memory review, placement to C2, exam practice in the style of the DELE.
 - Arcade games picked by level; six city storylines.
 - Students see one consistent level on every screen.
-- Personal practice: the teacher ticks what a student loves (golf, tennis, classic cars and more) and their sentences, growing sentences, new words and games come from it. Students can also write what they are into in their own words.
+- Personal practice: the teacher ticks what a student loves (golf, tennis, classic cars and more) and their sentences, growing sentences, new words and games come from it. Students can also write what they are into in their own words. Interests chosen at sign-up or on the Me page (including golf, tennis and classic cars) drive practice too.
 
 ## Where
 `src/screens/Verbs.tsx`, `VerbFamilies.tsx`, `src/data/` (verbs, families, ladders, vocab, blocks, topics), `src/lib/exercises.ts`, `src/lib/platform/level.ts`, `useLevelAccess.ts`, `src/screens/teach/ReleaseBlocks.tsx`, `LevelAccess.tsx`.
