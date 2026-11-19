@@ -13,7 +13,7 @@ import { allVerbMastery } from '../lib/analytics';
 import { CATEGORY_LABEL, CATEGORY_TIP, checkAnswer, classifyVerbError, normalize } from '../lib/answer';
 import { levelIndex } from '../lib/assessmentScore';
 import { LADDER_BY_ID, SENTENCE_STEPS, parseRung } from '../data/ladders';
-import { matchTopics, topicsOf } from '../data/topics';
+import { TOPICS, matchTopics, topicsOf } from '../data/topics';
 import { EX_LABEL, buildSession, cardKeyFor, pronounFor, shuffle, type Exercise } from '../lib/exercises';
 import { navigate } from '../lib/router';
 import { addSpeakingAttempt, completeLesson, recordAttempt } from '../lib/state';
@@ -687,12 +687,16 @@ function WayCard({ icon, tone = '', title, text, onClick, testid, primary, badge
 /** The student says what they are into, in their own words. Their sentences follow it wherever the app has a topic for it. */
 function Likes() {
   const { state, update } = useStore();
+  const access = useLevelAccess();
   const saved = state.profile?.likes ?? '';
   const [text, setText] = useState(saved);
   const [open, setOpen] = useState(false);
   useEffect(() => { setText(saved); }, [saved]);
   if (!state.profile) return null;
   const found = matchTopics(saved);
+  const picked = state.profile?.topics ?? [];
+  const fromTeacher = (access.settings?.topics ?? []);
+  const toggle = (id: string) => update((s) => (s.profile ? { ...s, profile: { ...s.profile, topics: picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id].slice(-8) } } : s));
   const save = () => { const v = text.trim().slice(0, 300); update((s) => (s.profile ? { ...s, profile: { ...s.profile, likes: v } } : s)); setOpen(false); };
   return (
     <section className="card mt-5 p-4" data-testid="likes">
@@ -703,6 +707,15 @@ function Likes() {
           <span className="text-sm text-ink-soft" data-testid="likes-status">{saved ? <>“{saved}”{found.topics.length > 0 && <> · your sentences are about {topicsOf(found.topics).map((t) => t.label.toLowerCase()).join(', ')}.</>}{found.unmatched.length > 0 && <> We do not have sentences about {found.unmatched.join(', ')} yet: it has been noted and they will be added.</>}</> : 'Tell us your hobbies and passions and your practice sentences will be about them.'}</span>
         </div>
         {!open && <button type="button" className="btn-soft" onClick={() => setOpen(true)} data-testid="likes-open">{saved ? 'Change' : 'Tell us'}</button>}
+      </div>
+      <div className="mt-3 border-t border-ink/5 pt-3">
+        <p className="mb-2 text-sm text-ink-soft">Tap what you love. Your sentences, words and games will be about it.</p>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="What you love" data-testid="likes-topics">
+          {TOPICS.map((t) => { const mine = picked.includes(t.id); const on = mine || fromTeacher.includes(t.id) || found.topics.includes(t.id); return (
+            <button key={t.id} type="button" aria-pressed={on} onClick={() => toggle(t.id)} disabled={on && !mine} title={on && !mine ? (fromTeacher.includes(t.id) ? 'Chosen by your teacher' : 'From what you wrote') : undefined} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm ring-1 transition ${on ? 'bg-ink text-cream ring-ink' : 'bg-cream-100 text-ink ring-ink/10 hover:ring-ink/40'} ${on && !mine ? 'opacity-80' : ''}`} data-testid={`like-${t.id}`} data-on={on || undefined}>{on && <Icon name="check" size={13} />}{t.label}</button>
+          ); })}
+        </div>
+        {!open && <p className="mt-2 text-xs text-ink-mute">Not in the list? <button type="button" className="underline" onClick={() => setOpen(true)}>Write it in your own words</button> and it will be added.</p>}
       </div>
       {open && (
         <form className="mt-3 border-t border-ink/5 pt-3" onSubmit={(e) => { e.preventDefault(); save(); }}>

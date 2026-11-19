@@ -82,7 +82,7 @@ describe('saving what a student loves', () => {
 import { matchTopics } from '../src/data/topics';
 describe('what a student writes about themselves', () => {
   it('finds the topics the app has and lists what it has none for', () => {
-    expect(matchTopics('I am a massive golf lover, love my tennis as well, and old cars like Jaguars. Also sailing and red wine')).toEqual({ topics: ['golf', 'tennis', 'classic-cars'], unmatched: ['sailing', 'red wine'] });
+    expect(matchTopics('I am a massive golf lover, love my tennis as well, and old cars like Jaguars. Also chess and knitting')).toEqual({ topics: ['golf', 'tennis', 'classic-cars'], unmatched: ['chess', 'knitting'] });
     expect(matchTopics('Me gusta el fútbol y cocinar')).toEqual({ topics: ['football', 'cooking'], unmatched: [] });
     expect(matchTopics('golfing, Tennis')).toEqual({ topics: ['golf', 'tennis'], unmatched: [] });
   });

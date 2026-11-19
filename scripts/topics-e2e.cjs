@@ -46,21 +46,24 @@ const ABOUT = /golf|hoyo|torneo|hándicap|tenis|raqueta|saque|Wimbledon|pista|Ja
     await p.goto(BASE + '#/game/' + game); await p.waitForTimeout(900);
     await p.locator('main button.bg-white.rounded-full').first().click(); await p.waitForTimeout(5200);
     const text = await p.locator('main').innerText();
-    ok(ABOUT.test(text) || /el palo|la pelota|la bandera|césped|gorra|la red|el punto|volante|la rueda|carretera|la pieza|mecánico|entrenador|árbitro|la final|el jugador|carrocería|el golpe|el partido/i.test(text) || (game === 'lineup' && !/derbi/.test(text)), `${label} opens on something they love (${text.replace(/\s+/g, ' ').slice(0, 80)})`);
+    ok(ABOUT.test(text) || /el palo|la pelota|la bandera|césped|gorra|la red|el punto|volante|la rueda|carretera|la pieza|mecánico|entrenador|árbitro|la final|el jugador|carrocería|el golpe|el partido/i.test(text) || (game === 'lineup' && /Made for you/.test(text)), `${label} opens on something they love (${text.replace(/\s+/g, ' ').slice(0, 80)})`);
     await p.screenshot({ path: OUT + `/topics-game-${game}.png` });
   }
   // The student says what they are into, in their own words.
   await p.goto(BASE + '#/world'); await p.waitForTimeout(300); await p.goto(BASE + '#/verbs'); await p.getByTestId('likes').waitFor({ timeout: 10000 });
-  await p.getByTestId('likes-open').click(); await p.getByTestId('likes-text').fill('Cooking for friends, sailing and golf'); await p.getByTestId('likes-save').click(); await p.waitForTimeout(800);
+  await p.getByTestId('likes-open').click(); await p.getByTestId('likes-text').fill('Cooking for friends, chess and golf'); await p.getByTestId('likes-save').click(); await p.waitForTimeout(800);
   const st = await p.getByTestId('likes-status').innerText();
-  ok(/about golf, cooking/.test(st) && /sailing/.test(st) && /will be added/.test(st), `their own words are matched to topics, and what is missing is noted (${st.slice(0, 90)})`);
+  ok(/about golf, cooking/.test(st) && /chess/.test(st) && /will be added/.test(st), `their own words are matched to topics, and what is missing is noted (${st.slice(0, 90)})`);
   ok(/cooking and food/.test(await p.getByTestId('verbs-topics').innerText()), 'cooking joins the topics their teacher ticked');
+  ok((await p.getByTestId('likes-topics').locator('button').count()) === 20, 'twenty topics are offered to tap');
+  await p.getByTestId('like-wine').click(); await p.getByTestId('like-dogs').click(); await p.waitForTimeout(500);
+  ok(/wine, dogs/.test(await p.getByTestId('verbs-topics').innerText()) && (await p.getByTestId('like-golf').isDisabled()), 'the student taps wine and dogs, and the teacher’s golf stays ticked');
   await p.getByTestId('likes').screenshot({ path: OUT + '/topics-likes.png' });
   await p.waitForTimeout(1500);
   await as(p, 'dina');
   await p.goto(BASE + '#/teach/student/demo-sam'); await p.getByTestId('student-topics').waitFor({ timeout: 10000 }); await p.waitForTimeout(800);
   const own = await p.getByTestId('student-topics').innerText();
-  ok(/Cooking for friends, sailing and golf/.test(own) && /No sentences yet for: sailing/.test(own), 'the teacher sees their words and that sailing still needs writing');
+  ok(/Picked by \w+: Dogs, Wine|Picked by \w+: Wine, Dogs/.test(own) && /Cooking for friends, chess and golf/.test(own) && /No sentences yet for: chess/.test(own), 'the teacher sees their words and that chess still needs writing');
   await p.getByTestId('student-topics').screenshot({ path: OUT + '/topics-teacher.png' });
   ok(errors.length === 0, `no page errors${errors.length ? ': ' + errors[0] : ''}`);
   await b.close();

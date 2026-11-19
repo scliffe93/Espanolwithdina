@@ -39,8 +39,9 @@ export function useLevelAccess(): LevelAccess {
   const { state } = useStore();
   // What the student loves: the teacher's ticks, plus whatever the app recognises in the student's own words.
   const likes = state.profile?.likes ?? '';
-  const topicKey = `${(s?.topics ?? []).join(',')}|${likes}`;
-  const topics = useMemo(() => { const all = [...new Set([...(s?.topics ?? []), ...matchTopics(likes).topics])]; return all.length ? all : EMPTY; }, [topicKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const picked = state.profile?.topics ?? EMPTY;
+  const topicKey = `${(s?.topics ?? []).join(',')}|${picked.join(',')}|${likes}`;
+  const topics = useMemo(() => { const all = [...new Set([...(s?.topics ?? []), ...picked, ...matchTopics(likes).topics])]; return all.length ? all : EMPTY; }, [topicKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const level = s?.maxLevel ?? s?.verified?.level ?? overallLevel(state.profile?.levels);
   return { maxLevel: s?.maxLevel ?? null, loading: isStudent && q.loading, settings: q.data, verbs, packs, level, levelFrom: s?.maxLevel ? 'teacher' : s?.verified?.level ? 'confirmed' : 'own', topics, sentence: s?.sentence ?? sentenceLevelFor(level) };
 }

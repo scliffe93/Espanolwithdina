@@ -109,6 +109,7 @@ export function LevelAccess({ studentId, name, state }: { studentId: string; nam
             {m.unmatched.length > 0 && <p className="mt-1 text-xs text-terracotta-dark" data-testid="topics-missing">No sentences yet for: <b>{m.unmatched.join(', ')}</b>. These need writing.</p>}
           </div>
         ); })() : <p className="mt-2 text-xs text-ink-mute">{name} has not written what they are into yet. They can, at the top of their verb gym.</p>}
+        {topicsOf(state?.profile?.topics).length > 0 && <p className="mt-2 text-xs text-ink-soft" data-testid="topics-picked">Picked by {name}: <b>{topicsOf(state?.profile?.topics).map((t) => t.label).join(', ')}</b>. These are already in use.</p>}
         <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label={`What ${name} loves`}>
           {TOPICS.map((t) => { const on = (q.data?.topics ?? []).includes(t.id); return (
             <button key={t.id} type="button" disabled={busy} aria-pressed={on} onClick={() => void saveTopics(on ? (q.data?.topics ?? []).filter((x) => x !== t.id) : [...(q.data?.topics ?? []), t.id])} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm ring-1 transition ${on ? 'bg-ink text-cream ring-ink' : 'bg-cream-100 text-ink ring-ink/10 hover:ring-ink/40'}`} data-testid={`topic-${t.id}`}>{on && <Icon name="check" size={13} />}{t.label}</button>

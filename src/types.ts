@@ -55,6 +55,8 @@ export interface LearnerProfile {
   interests: Interest[];
   /** What the learner is into, in their own words. Their practice sentences follow it where the app has a matching topic. */
   likes?: string;
+  /** Topics the learner picked for themselves (ids from data/topics.ts). */
+  topics?: string[];
   career: string;
   socialGoals: ('friends' | 'dating' | 'colleagues' | 'neighbours' | 'family')[];
   reasons: Reason[];
