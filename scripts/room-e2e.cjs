@@ -38,6 +38,13 @@ async function until(fn, ms = 9000) { const end = Date.now() + ms; for (;;) { if
   await t.getByTestId('add-gap').click(); await t.getByTestId('block-body').nth(1).fill('Ayer yo ___ (ir) al mercado.'); await t.getByTestId('block-answer').first().fill('fui');
   await t.getByTestId('add-choice').click(); await t.getByTestId('block-body').nth(2).fill('Madrid ___ en España.'); await t.getByTestId('block-options').fill('es\nestá'); await t.locator('select[data-testid="block-answer"]').selectOption('está');
   await t.getByTestId('add-text').click(); await t.getByTestId('block-body').nth(3).fill('SECRET PART: the answers to next week’s test.');
+  // A word list is typed key by key, the way she types it: spaces stay, and no "=" appears until she types one.
+  await t.getByTestId('add-vocab').click(); const words = t.getByTestId('block-pairs');
+  await words.click(); await words.pressSequentially('ver ');
+  ok((await words.inputValue()) === 'ver ', 'the word list keeps a space as it is typed and adds no "=" by itself');
+  await words.pressSequentially('= to see to watch\nel fin de semana = the weekend');
+  ok((await words.inputValue()) === 'ver = to see to watch\nel fin de semana = the weekend', 'several words in a row can be typed on either side of the "="');
+  await t.waitForTimeout(400); await t.getByTestId('block-editor').last().getByLabel('Delete this part').click();
   ok(await until(async () => (await t.getByTestId('save-state').innerText()) === 'Saved'), 'the plan is edited and saved by itself (four parts, with private notes)');
   await t.screenshot({ path: OUT + '/room-plan.png' });
   await t.reload(); await t.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await t.waitForTimeout(800);

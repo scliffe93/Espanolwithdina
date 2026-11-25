@@ -506,6 +506,20 @@ export function RoomList() {
   );
 }
 
+type WordPair = { es: string; en: string };
+const pairsOf = (text: string): WordPair[] => text.split('\n').map((l) => { const [es, ...en] = l.split('='); return { es: es.trim(), en: en.join('=').trim() }; });
+const pairsText = (pairs: WordPair[]) => pairs.map((p) => (p.en ? `${p.es} = ${p.en}` : p.es)).join('\n');
+const samePairs = (a: WordPair[], b: WordPair[]) => a.length === b.length && a.every((p, k) => p.es === b[k].es && p.en === b[k].en);
+
+/** The word list box. It keeps exactly what was typed (spaces, a half-written line) and only reads the pairs out of
+ *  it; redrawing the box from the tidied pairs is what used to swallow each space and add an "=" on its own. */
+function PairsField({ pairs, onChange }: { pairs: WordPair[]; onChange: (pairs: WordPair[]) => void }) {
+  const [text, setText] = useState(() => pairsText(pairs));
+  // The list changed from outside (another part's words, or a fresh draft): show that instead.
+  useEffect(() => { if (!samePairs(pairsOf(text), pairs)) setText(pairsText(pairs)); }, [pairs]); // eslint-disable-line react-hooks/exhaustive-deps
+  return <textarea className="input min-h-[110px]" value={text} onChange={(e) => { setText(e.target.value); onChange(pairsOf(e.target.value)); }} lang="es" data-testid="block-pairs" />;
+}
+
 function BlockEditor({ b, i, n, onChange, onMove, onDelete, onDuplicate, flag }: { b: LessonBlock; i: number; n: number; onChange: (b: LessonBlock) => void; onMove: (d: -1 | 1) => void; onDelete: () => void; onDuplicate: () => void; flag?: boolean }) {
   const set = (patch: Partial<LessonBlock>) => onChange({ ...b, ...patch });
   const [preview, setPreview] = useState(false);
@@ -535,7 +549,7 @@ function BlockEditor({ b, i, n, onChange, onMove, onDelete, onDuplicate, flag }:
             <label className="grid content-start gap-1 text-sm font-medium">Right answer<select className={`input ${flag ? '!ring-2 !ring-saffron' : ''}`} value={b.answer ?? ''} onChange={(e) => set({ answer: e.target.value })} data-testid="block-answer"><option value="">Choose…</option>{(b.options ?? []).filter((o) => o.trim()).map((o) => <option key={o} value={o}>{o}</option>)}</select></label>
           </div>
         )}
-        {b.type === 'vocab' && <label className="mt-3 grid gap-1 text-sm font-medium">Words <span className="font-normal text-ink-mute">(one per line: español = English)</span><textarea className="input min-h-[110px]" value={(b.pairs ?? []).map((p) => `${p.es} = ${p.en}`).join('\n')} onChange={(e) => set({ pairs: e.target.value.split('\n').map((l) => { const [es, ...en] = l.split('='); return { es: es.trim(), en: en.join('=').trim() }; }) })} lang="es" data-testid="block-pairs" /></label>}
+        {b.type === 'vocab' && <label className="mt-3 grid gap-1 text-sm font-medium">Words <span className="font-normal text-ink-mute">(one per line: español = English)</span><PairsField pairs={b.pairs ?? []} onChange={(pairs) => set({ pairs })} /></label>}
         {flag && <p className="mt-2 text-sm font-semibold text-ink" role="status">No answer was found in your plan for this one. Add it above.</p>}
         {preview && <div className="mt-3 rounded-3xl bg-cream-100 p-3"><p className="eyebrow mb-2">As your student sees it</p><BlockView block={b} mode="present" wording="both" /></div>}
       </div>

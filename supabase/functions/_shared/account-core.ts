@@ -595,8 +595,12 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
 
     // ── the teacher's files (PDFs and photos attached to homework or kept in a student's learning bank) ──
     // Which rows point at a file: a learning-bank item, or homework with the file attached.
+    // The database driver in production stores a row's data as a JSON *string* (see the lesson room below), and a
+    // string has no fields to look inside, so each row is unwrapped first. Without that no row ever matched on the
+    // live site: a student was told "That file is not available" for a file sitting in their own learning bank.
+    const DATA = "(case when jsonb_typeof(data) = 'string' then (data #>> '{}')::jsonb else data end)";
     const fileRefs = (fileId: string, studentId?: string) => db.query(
-      `select 1 from public.lwd_platform where ((kind = 'resource' and data->'file'->>'id' = $1) or (kind = 'homework' and data->'activity'->'files' @> $2::jsonb))${studentId ? ' and student_id = $3' : ''} limit 1`,
+      `select 1 from public.lwd_platform where ((kind = 'resource' and ${DATA}->'file'->>'id' = $1) or (kind = 'homework' and ${DATA}->'activity'->'files' @> $2::jsonb))${studentId ? ' and student_id = $3' : ''} limit 1`,
       studentId ? [fileId, JSON.stringify([{ id: fileId }]), studentId] : [fileId, JSON.stringify([{ id: fileId }])]);
     const filesIn = (kind: string, d: Record<string, unknown>): string[] => {
       const list = kind === 'resource' ? [d.file] : kind === 'homework' ? ((d.activity as Record<string, unknown> | undefined)?.files as unknown[] | undefined) ?? [] : [];

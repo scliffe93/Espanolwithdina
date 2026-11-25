@@ -10,9 +10,11 @@ const ORIGIN = 'https://scliffe93.github.io';
 let handle: (r: Request) => Promise<Response>;
 let stored: Set<string>;
 let removed: string[];
+let raw: { query: (q: string, params?: unknown[]) => Promise<unknown> };
 
 async function boot(withFiles = true) {
   const made = await createPgliteDb();
+  raw = made.pg;
   stored = new Set();
   removed = [];
   const files: FileStore = {
@@ -93,6 +95,25 @@ describe('teacher files and the learning bank', () => {
     expect((await call('platform/records/delete', { token: dina.token, body: { id: 'res-00000001' } })).status).toBe(204);
     expect(removed).toEqual([learning.id]);
     expect((await call(`platform/files/${learning.id}`, { token: sam.token })).status).toBe(404);
+  });
+
+  it('still finds the file when the row was stored the way the live database stores it (as a JSON string)', async () => {
+    const dina = await register('dina');
+    const sam = await register('sam');
+    const anneka = await register('anneka');
+    const learning = (await call('platform/files', { token: dina.token, body: pdf })).json.file;
+    const questions = (await call('platform/files', { token: dina.token, body: { ...pdf, name: 'Ejercicios.pdf' } })).json.file;
+    await put(dina.token, { kind: 'resource', id: 'res-00000001', studentId: sam.id, data: { title: 'T', file: learning } });
+    await put(dina.token, { kind: 'homework', id: 'hw-00000001', studentId: sam.id, data: { activity: { kind: 'written', title: 'T', files: [{ ...learning, role: 'learning' }, { ...questions, role: 'questions' }] }, instructions: '', status: 'assigned', dueAt: '2026-11-25T20:00:00.000Z' } });
+    // Production's driver encodes the value twice, so the column holds a string rather than an object.
+    await raw.query("update public.lwd_platform set data = to_jsonb(data::text) where kind in ('resource', 'homework')");
+    expect((await call(`platform/files/${learning.id}`, { token: sam.token })).status).toBe(200);
+    expect((await call(`platform/files/${questions.id}`, { token: sam.token })).status).toBe(200);
+    expect((await call(`platform/files/${learning.id}`, { token: anneka.token })).status).toBe(404);
+    // And a file is not thrown away while a row stored that way still points at it.
+    expect((await call('platform/records/delete', { token: dina.token, body: { id: 'hw-00000001' } })).status).toBe(204);
+    expect(removed).toEqual([questions.id]);
+    expect((await call(`platform/files/${learning.id}`, { token: sam.token })).status).toBe(200);
   });
 
   it('says so plainly when the file store is not set up', async () => {

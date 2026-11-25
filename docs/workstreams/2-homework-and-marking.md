@@ -24,5 +24,6 @@ Setting homework, the student doing it, and the teacher going through it answer 
 
 ## Open
 - The file backend was deployed on 25 Nov 2026 (function v29, bucket `lwd-files`). The new routes answer correctly for a student. A teacher's real upload has not been watched yet: the signed-link calls to Storage in `supabase/functions/account/index.ts` first run when Dina uploads a file.
+- Fixed in code on 25 Nov 2026, **not yet deployed**: a student opening a file on the live site was told "That file is not available". The live database stores each row as a JSON string, so the check for "does this student's homework or learning bank point at this file" never matched (`fileRefs` in `account-core.ts`). The same fault would have removed a file still in use when another record pointing at it was deleted. Needs a backend deploy.
 - Files left behind when an upload is abandoned, or when a student account is deleted, are not cleaned up.
 - Dina's view on the Right/Wrong flow after using it on real homework.
