@@ -23,6 +23,6 @@ Setting homework, the student doing it, and the teacher going through it answer 
 `npx vitest run tests/spelling-slip.test.ts tests/lesson-homework.test.ts tests/files-api.test.ts`, then `scripts/marking-e2e.cjs`, `scripts/material-e2e.cjs` and `scripts/own-homework-e2e.cjs`.
 
 ## Open
-- File uploads need the backend deployed (migration `20261119000000_lwd_files.sql` and the function). Until then real accounts get an error on upload. The Storage calls in `supabase/functions/account/index.ts` have not run against the live project yet: upload one PDF and open it as a student after deploying.
+- The file backend was deployed on 25 Nov 2026 (function v29, bucket `lwd-files`). The new routes answer correctly for a student. A teacher's real upload has not been watched yet: the signed-link calls to Storage in `supabase/functions/account/index.ts` first run when Dina uploads a file.
 - Files left behind when an upload is abandoned, or when a student account is deleted, are not cleaned up.
 - Dina's view on the Right/Wrong flow after using it on real homework.
