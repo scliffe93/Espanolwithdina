@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { conjugateSimple, imperative, patternYo, regularGerund, regularParticiple, regularPresentForms, type ConjugableVerb } from '../src/data/conjugation';
-import { VERB_BY_INF } from '../src/data/verbs';
+import { TENSES, VERB_BY_INF, reviewTenseName } from '../src/data/verbs';
 
 const v = (inf: string, group: ConjugableVerb['group'] = 'regular', present?: string[]): ConjugableVerb => ({ inf, group, present: present ?? VERB_BY_INF[inf]?.present ?? regularPresentForms(inf, group) });
 const all = (verb: ConjugableVerb, tense: Parameters<typeof conjugateSimple>[1]) => [0, 1, 2, 3, 4, 5].map((p) => conjugateSimple(verb, tense, p));
@@ -221,5 +221,17 @@ describe('compound tenses and negative commands', () => {
     }
     expect(diagnose(BY_INF['hablar'], 'pluperfect', 0, 'habría hablado')).toBe('auxiliary');
     expect(diagnose(BY_INF['hablar'], 'pluperfect', 0, 'habías hablado')).toBe('person-agreement');
+  });
+});
+
+describe('the tense named on a memory-review card', () => {
+  it('is the real tense, never "present" for a past tense', () => {
+    expect(reviewTenseName('present')).toBe('present');
+    expect(reviewTenseName('preterite')).toBe('preterite');
+    expect(reviewTenseName('imperfect')).toBe('imperfect');
+    expect(reviewTenseName('perfect')).toBe('present perfect');
+    expect(reviewTenseName('future')).toBe('future');
+    // Only the three tenses that are present say so.
+    expect(TENSES.filter((t) => reviewTenseName(t.id).startsWith('present')).map((t) => t.id)).toEqual(['present', 'progressive', 'perfect', 'subjunctive']);
   });
 });

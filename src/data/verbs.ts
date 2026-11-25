@@ -630,6 +630,11 @@ export function personShort(person: number, variety: Variety = activeVariety): s
 }
 
 /** Strips the {braces}, returning the plain sentence and the blanked form. */
+/** The tense as a memory-review card names it: the app's own name for it, in lower case ("preterite", "present perfect"). */
+export function reviewTenseName(tense: Tense): string {
+  return (TENSES.find((t) => t.id === tense)?.label ?? tense).toLowerCase();
+}
+
 export function parseExample(ex: VerbExample): { before: string; answer: string; after: string; plain: string } {
   const m = ex.es.match(/^(.*)\{(.+?)\}(.*)$/);
   if (!m) return { before: ex.es, answer: '', after: '', plain: ex.es };
