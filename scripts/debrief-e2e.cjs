@@ -28,7 +28,7 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
   const n = await p.locator('[data-testid="plan-items"] li').count();
   ok(n >= 4, `generated plan has ${n} tasks`);
   await p.screenshot({ path: OUT + '/debrief-plan.png', fullPage: true });
-  await p.getByTestId('send-plan').click(); await p.waitForTimeout(2500);
+  await p.getByTestId('send-plan').click(); await p.getByRole('heading', { name: 'Plan sent' }).waitFor({ timeout: 20000 }).catch(() => {});
   ok(/Plan sent/.test(await p.locator('body').innerText()), 'plan sent');
   await p.getByRole('button', { name: 'Done' }).click(); await p.waitForTimeout(500);
   // As Sam
