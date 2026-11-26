@@ -24,7 +24,7 @@ import { HomeworkReview } from './HomeworkReview';
 import { AnalyticsTab } from './AnalyticsTab';
 import { DebriefForm } from './DebriefForm';
 import { LevelAccess } from './LevelAccess';
-import { BalanceCard, BalanceChip, SellPackageSheet, useBalance } from './Packages';
+import { BalanceCard, BalanceChip, SellPackageSheet, useBalance, type RoomOnly } from './Packages';
 import { pct, studentInsight, studyAgo } from './insights';
 import { ActivityList, Avatar, ConfirmButton, DemoChip, ErrorText, Field, HomeworkRow, LessonCard, Loading, Section, Stat, toneFor, useAction, useStudents, useViewZone } from './shared';
 
@@ -57,7 +57,20 @@ export function StudentProfile({ id, params }: { id: string; params: URLSearchPa
   const [pdfBusy, setPdfBusy] = useState(false);
   const [debrief, setDebrief] = useState(false);
   const [selling, setSelling] = useState(false);
-  const { balance } = useBalance(id);
+  const { backend } = usePlatform();
+  const { notify } = useStore();
+  const { balance, roomOnly, reload: reloadBalance } = useBalance(id);
+  const counting = useAction();
+  // A lesson taught in the lesson room with nothing in the calendar: add it to the calendar as taught, so it uses a credit.
+  const countRoomLesson = async (r: RoomOnly[number]) => {
+    if (!backend) return;
+    const minutes = [...(balance?.packages ?? [])].pop()?.minutesPerLesson ?? 60;
+    const saved = await counting.run(async () => {
+      const b = await backend.createBooking({ studentId: id, startsAt: new Date(r.at).toISOString(), durationMin: minutes, tz: zone, format: 'online', location: '', topic: r.plan.title || 'Lesson', prepNotes: 'Added from the lesson room.' });
+      return backend.updateBooking(b.id, { status: 'completed' });
+    });
+    if (saved) { reloadBalance(); bookings.reload(); notify('Lesson counted', `${r.plan.title || 'The lesson'} is in your calendar as taught and has used a credit.`); }
+  };
   const config = usePlatformQuery((b) => b.teacherConfig());
   const downloadPdf = async () => {
     if (!state) return;
@@ -134,7 +147,7 @@ export function StudentProfile({ id, params }: { id: string; params: URLSearchPa
 
       {tab === 'journey' && (state ? <JourneyTab state={state} name={person.firstName} /> : <Empty icon="chart" title={`No learning data for ${person.firstName} yet`} body="Their journey appears here as soon as they complete a chapter, a verb session or a game in the app." />)}
       {tab === 'analytics' && (state ? <AnalyticsTab state={state} homework={homework.data ?? []} name={person.firstName} onDownload={downloadPdf} busy={pdfBusy} /> : <Empty icon="chart" title={`No learning data for ${person.firstName} yet`} body="Analytics appear once they have used the app." />)}
-      {tab === 'lessons' && balance && config.data && <div className="mb-4"><BalanceCard balance={balance} currency={config.data.currency} onSell={() => setSelling(true)} /></div>}
+      {tab === 'lessons' && balance && config.data && <div className="mb-4"><BalanceCard balance={balance} currency={config.data.currency} onSell={() => setSelling(true)} roomOnly={roomOnly} onCount={(r) => void countRoomLesson(r)} busy={counting.busy} />{counting.error && <ErrorText error={counting.error} />}</div>}
       {tab === 'lessons' && <LessonsTab bookings={bookings.data} people={people} zone={zone} onEdit={(b) => setBooking({ open: true, edit: b })} onBook={() => setBooking({ open: true })} />}
       {tab === 'homework' && <HomeworkTab homework={homework.data} people={people} zone={zone} onOpen={setReview} onAssign={() => setAssign(true)} />}
       {tab === 'feedback' && <FeedbackTab studentId={id} name={person.firstName} feedback={feedback.data} zone={zone} />}

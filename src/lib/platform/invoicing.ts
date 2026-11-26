@@ -8,6 +8,15 @@ import type { Booking, Credit, Invoice, InvoiceLine, TeacherConfig } from './typ
 
 export const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
+/**
+ * The day a lesson happens on, in its own time zone (YYYY-MM-DD). A lesson at half past midnight in London in
+ * summer is 23:30 the day before in UTC, so the plain UTC date would put it on the wrong side of a purchase date.
+ */
+export function bookingDay(b: Pick<Booking, 'startsAt' | 'tz'>): string {
+  try { return new Intl.DateTimeFormat('en-CA', { timeZone: b.tz || 'UTC', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(b.startsAt)); }
+  catch { return b.startsAt.slice(0, 10); }
+}
+
 export function lineTotal(l: InvoiceLine): number {
   return round2((Number(l.qty) || 0) * (Number(l.unitPrice) || 0));
 }
@@ -65,7 +74,7 @@ export function unbilledLessons(bookings: Booking[], invoices: Invoice[], studen
   if (!packages.length) return taught;
   const total = packages.reduce((a, c) => a + c.lessons, 0);
   const first = packages[0].purchasedAt;
-  const covered = new Set(taught.filter((b) => b.startsAt.slice(0, 10) >= first).slice(0, total).map((b) => b.id));
+  const covered = new Set(taught.filter((b) => bookingDay(b) >= first).slice(0, total).map((b) => b.id));
   return taught.filter((b) => !covered.has(b.id));
 }
 

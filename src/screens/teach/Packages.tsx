@@ -4,8 +4,8 @@ import { Sheet } from '../../components/ui';
 import { usePlatform, usePlatformQuery } from '../../lib/platform/context';
 import { uid } from '../../lib/platform/backend';
 import { addDaysIso, invoiceNumber, money, round2 } from '../../lib/platform/invoicing';
-import { balanceFor, balanceLabel, creditFromPackage, isLow, pricePerLesson, type Balance } from '../../lib/platform/packages';
-import type { Booking, Credit, Invoice, LessonPackage, Person, TeacherConfig } from '../../lib/platform/types';
+import { NOT_COUNTED_LABEL, balanceFor, balanceLabel, creditFromPackage, isLow, pricePerLesson, roomOnlyLessons, type Balance } from '../../lib/platform/packages';
+import type { Booking, Credit, Invoice, LessonPackage, LessonPlan, Person, TeacherConfig } from '../../lib/platform/types';
 import { Field, useAction } from './shared';
 
 // Lesson packages: Dina defines them in her invoicing settings, sells one to a
@@ -89,13 +89,16 @@ export function SellPackageSheet({ open, onClose, people, cfg, preselect }: { op
 }
 
 /** Loads everything the balance needs for one student. */
-export function useBalance(studentId: string | undefined): { balance: Balance | null; reload: () => void } {
+export type RoomOnly = ReturnType<typeof roomOnlyLessons>;
+export function useBalance(studentId: string | undefined): { balance: Balance | null; roomOnly: RoomOnly; reload: () => void } {
   const q = usePlatformQuery(async (b) => {
     if (!studentId) return null;
-    const [bookings, invoices, credits] = await Promise.all([b.bookings({ studentId, includeCancelled: true }), b.invoices({ studentId }), b.credits({ studentId })]);
-    return balanceFor(studentId, bookings as Booking[], invoices, credits);
+    // The teacher also gets the lesson-room lessons, to spot any taught without a lesson in the calendar.
+    const teacher = b.actor.role === 'teacher' || b.actor.role === 'admin';
+    const [bookings, invoices, credits, lessons] = await Promise.all([b.bookings({ studentId, includeCancelled: true }), b.invoices({ studentId }), b.credits({ studentId }), teacher ? b.lessons(studentId).catch(() => [] as LessonPlan[]) : Promise.resolve([] as LessonPlan[])]);
+    return { balance: balanceFor(studentId, bookings as Booking[], invoices, credits), roomOnly: roomOnlyLessons(studentId, lessons, bookings as Booking[], credits) };
   }, [studentId]);
-  return { balance: q.data ?? null, reload: q.reload };
+  return { balance: q.data?.balance ?? null, roomOnly: q.data?.roomOnly ?? [], reload: q.reload };
 }
 
 /** "3 of 10 left" chip with the right colour. */
@@ -108,7 +111,7 @@ export function BalanceChip({ balance, size = 'sm' }: { balance: Balance | null;
 }
 
 /** Full balance card: packages bought, lessons used, what is left. */
-export function BalanceCard({ balance, currency, onSell }: { balance: Balance; currency: string; onSell?: () => void }) {
+export function BalanceCard({ balance, currency, onSell, roomOnly = [], onCount, busy }: { balance: Balance; currency: string; onSell?: () => void; roomOnly?: RoomOnly; onCount?: (r: RoomOnly[number]) => void; busy?: boolean }) {
   const used = balance.covered.length;
   const pct = balance.credits ? Math.min(100, Math.round((used / balance.credits) * 100)) : 0;
   const packagesSorted = useMemo(() => [...balance.packages].reverse(), [balance.packages]);
@@ -121,6 +124,38 @@ export function BalanceCard({ balance, currency, onSell }: { balance: Balance; c
       {balance.credits > 0 && <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-ink/5"><div className={`h-full rounded-full ${balance.remaining < 0 ? 'bg-terracotta' : isLow(balance) ? 'bg-saffron' : 'bg-olive'}`} style={{ width: `${pct}%` }} /></div>}
       {isLow(balance) && <p className="mt-2 text-sm text-terracotta-dark">{balance.remaining < 0 ? 'More lessons taught than bought: the next invoice should cover the difference.' : 'Nearly used up: time for the next package.'}</p>}
       {packagesSorted.length > 0 && <ul className="mt-3 grid gap-1 border-t border-ink/5 pt-3 text-sm">{packagesSorted.map((c) => <li key={c.id} className="flex justify-between gap-2"><span>{c.name} <span className="text-ink-mute">· bought {c.purchasedAt}{c.expiresAt ? ` · valid until ${c.expiresAt}` : ''}</span></span><span className="tabular-nums text-ink-soft">{c.lessons} lessons · {money(c.price, currency)}</span></li>)}</ul>}
+      {roomOnly.length > 0 && onCount && (
+        <div className="mt-3 rounded-2xl bg-saffron-50 p-3 text-sm ring-1 ring-saffron/40" data-testid="balance-room-only">
+          <p className="font-semibold">{roomOnly.length === 1 ? 'One lesson' : `${roomOnly.length} lessons`} in the lesson room {roomOnly.length === 1 ? 'is' : 'are'} not in your calendar, so {roomOnly.length === 1 ? 'it has' : 'they have'} not used a credit.</p>
+          <ul className="mt-2 grid gap-1.5">{roomOnly.map((r) => (
+            <li key={r.plan.id} className="flex flex-wrap items-center justify-between gap-2"><span><b>{fmtDay(r.day)}</b> · {r.plan.title || 'Lesson'}</span><button type="button" className="ctrl !py-1 !text-xs" disabled={busy} onClick={() => onCount(r)} data-testid="balance-count-room"><Icon name="check" size={12} /> Count it</button></li>
+          ))}</ul>
+          <p className="mt-2 text-xs text-ink-mute">Count it adds the lesson to your calendar as taught, so it uses a credit. Leave it if it was a trial or not a real lesson.</p>
+        </div>
+      )}
+      {balance.hasPackages && <details className="mt-3 border-t border-ink/5 pt-3 text-sm" data-testid="balance-breakdown">
+        <summary className="cursor-pointer font-semibold">Which lessons counted</summary>
+        {balance.covered.length + balance.uncovered.length === 0 ? <p className="mt-2 text-ink-mute">No lessons have used a credit yet.</p> : (
+          <ol className="mt-2 grid gap-1" data-testid="balance-counted">{[...balance.covered, ...balance.uncovered].map((b, k) => (
+            <li key={b.id} className="flex gap-2"><span className="w-6 shrink-0 text-right tabular-nums text-ink-mute">{k + 1}.</span><span><b>{fmtDay(b.startsAt, b.tz)}</b> · {b.topic}{k >= balance.covered.length && <span className="ml-1 text-terracotta-dark">(no credit left)</span>}</span></li>
+          ))}</ol>
+        )}
+        {balance.notCounted.length > 0 && (
+          <div className="mt-3" data-testid="balance-not-counted">
+            <p className="text-ink-mute">Not counted:</p>
+            <ul className="mt-1 grid gap-1">{balance.notCounted.map(({ booking: b, why }) => <li key={b.id}><b>{fmtDay(b.startsAt, b.tz)}</b> · {b.topic} <span className="text-ink-mute">({NOT_COUNTED_LABEL[why]})</span></li>)}</ul>
+          </div>
+        )}
+        {balance.upcoming > 0 && <p className="mt-2 text-ink-mute">{balance.upcoming} booked lesson{balance.upcoming === 1 ? '' : 's'} still to come will each use a credit once {balance.upcoming === 1 ? 'it has' : 'they have'} happened.</p>}
+        <p className="mt-2 text-xs text-ink-mute">Every lesson in the calendar from the purchase date onwards uses one credit once its start time has passed, unless it was cancelled or billed on its own invoice.</p>
+      </details>}
     </div>
   );
+}
+
+/** "Tue 4 Nov" for a day (YYYY-MM-DD) or a lesson's start in its own time zone. */
+function fmtDay(isoOrDay: string, tz?: string): string {
+  const d = isoOrDay.length === 10 ? new Date(isoOrDay + 'T12:00:00') : new Date(isoOrDay);
+  try { return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', ...(tz && isoOrDay.length > 10 ? { timeZone: tz } : {}) }); }
+  catch { return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); }
 }

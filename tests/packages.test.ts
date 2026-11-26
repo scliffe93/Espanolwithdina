@@ -40,3 +40,33 @@ describe('lesson packages', () => {
     expect(isLow(none)).toBe(false);
   });
 });
+
+import { roomOnlyLessons } from '../src/lib/platform/packages';
+import { bookingDay } from '../src/lib/platform/invoicing';
+import type { LessonPlan } from '../src/lib/platform/types';
+describe('checking a lesson balance', () => {
+  it('says which taught lessons were not counted, and why', () => {
+    const bookings = [b('old', '2026-10-20'), b('l1', '2026-11-03'), b('x', '2026-11-12', 'cancelled'), b('inv', '2026-11-14'), b('l2', '2026-11-17', 'completed'), b('up', '2026-11-24')];
+    const invoices = [{ id: 'i1', status: 'sent', lines: [{ bookingId: 'inv', description: '', quantity: 1, unitPrice: 30 }] }] as never;
+    const bal = balanceFor('s', bookings, invoices, [credit()], NOW);
+    expect(bal.covered.map((x) => x.id)).toEqual(['l1', 'l2']);
+    expect(bal.notCounted.map((n) => [n.booking.id, n.why])).toEqual([['old', 'before-package'], ['x', 'cancelled'], ['inv', 'billed']]);
+    // seven calendar lessons are not the count: only the ones from the purchase date that were taught and not billed
+    expect(balanceLabel(bal)).toBe('3 of 5 left');
+  });
+  it('puts a lesson just after midnight on the right day, in its own time zone', () => {
+    // 00:30 in London in summer is 23:30 UTC the day before.
+    const late: Booking = { ...b('mid', '2026-07-01'), startsAt: '2026-06-30T23:30:00Z', tz: 'Europe/London' };
+    expect(bookingDay(late)).toBe('2026-07-01');
+    const bal = balanceFor('s', [late], [], [credit({ purchasedAt: '2026-07-01' })], Date.UTC(2026, 7, 1));
+    expect(bal.covered.map((x) => x.id)).toEqual(['mid']);
+    expect(unbilledLessons([late], [], 's', Date.UTC(2026, 7, 1), [credit({ purchasedAt: '2026-07-01' })])).toEqual([]);
+  });
+  it('finds lessons taught in the lesson room with nothing in the calendar that day', () => {
+    const plan = (id: string, startedAt: string | undefined, studentId = 's'): LessonPlan => ({ id, teacherId: 't', studentId, title: `Plan ${id}`, blocks: [], live: { on: false, current: null, ...(startedAt ? { startedAt } : {}) }, createdAt: '', updatedAt: '' });
+    const lessons = [plan('booked', '2026-11-03T10:05:00Z'), plan('room', '2026-11-05T17:00:00Z'), plan('room2', '2026-11-05T18:00:00Z'), plan('never', undefined), plan('before', '2026-10-25T10:00:00Z'), plan('other', '2026-11-06T10:00:00Z', 'someone'), plan('future', '2026-12-01T10:00:00Z')];
+    const found = roomOnlyLessons('s', lessons, [b('l1', '2026-11-03')], [credit()], NOW);
+    expect(found.map((r) => [r.plan.id, r.day])).toEqual([['room', '2026-11-05']]);
+    expect(roomOnlyLessons('s', lessons, [], [], NOW)).toEqual([]);
+  });
+});

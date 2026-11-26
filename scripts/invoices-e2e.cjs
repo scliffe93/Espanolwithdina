@@ -79,6 +79,27 @@ const HIDE = `[data-testid="demo-pill"], [title*="fictional"] { display: none !i
   await p.goto(BASE + '#/teach/student/demo-sam?tab=lessons'); await p.waitForTimeout(1500);
   ok(await p.getByTestId('balance-card').isVisible() && await p.getByTestId('balance-chip').isVisible(), 'profile shows balance card and chip');
   await shot('t-balance');
+  // Checking the count: the card lists which lessons used a credit, and which taught ones did not, with the reason.
+  const label0 = await p.getByTestId('balance-card').locator('p.font-display').innerText();
+  await p.getByTestId('balance-breakdown').locator('summary').click(); await p.waitForTimeout(300);
+  { const used = (await p.getByTestId('balance-card').innerText()).match(/(\d+) used/); const listed = await p.getByTestId('balance-counted').locator('li').count().catch(() => 0);
+    ok(used && Number(used[1]) === listed, `the breakdown lists each lesson that used a credit (${listed}, card says ${used && used[1]} used)`); }
+  ok((await p.getByTestId('balance-not-counted').count()) === 0 || /before the first package|cancelled|billed on its own invoice/.test(await p.getByTestId('balance-not-counted').innerText()), 'any lesson not counted says why');
+  await shot('t-balance-breakdown');
+  // A lesson taught in the lesson room with nothing in the calendar that day is flagged, and Count it uses a credit.
+  await p.goto(BASE + '#/teach/room'); await p.waitForTimeout(1200);
+  await p.getByTestId('room-example').click(); await p.getByTestId('import-review').waitFor({ timeout: 10000 }); await p.getByTestId('review-create').click(); await p.getByTestId('teach-sheet').waitFor(); await p.getByTestId('class-student').filter({ hasText: 'Sam' }).click(); await p.getByTestId('teach-go').click(); await p.getByTestId('teacher-room').waitFor({ timeout: 10000 }); await p.waitForTimeout(600);
+  await p.getByTestId('to-present').click(); await p.getByTestId('start-lesson').click(); await p.waitForTimeout(1500);
+  await p.goto(BASE + '#/teach/student/demo-sam?tab=lessons'); await p.waitForTimeout(1800);
+  const todayBooked = /Today/.test(await p.locator('main').innerText());
+  if (await p.getByTestId('balance-room-only').count()) {
+    ok(/Example lesson/.test(await p.getByTestId('balance-room-only').innerText()), 'a lesson taught in the lesson room with nothing in the calendar is flagged on the balance');
+    await p.getByTestId('balance-room-only').screenshot({ path: OUT + '/t-balance-room-only.png' });
+    await p.getByTestId('balance-count-room').first().click(); await p.waitForTimeout(1800);
+    const label1 = await p.getByTestId('balance-card').locator('p.font-display').innerText();
+    const left = (t) => Number((t.match(/^(-?\d+) of/) || [])[1]);
+    ok(await p.getByTestId('balance-room-only').count() === 0 && left(label1) === left(label0) - 1, `Count it adds it to the calendar as taught and uses one credit (${label0} → ${label1})`);
+  } else ok(todayBooked, 'no lesson-room warning because Sam already has a lesson in the calendar today');
   await p.goto(BASE + '#/demo'); await p.waitForTimeout(800); await p.getByTestId('demo-sam').click(); await p.waitForTimeout(1500);
   await p.goto(BASE + '#/student'); await p.waitForTimeout(1500);
   ok(await p.getByTestId('balance-card').isVisible(), 'Sam’s home shows his lesson balance');
