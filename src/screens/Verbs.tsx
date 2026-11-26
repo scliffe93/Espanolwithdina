@@ -696,34 +696,28 @@ function Likes() {
   const found = matchTopics(saved);
   const picked = ownTopics(state.profile);
   const fromTeacher = (access.settings?.topics ?? []);
+  const using = topicsOf(access.topics);
   const toggle = (id: string) => update((s) => (s.profile ? { ...s, profile: toggleOwnTopic(s.profile, id) } : s));
-  const save = () => { const v = text.trim().slice(0, 300); update((s) => (s.profile ? { ...s, profile: { ...s.profile, likes: v } } : s)); setOpen(false); };
+  const save = () => { const v = text.trim().slice(0, 300); update((s) => (s.profile ? { ...s, profile: { ...s.profile, likes: v } } : s)); };
   return (
-    <section className="card mt-5 p-4" data-testid="likes">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-saffron/25 text-ink"><Icon name="star" size={18} /></span>
-        <div className="min-w-0 flex-1 basis-56">
-          <b className="block">{saved ? 'What you are into' : 'What are you into?'}</b>
-          <span className="text-sm text-ink-soft" data-testid="likes-status">{saved ? <>“{saved}”{found.topics.length > 0 && <> · your sentences are about {topicsOf(found.topics).map((t) => t.label.toLowerCase()).join(', ')}.</>}{found.unmatched.length > 0 && <> We do not have sentences about {found.unmatched.join(', ')} yet: it has been noted and they will be added.</>}</> : 'Tell us your hobbies and passions and your practice sentences will be about them.'}</span>
-        </div>
-        {!open && <button type="button" className="btn-soft" onClick={() => setOpen(true)} data-testid="likes-open">{saved ? 'Change' : 'Tell us'}</button>}
-      </div>
-      <div className="mt-3 border-t border-ink/5 pt-3">
+    <section className="card mt-5 flex flex-wrap items-center gap-3 p-3.5" data-testid="likes">
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-saffron/25 text-ink"><Icon name="star" size={16} /></span>
+      <p className="min-w-0 flex-1 basis-48 text-sm">{using.length ? <><b>Your interests:</b> {using.map((t) => t.label).join(', ')}</> : <><b>What are you into?</b> <span className="text-ink-soft">Your sentences can be about it.</span></>}</p>
+      <button type="button" className="ctrl" onClick={() => setOpen(true)} data-testid="likes-open">{using.length ? 'Change' : 'Tell us'}</button>
+      <Sheet open={open} onClose={() => setOpen(false)} title="What you’re into">
         <p className="mb-2 text-sm text-ink-soft">Tap what you love. Your sentences, words and games will be about it.</p>
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="What you love" data-testid="likes-topics">
           {TOPICS.map((t) => { const mine = picked.includes(t.id); const on = mine || fromTeacher.includes(t.id) || found.topics.includes(t.id); return (
             <button key={t.id} type="button" aria-pressed={on} onClick={() => toggle(t.id)} disabled={on && !mine} title={on && !mine ? (fromTeacher.includes(t.id) ? 'Chosen by your teacher' : 'From what you wrote') : undefined} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm ring-1 transition ${on ? 'bg-ink text-cream ring-ink' : 'bg-cream-100 text-ink ring-ink/10 hover:ring-ink/40'} ${on && !mine ? 'opacity-80' : ''}`} data-testid={`like-${t.id}`} data-on={on || undefined}>{on && <Icon name="check" size={13} />}{t.label}</button>
           ); })}
         </div>
-        {!open && <p className="mt-2 text-xs text-ink-mute">Not in the list? <button type="button" className="underline" onClick={() => setOpen(true)}>Write it in your own words</button> and it will be added.</p>}
-      </div>
-      {open && (
-        <form className="mt-3 border-t border-ink/5 pt-3" onSubmit={(e) => { e.preventDefault(); save(); }}>
-          <textarea className="input min-h-[80px] w-full" value={text} onChange={(e) => setText(e.target.value)} maxLength={300} placeholder="For example: golf, tennis, old Jaguars, cooking for friends" data-testid="likes-text" />
-          <div className="mt-2 flex flex-wrap gap-2"><button type="submit" className="btn-primary" data-testid="likes-save">Save</button><button type="button" className="btn-ghost" onClick={() => { setText(saved); setOpen(false); }}>Cancel</button></div>
-          <p className="mt-2 text-xs text-ink-mute">Your teacher can see this. Please do not write anything private.</p>
+        <form className="mt-4 border-t border-ink/5 pt-4" onSubmit={(e) => { e.preventDefault(); save(); }}>
+          <label className="text-sm font-semibold" htmlFor="likes-text">Anything else? In your own words</label>
+          <textarea id="likes-text" className="input mt-1.5 min-h-[70px] w-full" value={text} onChange={(e) => setText(e.target.value)} maxLength={300} placeholder="For example: golf, old Jaguars, cooking for friends" data-testid="likes-text" />
+          <div className="mt-2 flex flex-wrap items-center gap-2"><button type="submit" className="btn-primary !py-2" disabled={text.trim() === saved} data-testid="likes-save">Save</button><span className="text-xs text-ink-mute">Your teacher can see this.</span></div>
+          {saved && <p className="mt-2 text-sm text-ink-soft" data-testid="likes-status">“{saved}”{found.topics.length > 0 && <> · your sentences are about {topicsOf(found.topics).map((t) => t.label.toLowerCase()).join(', ')}.</>}{found.unmatched.length > 0 && <> We do not have sentences about {found.unmatched.join(', ')} yet: it has been noted and they will be added.</>}</p>}
         </form>
-      )}
+      </Sheet>
     </section>
   );
 }
@@ -874,7 +868,7 @@ export function Verbs({ params }: { params: URLSearchParams }) {
               <button className="ctrl" onClick={() => setFocus([])}>Clear — let the app choose</button>
             </div>
           ) : (
-            <p className="text-sm text-ink-soft">The app picks for you: forms due for review, then weak verbs, then up to two new verbs. Tap the star on a verb below to choose your own.</p>
+            <p className="text-sm text-ink-soft">The app picks for you. Tap the star on a verb below to choose your own.</p>
           )}
         </div>
       </section>
@@ -913,7 +907,7 @@ export function Verbs({ params }: { params: URLSearchParams }) {
       <div key={g ?? 'all'} className={g ? 'mb-5' : ''} data-testid={g ? `verb-group-${g}` : undefined}>
       {g && <p className="mb-2 flex items-baseline gap-2"><b className="text-[15px]">{groupLabel(g)}</b><span className="text-sm text-ink-mute">{list.length} verb{list.length === 1 ? '' : 's'} · {GROUP_HINT[g]}</span></p>}
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
-        {(openGroups.has(g ?? 'all') ? list : list.slice(0, 8)).map((v) => {
+        {(openGroups.has(g ?? 'all') ? list : list.slice(0, 4)).map((v) => {
           const m = masteryBy[v.inf];
           const inFocus = focus.includes(v.inf);
           return (
@@ -932,7 +926,7 @@ export function Verbs({ params }: { params: URLSearchParams }) {
           );
         })}
       </div>
-      {list.length > 8 && <button type="button" className="ctrl mt-2.5" onClick={() => setOpenGroups((o) => { const n = new Set(o); const key = g ?? 'all'; if (n.has(key)) n.delete(key); else n.add(key); return n; })} data-testid={`verb-more-${g ?? 'all'}`}>{openGroups.has(g ?? 'all') ? 'Show fewer' : `Show all ${list.length}`}</button>}
+      {list.length > 4 && <button type="button" className="ctrl mt-2.5" onClick={() => setOpenGroups((o) => { const n = new Set(o); const key = g ?? 'all'; if (n.has(key)) n.delete(key); else n.add(key); return n; })} data-testid={`verb-more-${g ?? 'all'}`}>{openGroups.has(g ?? 'all') ? 'Show fewer' : `Show all ${list.length}`}</button>}
       </div>
       ))}
 

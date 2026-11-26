@@ -48,14 +48,12 @@ export function FocusAreas({ areas, openFirst = false }: { areas: FocusArea[]; o
         const isOpen = open === a.id;
         return (
           <li key={a.id} className={`rounded-2xl ring-1 transition ${isOpen ? 'bg-cream-100 ring-terracotta/30' : 'bg-cream-100 ring-transparent'}`}>
-            <button type="button" className="flex w-full items-start gap-3 p-3.5 text-left" onClick={() => setOpen(isOpen ? null : a.id)} aria-expanded={isOpen} data-testid={`focus-${a.id}`}>
-              <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white font-display text-sm font-semibold text-terracotta ring-1 ring-ink/10">{i + 1}</span>
+            <button type="button" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left" onClick={() => setOpen(isOpen ? null : a.id)} aria-expanded={isOpen} data-testid={`focus-${a.id}`}>
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white font-display text-sm font-semibold text-terracotta ring-1 ring-ink/10">{i + 1}</span>
               <span className="min-w-0 flex-1">
                 <span className="flex flex-wrap items-center gap-x-2 gap-y-1"><b className="text-[16px] leading-tight">{a.title}</b>{a.trend && <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${TREND[a.trend].cls}`}>{TREND[a.trend].text}</span>}</span>
-                {!isOpen && <span className="mt-1 block text-sm text-ink-soft">{a.summary}</span>}
-                {!isOpen && <span className="mt-1.5 inline-flex items-center gap-1 text-sm font-semibold text-terracotta">Why, and how to improve <Icon name="arrowRight" size={14} /></span>}
               </span>
-              <Icon name={isOpen ? 'x' : 'arrowRight'} size={16} className="mt-1 shrink-0 text-ink-mute" />
+              <Icon name={isOpen ? 'x' : 'arrowRight'} size={16} className="shrink-0 text-ink-mute" />
             </button>
             {isOpen && <div className="px-3.5 pb-4 sm:pl-[3.4rem]"><FocusDetail area={a} /></div>}
           </li>

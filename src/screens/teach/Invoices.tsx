@@ -44,7 +44,7 @@ export function Invoices({ params }: { params: URLSearchParams }) {
 
   return (
     <div>
-      <PageHeader eyebrow="Facturas" title="Invoices" subtitle="Bill the lessons you have taught, mark them paid, download a PDF or email the summary. Students see their invoices in the app." right={<div className="flex flex-wrap gap-2"><button type="button" className="ctrl" onClick={() => setSettings(true)} data-testid="invoice-settings"><Icon name="settings" size={14} /> Rates &amp; payment details</button><button type="button" className="ctrl" onClick={() => setSelling(true)} data-testid="sell-package-top"><Icon name="star" size={14} /> Sell a package</button><button type="button" className="btn-primary !py-2.5" onClick={() => setEditing('new')} data-testid="new-invoice"><Icon name="edit" size={16} /> New invoice</button></div>} />
+      <PageHeader eyebrow="Facturas" title="Invoices" subtitle="Bill taught lessons, track payments, sell packages." right={<div className="flex flex-wrap gap-2"><button type="button" className="ctrl" onClick={() => setSettings(true)} data-testid="invoice-settings"><Icon name="settings" size={14} /> Rates &amp; payment details</button><button type="button" className="ctrl" onClick={() => setSelling(true)} data-testid="sell-package-top"><Icon name="star" size={14} /> Sell a package</button><button type="button" className="btn-primary !py-2.5" onClick={() => setEditing('new')} data-testid="new-invoice"><Icon name="edit" size={16} /> New invoice</button></div>} />
       {!ready ? <p className="text-sm text-ink-mute">Loading invoices…</p> : (
         <>
           <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4" data-testid="invoice-summary">

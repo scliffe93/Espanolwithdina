@@ -15,8 +15,10 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
     await p.goto(BASE + '#/journey'); await p.waitForTimeout(1500);
     const main = await p.locator('main').innerText();
     const journey = (main.match(/CURRENT LEVEL\s*([ABC][12])/i) || [])[1] || '?';
+    await p.getByTestId('level-rating').click(); await p.getByTestId('level-rating-detail').waitFor();
     const source = await p.getByTestId('level-source').innerText();
-    const skills = await p.getByTestId('skill-levels').isVisible();
+    const skills = await p.getByTestId('skill-levels').count() > 0;
+    await p.keyboard.press('Escape'); await p.waitForTimeout(300);
     const movingJ = await p.getByTestId('moving-up').count() ? (await p.getByTestId('moving-up').first().innerText()) : moving;
     return { homeLevel, journey, source, skills, moving: (movingJ || moving).replace(/\s+/g, ' ') };
   };
@@ -30,7 +32,7 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
   await p.getByTestId('level-edit').click(); await p.getByTestId('level-select').selectOption('B1'); await p.getByTestId('level-save').click(); await p.waitForTimeout(1200);
   await as('sam');
   const after = await seen();
-  ok(after.homeLevel === 'B1' && after.journey === 'B1' && /set by Dina/.test(after.source), `once Dina sets B1, both screens show B1, “${after.source}”`);
+  ok(after.homeLevel === 'B1' && after.journey === 'B1' && /set by Dina/i.test(after.source), `once Dina sets B1, both screens show B1, “${after.source}”`);
   ok(/You are at B1.*B2/.test(after.moving), `and the next-level card says B1, next B2 (${after.moving.slice(0, 70)})`);
   ok(after.skills === false, 'his own skill-by-skill estimates are no longer shown beside it');
   await p.screenshot({ path: OUT + '/level-shown.png' });

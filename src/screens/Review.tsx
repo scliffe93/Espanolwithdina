@@ -230,7 +230,7 @@ export function Review() {
 
   return (
     <div>
-      <PageHeader eyebrow="Memoria" title="Remember for good" subtitle="Spaced repetition brings each word back just before you’d forget it — and the app learns which memory techniques work for you." />
+      <PageHeader eyebrow="Memoria" title="Remember for good" subtitle="Each word comes back just before you’d forget it." />
       <div className="grid gap-4 md:grid-cols-[1.3fr_1fr]">
         <div className="card flex flex-col justify-between gap-4 bg-azul p-6 text-cream">
           <div>
@@ -257,7 +257,7 @@ export function Review() {
 
       <section className="card mt-6 p-5">
         <h2 className="text-xl font-semibold">What actually helps you remember</h2>
-        <p className="mt-1 text-sm text-ink-soft">When you use a clue, the app checks whether you recall that item unaided at least 12 hours later. Techniques with better delayed recall are offered first.</p>
+        <p className="mt-1 text-sm text-ink-soft">The app checks which clues help you remember 12 hours later, and offers those first.</p>
         {techs.length === 0 ? (
           <p className="mt-4 text-sm text-ink-mute">No data yet — tap “Help me remember” during practice and come back after a day.</p>
         ) : (

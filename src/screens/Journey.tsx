@@ -3,7 +3,8 @@ import { motion } from 'motion/react';
 import { useState } from 'react';
 import { FocusAreas, FocusDetail } from '../components/FocusAreas';
 import { MovingUp } from '../components/MovingUp';
-import { TENSE_USE, focusAreas, lessonPrep } from '../lib/focus';
+import { LevelRating } from '../components/LevelRating';
+import { TENSE_USE, focusAreas } from '../lib/focus';
 import { DinaArt } from '../components/Dina';
 import { Icon } from '../components/Icon';
 import { Bar, Sheet, achievementIcon } from '../components/ui';
@@ -141,6 +142,7 @@ export function Journey() {
   const openSlip = open?.kind === 'slip' ? allFocus.find((a) => a.id === open.id) : undefined;
   const openTense = open?.kind === 'tense' ? analytics.tenses.find((t) => t.id === open.id) : undefined;
   const resume = resumeTarget(state);
+  const [allAch, setAllAch] = useState(false);
   const startedCities = CITY_ORDER.filter((c) => c === p.city || scenesForCity(c).some((s) => state.story.completedScenes.includes(s.id)));
   const fmtHours = hours < 1 ? `${Math.round(seconds / 60)} min` : `${hours.toFixed(1)} h`;
 
@@ -154,29 +156,18 @@ export function Journey() {
           <div className="flex-1">
             <p className="eyebrow !text-saffron-light">Mi camino · My Learning Journey</p>
             <h1 className="mt-1 font-display text-4xl font-semibold leading-tight sm:text-5xl">¡Vas muy bien, {p.name || 'amigo'}!</h1>
-            <p className="mt-1 text-cream/80">Everything below comes from what you’ve actually done in the app.</p>
-            <button className="btn-primary mt-4 px-6 py-3.5 text-base" onClick={() => navigate(resume.href)} data-testid="continue-learning">
+                        <button className="btn-primary mt-4 px-6 py-3.5 text-base" onClick={() => navigate(resume.href)} data-testid="continue-learning">
               <Icon name="play" size={18} filled /> Continue learning
             </button>
             <p className="mt-2 text-sm text-cream/75">Next: {resume.label}</p>
           </div>
-          <div className="flex shrink-0 flex-col items-center rounded-3xl bg-cream/10 px-6 py-4 ring-1 ring-cream/15">
+          <div className="flex shrink-0 flex-col items-center gap-1.5">
             <span className="text-xs uppercase tracking-widest text-cream/70">Current level</span>
-            <span className="font-display text-6xl font-semibold text-saffron-light">{overall}</span>
-            <span className="text-xs text-cream/70" data-testid="level-source">{access.levelFrom === 'teacher' ? 'set by Dina' : access.levelFrom === 'confirmed' ? 'confirmed by Dina' : p.levelSource === 'assessment' ? 'from your placement' : p.levelSource === 'zero' ? 'started from zero' : 'self-selected'}</span>
+            <LevelRating level={overall} levels={p.levels} showSkills={access.levelFrom === 'own'} tone="dark" size="lg" source={`Your level: ${(access.levelFrom === 'teacher' ? 'set by Dina' : access.levelFrom === 'confirmed' ? 'confirmed by Dina' : p.levelSource === 'assessment' ? 'from your placement' : p.levelSource === 'zero' ? 'started from zero' : 'self-selected')}.`} />
           </div>
         </div>
       </motion.section>
 
-      {/* Skills: the learner's own estimate. Once the teacher has set the level, hers is the one shown, alone. */}
-      <section className={`mt-5 grid grid-cols-3 gap-2 sm:grid-cols-6 ${access.levelFrom === 'own' ? '' : 'hidden'}`} data-testid="skill-levels">
-        {SKILLS.map((s) => (
-          <div key={s} className="card p-3 text-center">
-            <p className="font-display text-2xl font-semibold text-terracotta">{p.levels[s]}</p>
-            <p className="text-[11px] uppercase tracking-wider text-ink-mute">{s}</p>
-          </div>
-        ))}
-      </section>
 
       {/* Totals */}
       <section className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -278,14 +269,15 @@ export function Journey() {
           <h2 className="text-xl font-semibold">This week’s achievements</h2>
           {weekAch.length ? (
             <ul className="mt-3 grid gap-2">
-              {weekAch.map((a) => (
+              {(allAch ? weekAch : weekAch.slice(0, 3)).map((a) => (
                 <li key={a!.id} className="flex items-center gap-3 rounded-2xl bg-saffron-50 p-3">
                   <span className="grid h-10 w-10 place-items-center rounded-xl bg-saffron text-ink"><Icon name={achievementIcon(a!.icon)} /></span>
                   <span><b className="block">{a!.title}</b><span className="text-xs text-ink-mute">{a!.description}</span></span>
                 </li>
               ))}
             </ul>
-          ) : <p className="mt-3 text-sm text-ink-mute">No new achievements yet this week — one chapter or game is often enough to unlock one.</p>}
+          ) : <p className="mt-3 text-sm text-ink-mute">None yet this week. One chapter or game is often enough.</p>}
+          {weekAch.length > 3 && <button type="button" className="ctrl mt-2 !py-1 !text-xs" onClick={() => setAllAch(!allAch)} data-testid="journey-all-achievements">{allAch ? 'Show fewer' : `Show all ${weekAch.length}`}</button>}
           <div className="mt-4">
             <p className="eyebrow mb-1">Daily goal today</p>
             <Bar value={(state.days[dayKey()]?.activeSeconds ?? 0) / (p.dailyMinutes * 60)} />
@@ -294,14 +286,10 @@ export function Journey() {
       </div>
 
       <section className="card mt-4 p-5" data-testid="journey-concentrate">
-        <p className="eyebrow">Para tu próxima clase · Before your next lesson</p>
-        <h2 className="mt-1 text-xl font-semibold">What to concentrate on</h2>
+        <h2 className="text-xl font-semibold">What to work on next</h2>
         {focus.length ? (
-          <>
-            <p className="mb-4 mt-1 text-[15px] leading-relaxed text-ink-soft">{lessonPrep(focus)}</p>
-            <FocusAreas areas={focus} />
-          </>
-        ) : <p className="mt-2 text-sm text-ink-soft">Nothing stands out yet. Once you have practised a little more, this section explains exactly what you are finding hard, why, and how to fix it before your next lesson.</p>}
+          <div className="mt-3"><FocusAreas areas={focus} /></div>
+        ) : <p className="mt-2 text-sm text-ink-soft">Nothing stands out yet. Keep practising and this shows what to work on.</p>}
       </section>
 
       <MovingUp className="mt-4" />

@@ -88,7 +88,7 @@ export function ReleaseBlocks({ name, settings, busy, onSave }: { name: string; 
           </div>
         );
       })()}
-      {!stepped && <p className="mt-2 text-xs text-ink-mute">Turn this on to add verbs and words a block at a time, so {name} is not faced with everything on day one. Homework you assign always opens.</p>}
+      {!stepped && <p className="mt-2 text-xs text-ink-mute">Turn on to open verbs and words a block at a time. Homework you assign always opens.</p>}
       {stepped && open && (
         <div className="mt-3 grid gap-3" data-testid="release-blocks">
           {CEFR_LEVELS.map((l) => {

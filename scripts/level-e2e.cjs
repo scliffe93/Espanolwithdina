@@ -39,8 +39,9 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
   ok(/set your level to A1/.test(await p.getByTestId('level-note').innerText()), 'Sam sees why');
   await p.screenshot({ path: OUT + '/level-student-verbs.png', fullPage: false });
   await p.goto(BASE + '#/settings'); await p.waitForTimeout(1200);
-  const b1 = p.getByRole('radio', { name: 'B1' }).first();
-  ok(await b1.isDisabled(), 'self-selecting B1 is disabled in the profile');
+  await p.getByTestId('level-rating').click(); await p.waitForTimeout(400);
+  const b1 = p.getByRole('radio', { name: 'B1' });
+  ok((await b1.count()) === 0 || await b1.first().isDisabled(), 'self-selecting B1 is not possible in the profile');
   await p.goto(BASE + '#/student/homework'); await p.waitForTimeout(1500);
   const card = p.locator('article', { hasText: 'Perfect tense practice (set by Dina)' }).first();
   ok(await card.isVisible(), 'Sam sees the perfect-tense homework Dina assigned');

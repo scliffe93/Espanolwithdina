@@ -13,7 +13,7 @@ const as = async (p, who) => { await p.goto(BASE + '#/demo'); await p.waitForTim
   const p = await (await b.newContext({ viewport: { width: 1100, height: 900 } })).newPage(); p.on('pageerror', (e) => errors.push(String(e)));
   await as(p, 'dina');
   await p.goto(BASE + '#/teach/student/demo-sam'); await p.waitForTimeout(1500);
-  await p.getByTestId('sentence-level').waitFor({ timeout: 10000 });
+  await p.getByTestId('sentence-open').click(); await p.getByTestId('sentence-level').waitFor({ timeout: 10000 });
   ok(/the usual for/.test(await p.getByTestId('sentence-level').innerText()), 'the teacher sees the sentence length, following the level to begin with');
   await p.getByTestId('sentence-4').click(); await p.waitForTimeout(1200);
   ok(/With a reason or a contrast/.test(await p.getByTestId('sentence-current').innerText()) && /set by you/.test(await p.getByTestId('sentence-level').innerText()), 'she moves it to step 4');

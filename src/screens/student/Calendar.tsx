@@ -32,7 +32,7 @@ export function Calendar() {
 
   return (
     <div data-testid="student-calendar">
-      <PageHeader eyebrow="Agenda · Lessons" title="My lessons" subtitle={`Times are shown in your time zone, ${zoneLabel(browserZone())}. Each lesson can be added to your own calendar.`} right={<DemoChip />} />
+      <PageHeader eyebrow="Agenda · Lessons" title="My lessons" subtitle={`Times in ${zoneLabel(browserZone())}.`} right={<DemoChip />} />
       <StudentNav page="calendar" />
       {error && <ErrorCard error={error} retry={reload} />}
       {!error && loading && !data && <Loading />}

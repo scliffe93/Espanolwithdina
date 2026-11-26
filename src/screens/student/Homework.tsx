@@ -32,7 +32,7 @@ export function HomeworkPage({ params }: { params: URLSearchParams }) {
 
   return (
     <div data-testid="student-homework">
-      <PageHeader eyebrow="Deberes · Homework" title="My homework" subtitle="What Dina has set, what’s waiting for her feedback, and what she has already reviewed." right={<DemoChip />} />
+      <PageHeader eyebrow="Deberes · Homework" title="My homework" subtitle="To do, waiting for Dina, and marked." right={<DemoChip />} />
       <StudentNav page="homework" />
       {justDone && (
         <div role="status" className="mb-5 flex items-center gap-3 rounded-3xl bg-olive-50 p-4 text-sm ring-1 ring-olive/30" data-testid="hw-done-banner">

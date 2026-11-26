@@ -28,7 +28,7 @@ export function FeedbackPage() {
 
   return (
     <div data-testid="student-feedback">
-      <PageHeader eyebrow="De Dina · Feedback" title="Feedback from Dina" subtitle="Her comments, corrections and recommendations from your lessons, and her notes on your homework." right={<DemoChip />} />
+      <PageHeader eyebrow="De Dina · Feedback" title="Feedback from Dina" subtitle="Dina’s comments on your lessons and homework." right={<DemoChip />} />
       <StudentNav page="feedback" />
       {error && <ErrorCard error={error} retry={reload} />}
       {!error && loading && !data && <Loading what="your feedback" />}

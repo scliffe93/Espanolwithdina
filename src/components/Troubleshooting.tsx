@@ -35,7 +35,7 @@ export function Troubleshooting() {
       </div>
       {voice === 'ok' && <p className="text-sm text-ink-soft">Did you hear “Hola, soy Dina”? If not, check the phone is not on silent and the volume is up, then try another voice in Settings above.</p>}
       {voice === 'silent' && <p className="text-sm text-terracotta-dark">The voice did not start on this device. Turn off silent mode, check the volume, and try choosing another Spanish voice above.</p>}
-      {ttsSupported && !hasSpanishVoice() && <p className="text-sm text-ink-soft">This device has no Spanish voice installed, so Spanish is read with a default voice. Adding a Spanish voice in the device settings makes it sound right.</p>}
+      {ttsSupported && !hasSpanishVoice() && <p className="text-sm text-ink-soft">No Spanish voice is installed, so a default voice reads Spanish. Add one in the device settings.</p>}
       <p className="text-sm text-ink-mute">“Refresh the app” fetches a clean copy and keeps all your progress. Try it first if something looks stuck or out of date.</p>
 
       <div>

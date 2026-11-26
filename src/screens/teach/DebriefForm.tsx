@@ -140,7 +140,7 @@ export function DebriefForm({ open, onClose, student, state, homework }: { open:
               </div>
             </div>
           )}
-          <p className="text-xs text-ink-mute">During the week the app adapts on its own: a score under 60% adds a shorter re-try two days later; 90% or more on a verb drill adds a stretch task in the next tense.</p>
+          <p className="text-xs text-ink-mute">The app adapts during the week: under 60% adds a shorter retry two days later; 90% or more on a verb drill adds a stretch task.</p>
           {error && <p role="alert" className="rounded-xl bg-terracotta-50 px-3 py-2 text-sm text-terracotta-dark">{error}</p>}
           <div className="flex flex-wrap gap-2"><button type="button" className="btn-primary" onClick={send} disabled={busy} data-testid="send-plan"><Icon name="send" size={16} /> {busy ? 'Sending…' : `Send notes and ${plan.length} task${plan.length === 1 ? '' : 's'}`}</button><button type="button" className="ctrl" onClick={() => setStep('notes')}>Back</button></div>
         </div>

@@ -42,7 +42,7 @@ describe('what to concentrate on', () => {
     expect(stem.steps.length).toBeGreaterThanOrEqual(3);
     expect(stem.ask).toMatch(/Dina/);
     expect(stem.practise?.href).toBe('verbs?focus=querer,poder,pedir&start=1');
-    expect(lessonPrep(areas)).toBe('Going into your next lesson, the things to mention are stem-changing verbs and written accents. Open each one below to see what is happening and what to do about it.');
+    expect(lessonPrep(areas)).toBe('Going into your next lesson, the things to mention are stem-changing verbs and written accents.');
   });
 
   it('notices when something is getting better', () => {

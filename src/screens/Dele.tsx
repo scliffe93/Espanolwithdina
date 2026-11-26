@@ -186,7 +186,7 @@ export function Dele({ id }: { id?: string }) {
   const f = DELE_FORMAT[open];
   return (
     <div data-testid="dele-home">
-      <PageHeader eyebrow="Examen · Exam practice" title="Exam practice" subtitle="Tasks in the style of the DELE, the official Spanish diploma: a text with questions, a recording you hear twice, and writing with a word limit. Our own tasks, not official papers." />
+      <PageHeader eyebrow="Examen · Exam practice" title="Exam practice" subtitle="Practice in the style of the DELE exam: reading, listening and writing." />
       <div className="mb-4 flex flex-wrap items-center gap-2">{levels.map((l) => <button key={l} className="chip" aria-pressed={open === l} onClick={() => setOpen(l)} data-testid={`dele-level-${l}`}>{l}</button>)}</div>
       <div className="grid gap-3 sm:grid-cols-3">
         {DELE_TASKS.filter((t) => t.level === open).map((t) => {
@@ -208,7 +208,7 @@ export function Dele({ id }: { id?: string }) {
         <dl className="mt-2 grid gap-1.5 text-sm sm:grid-cols-2">
           {([['Reading', f.reading], ['Listening', f.listening], ['Writing', f.writing], ['Speaking', f.speaking]] as const).map(([k, v]) => <div key={k} className="rounded-xl bg-cream-100 px-3 py-2"><dt className="font-semibold">{k}</dt><dd className="text-ink-soft">{v}</dd></div>)}
         </dl>
-        <p className="mt-3 text-sm text-ink-soft">You pass with 60% in reading and writing together, and 60% in listening and speaking together. Speaking is practised in your lessons. Check dates, fees and the official sample papers on the Instituto Cervantes exams site before you enter.</p>
+        <p className="mt-3 text-sm text-ink-soft">Pass mark: 60% in reading and writing together, and 60% in listening and speaking. Speaking is practised in your lessons. Check dates and fees with the Instituto Cervantes before you enter.</p>
       </section>
     </div>
   );

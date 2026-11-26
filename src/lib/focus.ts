@@ -331,5 +331,5 @@ export function lessonPrep(areas: FocusArea[]): string {
   if (!areas.length) return '';
   const names = areas.slice(0, 3).map((a) => a.title.charAt(0).toLowerCase() + a.title.slice(1));
   const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-  return `Going into your next lesson, the ${names.length === 1 ? 'thing' : 'things'} to mention ${names.length === 1 ? 'is' : 'are'} ${list}. Open each one below to see what is happening and what to do about it.`;
+  return `Going into your next lesson, the ${names.length === 1 ? 'thing' : 'things'} to mention ${names.length === 1 ? 'is' : 'are'} ${list}.`;
 }

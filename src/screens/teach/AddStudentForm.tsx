@@ -38,7 +38,7 @@ export function AddStudentForm({ open, onClose }: { open: boolean; onClose: () =
     <Sheet open={open} onClose={close} title={made ? `${made.firstName}’s account is ready` : 'Add a student'}>
       {made ? (
         <div className="grid gap-3 text-sm">
-          <p className="text-ink-soft">Pass these on privately (in person or by message). They are shown only once — the password can be changed in the student’s settings and the recovery code lets them reset it if they forget.</p>
+          <p className="text-ink-soft">Pass these on privately. They are shown only once; the recovery code lets the student reset a forgotten password.</p>
           <dl className="grid gap-2 rounded-2xl bg-cream-100 p-4 font-mono text-[15px]" data-testid="new-student-details">
             <div className="flex justify-between gap-3"><dt className="font-sans text-ink-mute">Username</dt><dd className="font-semibold">{made.username}</dd></div>
             <div className="flex justify-between gap-3"><dt className="font-sans text-ink-mute">Password</dt><dd className="font-semibold">{made.password}</dd></div>

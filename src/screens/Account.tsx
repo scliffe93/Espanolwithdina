@@ -188,7 +188,7 @@ function SignedIn() {
           <button className="ctrl mt-2" onClick={() => acc.syncNow()}><Icon name="refresh" size={15} /> Sync now</button>
         </div>
         {acc.message && <p className="w-full rounded-xl bg-terracotta-50 px-3 py-2 text-sm text-terracotta-dark">{acc.message}</p>}
-        <p className="w-full text-xs text-ink-mute">Everything you learn syncs automatically: level and assessment, story progress in every city, vocabulary, verbs and spaced-repetition schedules, mistakes, study time, achievements, preferences and teacher details. Voice recordings stay on the device that made them.</p>
+        <p className="w-full text-xs text-ink-mute">Your progress syncs automatically to every device you log in on. Voice recordings stay on the device that made them.</p>
       </section>
 
       <section className="card p-5" data-testid="account-notifications">
@@ -243,7 +243,7 @@ function SignedIn() {
       </section>
 
       <Sheet open={unsynced} onClose={() => setUnsynced(false)} title="Changes not yet synced">
-        <p className="text-ink-soft">Some progress from this device hasn’t reached your account yet (you may be offline). If you log out now it stays safely on this device and will sync next time you log in here.</p>
+        <p className="text-ink-soft">Some progress hasn’t synced yet. If you log out now it stays on this device and syncs next time you log in here.</p>
         <div className="mt-4 flex gap-2"><button className="btn-primary" onClick={() => { setUnsynced(false); acc.syncNow(); }}>Try syncing again</button><button className="btn-ghost" onClick={() => { setUnsynced(false); doLogout(true); }}>Log out anyway</button></div>
       </Sheet>
       <Sheet open={del} onClose={() => setDel(false)} title="Delete your online account?">

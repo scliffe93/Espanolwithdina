@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Icon } from '../../components/Icon';
+import { Sheet } from '../../components/ui';
 import { usePlatform, usePlatformQuery } from '../../lib/platform/context';
 import { useStore } from '../../lib/store';
 import { CEFR_LEVELS, type AppState, type Cefr } from '../../types';
@@ -17,6 +18,7 @@ export function LevelAccess({ studentId, name, state }: { studentId: string; nam
   const { run, busy, error, setError } = useAction();
   const q = usePlatformQuery((b) => b.studentSettings(studentId), [studentId]);
   const [editing, setEditing] = useState(false);
+  const [panel, setPanel] = useState<'topics' | 'sentence' | null>(null);
   const [level, setLevel] = useState<Cefr | ''>('');
   const [note, setNote] = useState('');
   const current = q.data?.maxLevel ?? null;
@@ -100,43 +102,57 @@ export function LevelAccess({ studentId, name, state }: { studentId: string; nam
           )}
         </div>
       )}
-      <div className="mb-3 rounded-2xl bg-white p-3 ring-1 ring-ink/5" data-testid="student-topics">
+      <div className="mb-3 grid gap-2 sm:grid-cols-2">
+        <div className="flex items-center gap-2 rounded-2xl bg-white p-3 ring-1 ring-ink/5" data-testid="topics-summary">
+          <p className="min-w-0 flex-1"><span className="eyebrow mr-2 !text-[10px]">Loves</span><b>{topicsOf([...new Set([...(q.data?.topics ?? []), ...ownTopics(state?.profile), ...matchTopics(state?.profile?.likes).topics])]).map((t) => t.label).join(', ') || 'Nothing yet'}</b>{state?.profile?.likes && matchTopics(state.profile.likes).unmatched.length > 0 && <span className="ml-1 text-xs text-terracotta-dark">· needs writing: {matchTopics(state.profile.likes).unmatched.join(', ')}</span>}</p>
+          <button type="button" className="ctrl !py-1.5" onClick={() => setPanel('topics')} data-testid="topics-open">Change</button>
+        </div>
+        <div className="flex items-center gap-2 rounded-2xl bg-white p-3 ring-1 ring-ink/5" data-testid="sentence-summary">
+          <p className="min-w-0 flex-1"><span className="eyebrow mr-2 !text-[10px]">Sentences</span><b>{SENTENCE_STEPS[sentence - 1].label}</b> <span className="text-ink-mute">· step {sentence} of 5</span></p>
+          <button type="button" className="ctrl !py-1.5" onClick={() => setPanel('sentence')} data-testid="sentence-open">Change</button>
+        </div>
+      </div>
+      <Sheet open={panel === 'topics'} onClose={() => setPanel(null)} title={`What ${name} loves`}>
+        <div className="text-sm" data-testid="student-topics">
         <p><span className="eyebrow mr-2 !text-[10px]">What {name} loves</span><b data-testid="topics-current">{topicsOf(q.data?.topics).length ? topicsOf(q.data?.topics).map((t) => t.label).join(', ') : 'Nothing chosen'}</b></p>
-        {state?.profile?.likes ? (() => { const m = matchTopics(state.profile!.likes); return (
-          <div className="mt-2 rounded-xl bg-cream-100 px-3 py-2 text-sm" data-testid="topics-own-words">
-            <p><span className="text-ink-mute">In {name}’s own words:</span> “{state.profile!.likes}”</p>
-            {m.topics.length > 0 && <p className="mt-1 text-xs text-ink-soft">Recognised and already in use: <b>{topicsOf(m.topics).map((t) => t.label).join(', ')}</b>.</p>}
-            {m.unmatched.length > 0 && <p className="mt-1 text-xs text-terracotta-dark" data-testid="topics-missing">No sentences yet for: <b>{m.unmatched.join(', ')}</b>. These need writing.</p>}
+          {state?.profile?.likes ? (() => { const m = matchTopics(state.profile!.likes); return (
+            <div className="mt-2 rounded-xl bg-cream-100 px-3 py-2 text-sm" data-testid="topics-own-words">
+              <p><span className="text-ink-mute">In {name}’s own words:</span> “{state.profile!.likes}”</p>
+              {m.topics.length > 0 && <p className="mt-1 text-xs text-ink-soft">Recognised and already in use: <b>{topicsOf(m.topics).map((t) => t.label).join(', ')}</b>.</p>}
+              {m.unmatched.length > 0 && <p className="mt-1 text-xs text-terracotta-dark" data-testid="topics-missing">No sentences yet for: <b>{m.unmatched.join(', ')}</b>. These need writing.</p>}
+            </div>
+          ); })() : <p className="mt-2 text-xs text-ink-mute">{name} has not written what they are into yet. They can, at the top of their verb gym.</p>}
+          {ownTopics(state?.profile).length > 0 && <p className="mt-2 text-xs text-ink-soft" data-testid="topics-picked">Picked by {name}: <b>{topicsOf(ownTopics(state?.profile)).map((t) => t.label).join(', ')}</b>. These are already in use.</p>}
+          <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label={`What ${name} loves`}>
+            {TOPICS.map((t) => { const on = (q.data?.topics ?? []).includes(t.id); return (
+              <button key={t.id} type="button" disabled={busy} aria-pressed={on} onClick={() => void saveTopics(on ? (q.data?.topics ?? []).filter((x) => x !== t.id) : [...(q.data?.topics ?? []), t.id])} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm ring-1 transition ${on ? 'bg-ink text-cream ring-ink' : 'bg-cream-100 text-ink ring-ink/10 hover:ring-ink/40'}`} data-testid={`topic-${t.id}`}>{on && <Icon name="check" size={13} />}{t.label}</button>
+            ); })}
           </div>
-        ); })() : <p className="mt-2 text-xs text-ink-mute">{name} has not written what they are into yet. They can, at the top of their verb gym.</p>}
-        {ownTopics(state?.profile).length > 0 && <p className="mt-2 text-xs text-ink-soft" data-testid="topics-picked">Picked by {name}: <b>{topicsOf(ownTopics(state?.profile)).map((t) => t.label).join(', ')}</b>. These are already in use.</p>}
-        <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label={`What ${name} loves`}>
-          {TOPICS.map((t) => { const on = (q.data?.topics ?? []).includes(t.id); return (
-            <button key={t.id} type="button" disabled={busy} aria-pressed={on} onClick={() => void saveTopics(on ? (q.data?.topics ?? []).filter((x) => x !== t.id) : [...(q.data?.topics ?? []), t.id])} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm ring-1 transition ${on ? 'bg-ink text-cream ring-ink' : 'bg-cream-100 text-ink ring-ink/10 hover:ring-ink/40'}`} data-testid={`topic-${t.id}`}>{on && <Icon name="check" size={13} />}{t.label}</button>
-          ); })}
+          <p className="mt-2 text-xs text-ink-mute">Tick what {name} is into. Their verb practice then uses sentences about it, each session ends with a growing sentence about it, and its words join their memory cards a few at a time. For example: <span lang="es" className="text-ink-soft">{(topicsOf(q.data?.topics)[0] ?? TOPICS[0]).ladders[0].rungs[1].es.replace(/[\[\]]/g, '')}</span></p>
         </div>
-        <p className="mt-2 text-xs text-ink-mute">Tick what {name} is into. Their verb practice then uses sentences about it, each session ends with a growing sentence about it, and its words join their memory cards a few at a time. For example: <span lang="es" className="text-ink-soft">{(topicsOf(q.data?.topics)[0] ?? TOPICS[0]).ladders[0].rungs[1].es.replace(/[\[\]]/g, '')}</span></p>
-      </div>
-      <div className="mb-3 rounded-2xl bg-white p-3 ring-1 ring-ink/5" data-testid="sentence-level">
+      </Sheet>
+      <Sheet open={panel === 'sentence'} onClose={() => setPanel(null)} title="From words to sentences">
+        <div className="text-sm" data-testid="sentence-level">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="min-w-0 flex-1"><span className="eyebrow mr-2 !text-[10px]">From words to sentences</span><b data-testid="sentence-current">{SENTENCE_STEPS[sentence - 1].label}</b> <span className="text-ink-mute">· step {sentence} of 5{q.data?.sentence ? ', set by you' : `, the usual for ${working}`}</span></p>
-          {q.data?.sentence ? <button type="button" className="ctrl !py-1.5" disabled={busy} onClick={() => void saveSentence(undefined)}>Follow their level</button> : null}
+            <p className="min-w-0 flex-1"><span className="eyebrow mr-2 !text-[10px]">From words to sentences</span><b data-testid="sentence-current">{SENTENCE_STEPS[sentence - 1].label}</b> <span className="text-ink-mute">· step {sentence} of 5{q.data?.sentence ? ', set by you' : `, the usual for ${working}`}</span></p>
+            {q.data?.sentence ? <button type="button" className="ctrl !py-1.5" disabled={busy} onClick={() => void saveSentence(undefined)}>Follow their level</button> : null}
+          </div>
+          <div className="mt-2 grid grid-cols-5 gap-1.5" role="group" aria-label="How long sentences get">
+            {SENTENCE_STEPS.map((st) => (
+              <button key={st.level} type="button" disabled={busy} aria-pressed={sentence === st.level} onClick={() => void saveSentence(st.level)} className={`rounded-xl px-2 py-2 text-left text-xs ring-1 transition ${sentence === st.level ? 'bg-ink text-cream ring-ink' : st.level < sentence ? 'bg-olive-50 ring-olive/30' : 'bg-white ring-ink/10 hover:ring-ink/40'}`} data-testid={`sentence-${st.level}`}>
+                <b className="block text-sm">{st.level}</b><span className={sentence === st.level ? 'text-cream/80' : 'text-ink-soft'}>{st.label}</span>
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-ink-mute">At this step {name} adds: <span lang="es" className="text-ink-soft">{SENTENCE_STEPS[sentence - 1].adds}</span>. For example: <span lang="es" className="text-ink-soft">{SENTENCE_STEPS[sentence - 1].example}</span> </p>
+          <ul className="mt-2 grid gap-1 text-xs text-ink-soft sm:grid-cols-3" data-testid="sentence-mix">
+            <li className="rounded-lg bg-cream-100 px-2.5 py-1.5"><b className="text-ink">Verbs:</b> {inSentence === 0 ? 'every question is the word on its own' : `about ${inSentence} of 12 questions use the verb inside a sentence`}, on verbs {name} already gets right.</li>
+            <li className="rounded-lg bg-cream-100 px-2.5 py-1.5"><b className="text-ink">Growing sentence:</b> each session ends with a sentence built up over {sentence} step{sentence === 1 ? '' : 's'}{sentence >= 4 ? ', two of them in the other tenses' : ''}.</li>
+            <li className="rounded-lg bg-cream-100 px-2.5 py-1.5"><b className="text-ink">Grammar:</b> {sentence >= 5 ? 'sentences of any length' : `sentences of up to about ${[6, 8, 10, 13][sentence - 1]} words`}.</li>
+          </ul>
+          <p className="mt-2 text-xs text-ink-mute">Start low while the words are new, then slide it up.</p>
         </div>
-        <div className="mt-2 grid grid-cols-5 gap-1.5" role="group" aria-label="How long sentences get">
-          {SENTENCE_STEPS.map((st) => (
-            <button key={st.level} type="button" disabled={busy} aria-pressed={sentence === st.level} onClick={() => void saveSentence(st.level)} className={`rounded-xl px-2 py-2 text-left text-xs ring-1 transition ${sentence === st.level ? 'bg-ink text-cream ring-ink' : st.level < sentence ? 'bg-olive-50 ring-olive/30' : 'bg-white ring-ink/10 hover:ring-ink/40'}`} data-testid={`sentence-${st.level}`}>
-              <b className="block text-sm">{st.level}</b><span className={sentence === st.level ? 'text-cream/80' : 'text-ink-soft'}>{st.label}</span>
-            </button>
-          ))}
-        </div>
-        <p className="mt-2 text-xs text-ink-mute">At this step {name} adds: <span lang="es" className="text-ink-soft">{SENTENCE_STEPS[sentence - 1].adds}</span>. For example: <span lang="es" className="text-ink-soft">{SENTENCE_STEPS[sentence - 1].example}</span> </p>
-        <ul className="mt-2 grid gap-1 text-xs text-ink-soft sm:grid-cols-3" data-testid="sentence-mix">
-          <li className="rounded-lg bg-cream-100 px-2.5 py-1.5"><b className="text-ink">Verbs:</b> {inSentence === 0 ? 'every question is the word on its own' : `about ${inSentence} of 12 questions use the verb inside a sentence`}, on verbs {name} already gets right.</li>
-          <li className="rounded-lg bg-cream-100 px-2.5 py-1.5"><b className="text-ink">Growing sentence:</b> each session ends with a sentence built up over {sentence} step{sentence === 1 ? '' : 's'}{sentence >= 4 ? ', two of them in the other tenses' : ''}.</li>
-          <li className="rounded-lg bg-cream-100 px-2.5 py-1.5"><b className="text-ink">Grammar:</b> {sentence >= 5 ? 'sentences of any length' : `sentences of up to about ${[6, 8, 10, 13][sentence - 1]} words`}.</li>
-        </ul>
-        <p className="mt-2 text-xs text-ink-mute">Start low while the words are new. Slide it up once {name} knows them, so the same words come back inside longer sentences.</p>
-      </div>
+      </Sheet>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p>
           <span className="eyebrow mr-2 !text-[10px]">Level access</span>

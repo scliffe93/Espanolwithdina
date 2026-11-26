@@ -60,7 +60,7 @@ export function Arcade() {
       <PageHeader
         eyebrow={`Juegos · ${city.name}`}
         title={t('The arcade')}
-        subtitle="Short games that feed your verb mastery, your mistakes and your memory deck. Pick by what you want to practise."
+        subtitle="Short games for verbs, words and listening."
         right={
           <button className="ctrl" onClick={() => update((s) => ({ ...s, settings: { ...s.settings, sound: !s.settings.sound } }))} aria-pressed={state.settings.sound}>
             <Icon name={state.settings.sound ? 'volume' : 'volumeOff'} size={16} /> Sound {state.settings.sound ? 'on' : 'off'}
@@ -74,7 +74,6 @@ export function Arcade() {
           <div className={`grid gap-4 ${picks.length > 1 ? 'sm:grid-cols-2' : ''} ${picks.length > 2 ? 'lg:grid-cols-3' : ''}`}>
             {picks.map((r, i) => <GameCard key={r.g.id} g={r.g} i={i} why={r.why} big />)}
           </div>
-          <p className="mt-2 text-xs text-ink-mute">Chosen from what you said you enjoy and find hard. Change those in Settings and these change with them.</p>
         </section>
       )}
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -85,7 +84,6 @@ export function Arcade() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-testid="arcade-all">
         {shown.map((r, i) => <GameCard key={r.g.id} g={r.g} i={i} fresh={fresh(r.g)} />)}
       </div>
-      <p className="mt-6 text-sm text-ink-mute">Games use the {city.varietyLabel} you’re learning — {city.variety === 'argentina' ? 'including vos forms' : city.variety === 'spain' ? 'including vosotros' : 'with ustedes for “you all”'} — and local food in Order Up!</p>
     </div>
   );
 }

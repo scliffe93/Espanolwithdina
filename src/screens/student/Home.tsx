@@ -33,11 +33,10 @@ import { DemoChip, ErrorCard, FeedbackItem, HomeworkStatus, LessonDetails, Loadi
 // the headline numbers of the learner's journey.
 // ───────────────────────────────────────────────────────────────
 
-const NOTE = 'Reminders for lessons and deadlines show here while the app is open. Turn on notifications to hear about new homework, marking and lesson changes when it’s closed.';
 
 function Reminders({ reminders }: { reminders: Reminder[] }) {
   if (!reminders.length) {
-    return <p className="mb-4 text-sm text-ink-mute" data-testid="reminders-empty">Nothing due in the next 24 hours. {NOTE}</p>;
+    return <p className="mb-4 text-sm text-ink-mute" data-testid="reminders-empty">Nothing due in the next 24 hours.</p>;
   }
   const tone = (t: Reminder['tone']) => (t === 'now' ? 'bg-terracotta text-white' : t === 'overdue' ? 'bg-terracotta-50 text-terracotta-dark' : 'bg-white text-ink ring-1 ring-ink/10');
   return (
@@ -52,7 +51,6 @@ function Reminders({ reminders }: { reminders: Reminder[] }) {
           </li>
         ))}
       </ul>
-      <p className="mt-3 text-xs text-ink-mute">{NOTE}</p>
     </motion.section>
   );
 }
@@ -191,7 +189,6 @@ function Journey({ state }: { state: AppState }) {
           </div>
         ))}
       </dl>
-      <p className="mt-3 text-xs text-ink-mute">Computed from what you’ve actually done in the app — chapters, the verb gym, memory reviews and games.</p>
     </section>
   );
 }
@@ -247,8 +244,8 @@ function Concentrate({ state }: { state: AppState }) {
   const areas = focusAreas(state, Date.now(), 3);
   if (!areas.length) return null;
   return (
-    <Section eyebrow="Para tu próxima clase · Before your next lesson" title="What to concentrate on" className="mt-4" right={state.onboardingDone ? <button type="button" className="ctrl" onClick={() => navigate('journey')}><Icon name="chart" size={14} /> My journey</button> : undefined}>
-      <p className="mb-4 text-[15px] leading-relaxed text-ink-soft" data-testid="lesson-prep">{lessonPrep(areas)}</p>
+    <Section title="What to work on next" className="mt-4" right={state.onboardingDone ? <button type="button" className="ctrl" onClick={() => navigate('journey')}><Icon name="chart" size={14} /> My journey</button> : undefined}>
+      <p className="mb-3 text-sm text-ink-soft" data-testid="lesson-prep">{lessonPrep(areas)}</p>
       <FocusAreas areas={areas} />
     </Section>
   );
@@ -263,7 +260,7 @@ export function Home() {
 
   return (
     <div data-testid="student-home">
-      <PageHeader eyebrow="Mis clases · My lessons & homework" title={`Hola, ${name}`} subtitle="Your lessons with Dina, your homework and her feedback — all in one place." right={<span className="flex items-center gap-2">{state.settings.streaksEnabled && <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-white px-3 py-1.5 text-sm ring-1 ring-ink/10" title="Days in a row with practice" data-testid="streak"><Icon name="flame" size={16} className={currentStreak(state) ? 'text-terracotta' : 'text-ink-mute'} /><b>{currentStreak(state)}</b><span className="text-ink-mute">day streak</span></span>}<DemoChip /></span>} />
+      <PageHeader eyebrow="Mis clases · My lessons & homework" title={`Hola, ${name}`} right={<span className="flex items-center gap-2">{state.settings.streaksEnabled && <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-white px-3 py-1.5 text-sm ring-1 ring-ink/10" title="Days in a row with practice" data-testid="streak"><Icon name="flame" size={16} className={currentStreak(state) ? 'text-terracotta' : 'text-ink-mute'} /><b>{currentStreak(state)}</b><span className="text-ink-mute">day streak</span></span>}<DemoChip /></span>} />
       <StudentNav page="home" />
       <RoomCard />
       <NotificationsCard compact />

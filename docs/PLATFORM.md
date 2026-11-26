@@ -351,3 +351,12 @@ Level ceilings and gradual release still apply: a topic sentence is only used wh
 ### Checking a lesson balance
 
 The balance card on a student's Lessons tab (and on the student's own home and invoices pages) has **Which lessons counted**: each calendar lesson that used a credit, in order, and each taught lesson that did not, with the reason (before the first package was bought, cancelled, or billed on its own invoice). A lesson's day is taken in its own time zone, so a lesson just after midnight is not counted on the day before. For the teacher, the card also flags lessons taught in the lesson room on a day with nothing in the calendar for that student: the balance only counts calendar lessons, so those have not used a credit. **Count it** adds one to the calendar as taught, at the time it was started, so it uses a credit.
+
+### A lighter layout
+
+Detail that is not needed every time is one tap away instead of always on screen:
+
+- **One level rating.** The Me page, My journey and the teacher's view of a student show one level ("A2 Elementary"). Tapping it opens each skill's level, where the level comes from and, on the Me page, the controls to change them and retake the placement (`src/components/LevelRating.tsx`). When the teacher has set the level, hers is the only one shown.
+- **Me page.** The city is one line with "Change city". Goals, social life, learning style, what feels hard and self-assessed level are one folded group. Voice and app language, help and troubleshooting (open by itself when something has gone wrong), and backup, import and delete are folded too.
+- **Teacher's student profile.** "Loves" and "Sentences" are one line each, with Change opening the full controls. The lesson brief starts folded. Three achievements show, with "Show all".
+- **Student pages.** The level card on the home page and My journey shows the headline, with "What's needed" for the checklist. "What to work on next" lists one line per area, each opening to the detail. The verb gym's interests are one line with Change; verb groups show four verbs before "Show all".

@@ -16,7 +16,7 @@ export function LearningPage() {
   const { data, loading, error, reload } = usePlatformQuery((b) => b.resources());
   return (
     <div data-testid="student-learning">
-      <PageHeader eyebrow="Apuntes · Learning" title="My learning bank" subtitle="The explanations Dina has shared with you. They stay here, so you can come back to them whenever you need." right={<DemoChip />} />
+      <PageHeader eyebrow="Apuntes · Learning" title="My learning bank" subtitle="What Dina has shared with you, to come back to any time." right={<DemoChip />} />
       <StudentNav page="learning" />
       {error && <ErrorCard error={error} retry={reload} />}
       {!error && loading && !data && <Loading what="your learning bank" />}

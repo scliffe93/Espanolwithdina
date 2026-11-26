@@ -62,7 +62,7 @@ export function Admin() {
 
   return (
     <div>
-      <PageHeader eyebrow="Administración" title="Admin" subtitle="The whole platform at a glance: everyone’s activity, the teacher’s work, every account. The teacher dashboards are in the menu too." right={<button type="button" className="ctrl" onClick={load}><Icon name="refresh" size={14} /> Refresh</button>} />
+      <PageHeader eyebrow="Administración" title="Admin" subtitle="Everyone’s activity and every account, at a glance." right={<button type="button" className="ctrl" onClick={load}><Icon name="refresh" size={14} /> Refresh</button>} />
       <div className="mb-4 overflow-x-auto scrollbar-none"><Segmented label="Admin section" value={tab} onChange={setTab} options={TABS} /></div>
       {error && <p role="alert" className="mb-4 rounded-xl bg-terracotta-50 px-3 py-2 text-sm text-terracotta-dark">{error}</p>}
       {!data && !error && <p className="text-sm text-ink-mute">Loading everything…</p>}

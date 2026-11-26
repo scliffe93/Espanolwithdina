@@ -43,7 +43,7 @@ export function Teacher() {
 
   return (
     <div>
-      <PageHeader eyebrow="Mi profe" title="My Spanish teacher" subtitle="Share an honest weekly picture of your learning so lessons can focus where they matter." />
+      <PageHeader eyebrow="Mi profe" title="My Spanish teacher" subtitle="A weekly picture of your learning to share with your teacher." />
 
       <div className="grid gap-4 lg:grid-cols-[1fr_1.3fr]">
         <section className="card h-fit p-5">

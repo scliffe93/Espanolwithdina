@@ -1,6 +1,8 @@
 import { TOPICS, interestForTopic, ownTopics, toggleOwnTopic } from '../data/topics';
 import { NotificationsCard } from '../components/NotificationsCard';
 import { Troubleshooting } from '../components/Troubleshooting';
+import { LevelRating } from '../components/LevelRating';
+import { getIssues } from '../lib/diagnostics';
 import { APP_LANGUAGES, type AppLanguage } from '../lib/i18n';
 import { DailyReminder } from '../components/DailyReminder';
 import { motion } from 'motion/react';
@@ -21,8 +23,8 @@ import { hasSpanishVoice, recognitionSupported, spanishVoices, speak, ttsSupport
 import { defaultState } from '../lib/state';
 import { useStore } from '../lib/store';
 import { recorderSupported, playUrl } from '../hooks/useRecorder';
-import { CEFR_LEVELS, SKILLS, type Cefr, type LearnerProfile, type Skill } from '../types';
-import { withinLevel } from '../lib/platform/level';
+import { type Cefr, type LearnerProfile, type Skill } from '../types';
+import { overallLevel } from '../lib/platform/level';
 import { useLevelAccess } from '../lib/platform/useLevelAccess';
 
 function Section({ title, children, hint }: { title: string; children: ReactNode; hint?: string }) {
@@ -45,13 +47,13 @@ function Chips<T extends string>({ options, values, onToggle, label }: { options
   );
 }
 
-function DnaStrand({ profile }: { profile: LearnerProfile }) {
+function DnaStrand({ profile, rating }: { profile: LearnerProfile; rating: ReactNode }) {
   const traits = [
     ...profile.interests.map((i) => labelOf(INTERESTS, i)),
     ...profile.reasons.map((r) => labelOf(REASONS, r)),
     `${profile.dailyMinutes} min / day`,
     CITY_THEMES[profile.city]?.varietyLabel ?? 'Spain Spanish',
-  ].slice(0, 10);
+  ].slice(0, 6);
   const colors = ['rgb(var(--c-primary))', '#E3A33B', 'rgb(var(--c-tertiary))', '#1F3A5F', '#D98C8C'];
   return (
     <div className="relative overflow-hidden rounded-4xl bg-ink p-6 text-cream">
@@ -68,20 +70,12 @@ function DnaStrand({ profile }: { profile: LearnerProfile }) {
           );
         })}
       </svg>
-      <p className="eyebrow !text-saffron-light">My Spanish DNA</p>
-      <h2 className="mt-1 font-display text-3xl font-semibold">{profile.name || 'You'}</h2>
+      <h2 className="font-display text-3xl font-semibold">{profile.name || 'You'}</h2>
       <p className="mt-1 text-cream/70">Heading to {profile.destinationCity || 'Madrid'}{profile.destinationCountry ? `, ${profile.destinationCountry}` : ''} · {labelOf(RELOCATION, profile.relocation)}</p>
       <div className="relative mt-4 flex max-w-md flex-wrap gap-1.5">
         {traits.map((t) => <span key={t} className="rounded-full bg-cream/10 px-3 py-1 text-sm ring-1 ring-cream/15">{t}</span>)}
       </div>
-      <div className="relative mt-5 grid max-w-md grid-cols-3 gap-2 sm:grid-cols-6">
-        {SKILLS.map((s) => (
-          <div key={s} className="rounded-2xl bg-cream/10 p-2 text-center ring-1 ring-cream/10">
-            <div className="font-display text-xl font-semibold text-saffron-light">{profile.levels[s]}</div>
-            <div className="text-[10px] uppercase tracking-wider text-cream/60">{s}</div>
-          </div>
-        ))}
-      </div>
+      <div className="relative mt-5">{rating}</div>
     </div>
   );
 }
@@ -170,6 +164,7 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
   };
   const setSkill = (s: Skill, l: Cefr) => set({ levels: { ...p.levels, [s]: l }, levelOverridden: true });
   const access = useLevelAccess();
+  const [cityOpen, setCityOpen] = useState(false);
 
   const finish = () => {
     update((s) => ({ ...s, onboardingDone: true }));
@@ -213,10 +208,14 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
             </div>
           </div>
         ) : (
-          <PageHeader eyebrow="Tú" title="My Spanish DNA" subtitle="Everything here personalises your story, vocabulary, practice and coach. Edit freely." />
+          <PageHeader eyebrow="Tú" title="My Spanish DNA" />
         )}
 
-        <DnaStrand profile={p} />
+        <DnaStrand profile={p} rating={
+          <LevelRating tone="dark" level={access.levelFrom === 'own' ? overallLevel(p.levels) : access.level} levels={p.levels} showSkills={access.levelFrom === 'own'} onSet={setSkill} maxLevel={access.maxLevel}
+            source={access.levelFrom === 'teacher' ? 'Set by Dina.' : access.levelFrom === 'confirmed' ? 'Confirmed by Dina.' : `From ${p.levelSource === 'assessment' ? 'your placement' : p.levelSource === 'zero' ? 'starting from zero' : 'your own choice'}${p.levelOverridden ? ', adjusted by you' : ''}. Each skill is tracked on its own.`}
+            footer={!onboarding ? <button className="btn-soft" onClick={() => navigate('assessment')}><Icon name="refresh" size={16} /> Retake placement</button> : undefined} />
+        } />
 
         {onboarding && (
           <motion.button initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="btn-primary mt-5 w-full py-4 text-base" onClick={finish}>
@@ -238,38 +237,40 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
             <Chips label="Relocation" options={RELOCATION} values={[p.relocation]} onToggle={(v) => set({ relocation: v })} />
           </Section>
 
-          <Section title="Your city" hint={`${CITY_THEMES[p.city].varietyLabel}. The city sets the story, characters, colours and the Spanish you practise (vosotros in Spain, vos in Buenos Aires, ustedes in Latin America).`}>
+          {onboarding ? (
+            <Section title="Your city" hint={`${CITY_THEMES[p.city].varietyLabel}. The city sets the story, characters, colours and the Spanish you practise (vosotros in Spain, vos in Buenos Aires, ustedes in Latin America).`}>
             <CityPicker value={p.city} onChange={(c) => set({ city: c, region: CITY_THEMES[c].variety, destinationCity: CITY_THEMES[c].name, destinationCountry: CITY_THEMES[c].country, citiesVisited: p.citiesVisited.includes(c) ? p.citiesVisited : [...p.citiesVisited, c] })} />
-          </Section>
+            </Section>
+          ) : (
+            <section className="card flex flex-wrap items-center gap-3 p-5" data-testid="my-city">
+              <span className="min-w-0 flex-1"><span className="block text-lg font-semibold">Your city: {CITY_THEMES[p.city].name}</span><span className="text-sm text-ink-mute">{CITY_THEMES[p.city].varietyLabel}. It sets your story and the Spanish you practise.</span></span>
+              <button type="button" className="ctrl" onClick={() => setCityOpen(true)} data-testid="change-city"><Icon name="map" size={14} /> Change city</button>
+              <Sheet open={cityOpen} onClose={() => setCityOpen(false)} title="Choose your city" wide>
+                <CityPicker value={p.city} onChange={(c) => set({ city: c, region: CITY_THEMES[c].variety, destinationCity: CITY_THEMES[c].name, destinationCountry: CITY_THEMES[c].country, citiesVisited: p.citiesVisited.includes(c) ? p.citiesVisited : [...p.citiesVisited, c] })} />
+              </Sheet>
+            </section>
+          )}
 
-          <Section title="Skill levels" hint={`Source: ${p.levelSource === 'assessment' ? 'placement assessment' : p.levelSource === 'zero' ? 'starting from zero' : 'self-selected'}${p.levelOverridden ? ' · manually adjusted' : ''}. Each skill is tracked separately.${access.maxLevel ? ` Your teacher has set your level to ${access.maxLevel}, so higher levels are locked.` : ''}`}>
-            <div className="grid gap-2">
-              {SKILLS.map((s) => (
-                <div key={s} className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="capitalize">{s}</span>
-                  <div className="flex gap-1" role="radiogroup" aria-label={`${s} level`}>
-                    {CEFR_LEVELS.map((l) => (
-                      <button key={l} role="radio" aria-checked={p.levels[s] === l} disabled={!withinLevel(l, access.maxLevel)} onClick={() => setSkill(s, l)} className={`h-9 w-10 rounded-xl text-sm font-semibold ring-1 transition disabled:opacity-40 ${p.levels[s] === l ? 'bg-ink text-cream ring-ink' : 'ring-ink/10 hover:ring-ink/30'}`}>{l}</button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-            {!onboarding && <button className="btn-soft mt-4" onClick={() => navigate('assessment')}><Icon name="refresh" size={16} /> Retake placement</button>}
-          </Section>
 
-          <Section title="Interests" hint="Shape invitations in your story, coach suggestions, and the sentences, words and games in your practice.">
+          <Section title="Interests" hint="Your story, practice and games follow these.">
             <Chips label="Interests" options={INTERESTS} values={p.interests} onToggle={(v) => toggle('interests', v)} />
-            <p className="mb-2 mt-4 text-sm text-ink-soft">More for your practice: your verb sentences, words and games will be about these too.</p>
-            <Chips label="More for your practice" options={TOPICS.filter((t) => !interestForTopic(t.id)).map((t) => ({ value: t.id, label: t.label }))} values={ownTopics(p)} onToggle={(v) => set({ topics: toggleOwnTopic(p, v).topics })} />
+            <details className="mt-3" open={(p.topics ?? []).length > 0} data-testid="more-topics">
+              <summary className="cursor-pointer text-sm font-semibold text-ink-soft">More topics for your practice</summary>
+              <div className="mt-2"><Chips label="More for your practice" options={TOPICS.filter((t) => !interestForTopic(t.id)).map((t) => ({ value: t.id, label: t.label }))} values={ownTopics(p)} onToggle={(v) => set({ topics: toggleOwnTopic(p, v).topics })} /></div>
+            </details>
           </Section>
-          <Section title="Why you’re learning"><Chips label="Reasons" options={REASONS} values={p.reasons} onToggle={(v) => toggle('reasons', v)} /></Section>
-          <Section title="Social life" hint="Dating unlocks an extra branch in conversations with Marta."><Chips label="Social goals" options={SOCIAL} values={p.socialGoals} onToggle={(v) => toggle('socialGoals', v)} /></Section>
-          <Section title="How you like to learn" hint="Used as a starting point. The app also measures which memory techniques actually improve your recall.">
-            <Chips label="Activities" options={ACTIVITIES} values={p.activities} onToggle={(v) => toggle('activities', v)} />
-          </Section>
-          <Section title="What feels hard"><Chips label="Difficulties" options={DIFFICULTIES} values={p.difficulties} onToggle={(v) => toggle('difficulties', v)} /></Section>
-          <Section title="Self-assessed proficiency"><Chips label="Proficiency" options={PROFICIENCY} values={[p.proficiencySelf]} onToggle={(v) => set({ proficiencySelf: v })} /></Section>
+          <section className="card p-5">
+            <details open={onboarding} data-testid="learning-prefs">
+              <summary className="cursor-pointer text-lg font-semibold">Your goals and how you like to learn</summary>
+              <div className="mt-4 grid gap-4">
+                <div><p className="mb-2 text-sm font-medium">Why you’re learning</p><Chips label="Reasons" options={REASONS} values={p.reasons} onToggle={(v) => toggle('reasons', v)} /></div>
+                <div><p className="mb-2 text-sm font-medium">Social life <span className="font-normal text-ink-mute">· dating opens an extra branch with Marta</span></p><Chips label="Social goals" options={SOCIAL} values={p.socialGoals} onToggle={(v) => toggle('socialGoals', v)} /></div>
+                <div><p className="mb-2 text-sm font-medium">How you like to learn</p><Chips label="Activities" options={ACTIVITIES} values={p.activities} onToggle={(v) => toggle('activities', v)} /></div>
+                <div><p className="mb-2 text-sm font-medium">What feels hard</p><Chips label="Difficulties" options={DIFFICULTIES} values={p.difficulties} onToggle={(v) => toggle('difficulties', v)} /></div>
+                <div><p className="mb-2 text-sm font-medium">How much Spanish you speak</p><Chips label="Proficiency" options={PROFICIENCY} values={[p.proficiencySelf]} onToggle={(v) => set({ proficiencySelf: v })} /></div>
+              </div>
+            </details>
+          </section>
           <Section title="Daily goal">
             <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Daily minutes">
               {MINUTES.map((m) => <button key={m} className="chip" role="radio" aria-checked={p.dailyMinutes === m} onClick={() => set({ dailyMinutes: m })}>{m} min</button>)}
@@ -294,27 +295,30 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
               <Section title="Settings">
                 <div className="grid gap-4">
                   <label className="flex items-center justify-between gap-4">
-                    <span><span className="font-medium">Show streaks</span><span className="block text-sm text-ink-mute">Optional. Turn off if streaks stress you out.</span></span>
+                    <span><span className="font-medium">Show streaks</span></span>
                     <input type="checkbox" className="h-5 w-5 accent-terracotta" checked={state.settings.streaksEnabled} onChange={(e) => update((s) => ({ ...s, settings: { ...s.settings, streaksEnabled: e.target.checked } }))} />
                   </label>
                   <label className="flex items-center justify-between gap-4">
-                    <span><span className="font-medium">Sound effects &amp; vibration</span><span className="block text-sm text-ink-mute">Chimes, combos and haptics in lessons and games.</span></span>
+                    <span><span className="font-medium">Sound effects &amp; vibration</span></span>
                     <input type="checkbox" className="h-5 w-5 accent-terracotta" checked={state.settings.sound} onChange={(e) => update((s) => ({ ...s, settings: { ...s.settings, sound: e.target.checked } }))} />
                   </label>
                   <label className="flex items-center justify-between gap-4">
-                    <span><span className="font-medium">Guide speaks automatically</span><span className="block text-sm text-ink-mute">Characters read their lines aloud when they appear.</span></span>
+                    <span><span className="font-medium">Guide speaks automatically</span></span>
                     <input type="checkbox" className="h-5 w-5 accent-terracotta" checked={state.settings.guideVoice} onChange={(e) => update((s) => ({ ...s, settings: { ...s.settings, guideVoice: e.target.checked } }))} />
                   </label>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <span><span className="font-medium">English translations</span><span className="block text-sm text-ink-mute">In conversations.</span></span>
                     <Segmented label="Translations" value={state.settings.showTranslations} onChange={(v) => update((s) => ({ ...s, settings: { ...s.settings, showTranslations: v } }))} options={[{ value: 'on-tap', label: 'On tap' }, { value: 'always', label: 'Always' }]} />
                   </div>
+                  <details className="border-t border-ink/5 pt-3" data-testid="voice-settings">
+                    <summary className="cursor-pointer font-medium">Voice and app language</summary>
+                    <div className="mt-3 grid gap-4">
                   <div className="grid gap-1">
                     <label className="font-medium" htmlFor="app-language">Language of the app itself</label>
                     <select id="app-language" className="input" value={state.settings.appLanguage ?? 'auto'} onChange={(e) => update((x) => ({ ...x, settings: { ...x.settings, appLanguage: e.target.value as AppLanguage } }))} data-testid="app-language">
                       {APP_LANGUAGES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
-                    <span className="text-xs text-ink-mute">Buttons, headings and exercise names move into Spanish as your level rises (Continuar, Comprobar, Escuchar). Explanations of grammar always stay in English.</span>
+                    <span className="text-xs text-ink-mute">Buttons move into Spanish as your level rises. Grammar explanations stay in English.</span>
                   </div>
                   <VoicePicker />
                   <label className="grid gap-1">
@@ -322,37 +326,42 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
                     <input type="range" min={0.6} max={1.1} step={0.05} value={state.settings.speechRate} className="accent-terracotta" onChange={(e) => update((s) => ({ ...s, settings: { ...s.settings, speechRate: Number(e.target.value) } }))} />
                     <button className="ctrl w-fit" onClick={() => speak('Hola, ¿qué tal? Me alegro mucho de verte.', { region: p.region, rate: state.settings.speechRate })} disabled={!ttsSupported}><Icon name="play" size={16} /> Test voice</button>
                   </label>
+                    </div>
+                  </details>
                 </div>
               </Section>
 
-              <Section title="Your browser’s capabilities" hint="Learning with Dina uses free, built-in browser features. Support varies.">
+              <section className="card p-5">
+                <details open={getIssues().length > 0} data-testid="help-section">
+                  <summary className="cursor-pointer text-lg font-semibold">Help and troubleshooting</summary>
+                  <div className="mt-3"><Troubleshooting /></div>
+                  <div className="mt-4 border-t border-ink/5 pt-3">
+                    <p className="mb-2 text-sm font-medium">What this device supports</p>
                 <ul className="grid gap-1.5 text-sm">
                   <li className="flex justify-between"><span>Speech synthesis (guide voice)</span><b>{ttsSupported ? (hasSpanishVoice() ? 'Spanish voice found' : 'Available — no Spanish voice installed') : 'Not supported'}</b></li>
                   <li className="flex justify-between"><span>Voice recording</span><b>{recorderSupported ? 'Supported' : 'Not supported'}</b></li>
                   <li className="flex justify-between"><span>Speech recognition (transcripts)</span><b>{recognitionSupported ? 'Supported' : 'Not supported — type instead'}</b></li>
                 </ul>
                 {recognitionSupported && <p className="mt-2 text-xs text-ink-mute">Note: in Chrome and Edge, speech recognition audio is processed by the browser vendor’s online service. Recordings themselves are stored only on this device.</p>}
-              </Section>
+                  </div>
+                </details>
+              </section>
 
-              <Section title="Troubleshooting" hint="If something stops, sounds wrong or looks stuck, start here.">
-                <Troubleshooting />
-              </Section>
-
-              <Section title="Notifications" hint="Hear on this phone or computer when there is something new for you.">
+              <Section title="Notifications">
                 <NotificationsCard />
                 <DailyReminder />
               </Section>
 
-              <Section title="Account & cloud sync" hint="Log in with a username and password to save progress online and continue on any device.">
+              <Section title="Account" hint="Log in to keep your progress on every device.">
                 <AccountSummary />
               </Section>
 
-              <Section title="Your data" hint="Learning with Dina has no servers and no account. Everything is stored in this browser (IndexedDB) on this device.">
-                <ul className="mb-4 list-disc space-y-1 pl-5 text-sm text-ink-soft">
-                  <li>Clearing browser data, private browsing, or some storage-saving settings can erase progress. Export a backup regularly.</li>
-                  <li>Progress does not sync between devices. Use export / import to move it.</li>
-                  <li>{recCount ?? 0} audio recordings stored.</li>
-                </ul>
+              <section className="card p-5">
+                <details data-testid="data-section">
+                  <summary className="cursor-pointer text-lg font-semibold">Your data: backup, import, delete</summary>
+                  <div className="mt-3">
+                <p className="mb-3 text-sm text-ink-soft">Without an account, everything is stored in this browser on this device. Clearing browser data can erase it, so export a backup now and then.</p>
+                <p className="mb-3 text-sm text-ink-mute">{recCount ?? 0} audio recordings stored.</p>
                 <label className="mb-3 flex items-center gap-2 text-sm"><input type="checkbox" className="accent-terracotta" checked={withAudio} onChange={(e) => setWithAudio(e.target.checked)} /> Include audio recordings in export</label>
                 <div className="flex flex-wrap gap-2">
                   <button className="btn-ghost" onClick={doExport}><Icon name="download" size={18} /> Export my data</button>
@@ -360,7 +369,9 @@ export function ProfileScreen({ onboarding = false }: { onboarding?: boolean }) 
                   <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) doImport(f); e.target.value = ''; }} />
                   <button className="btn bg-terracotta-50 text-terracotta-dark ring-1 ring-terracotta/30 hover:bg-terracotta/10" onClick={() => setConfirmDelete(true)}><Icon name="trash" size={18} /> Delete everything</button>
                 </div>
-              </Section>
+                  </div>
+                </details>
+              </section>
             </>
           )}
         </div>

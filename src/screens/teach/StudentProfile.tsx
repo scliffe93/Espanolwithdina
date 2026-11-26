@@ -11,6 +11,7 @@ import { allVerbMastery, currentStreak, totalActiveSeconds, weekSummary } from '
 import { addDays, dayKey, formatMinutes, weekStart } from '../../lib/dates';
 import { usePlatform, usePlatformQuery, type AppState } from '../../lib/platform/context';
 import { LessonBrief, lastLessonBefore } from './LessonBrief';
+import { LevelRating } from '../../components/LevelRating';
 import { fmtDate, fmtDateTime, relative } from '../../lib/platform/time';
 import { FileCard, FilePicker } from '../../components/Files';
 import type { Booking, Feedback, FeedbackKind, Homework, Role } from '../../lib/platform/types';
@@ -18,7 +19,6 @@ import { buildTeacherReport } from '../../lib/report';
 import { navigate } from '../../lib/router';
 import { mastery } from '../../lib/srs';
 import { useStore } from '../../lib/store';
-import { SKILLS } from '../../types';
 import { BookingForm } from './BookingForm';
 import { HomeworkAssignForm } from './HomeworkAssignForm';
 import { HomeworkReview } from './HomeworkReview';
@@ -103,38 +103,31 @@ export function StudentProfile({ id, params }: { id: string; params: URLSearchPa
       <motion.header initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={`card overflow-hidden ring-1 ${tone.ring}`}>
         <div className={`flex flex-wrap items-center gap-4 p-5 ${tone.soft}`}>
           <Avatar name={person.firstName} tone={tone} size={64} />
-          <div className="min-w-0 flex-1">
+          <div className="min-w-[14rem] flex-1 basis-64">
             <p className="eyebrow">Student{insight.cityName ? ` · ${insight.cityName}` : ''}{p ? ` · ${CITY_THEMES[p.city].varietyLabel}` : ''}</p>
-            <h1 className="font-display text-4xl font-semibold leading-none">{person.firstName}</h1>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="font-display text-4xl font-semibold leading-none">{person.firstName}</h1>
+              {insight.level && <LevelRating level={insight.level} levels={p?.levels} size="sm" title={`${person.firstName}’s level`} source={`${person.firstName}’s own estimate, skill by skill, from their placement and practice. The level they work at is set below.`} testid="student-level" />}
+            </div>
             <p className="mt-1.5 text-sm text-ink-soft">
-              {insight.level ? <><b className={tone.text}>{insight.level}</b> overall</> : 'No learning data yet'}
-              {p ? ` · goal ${p.dailyMinutes} min/day · last studied ${studyAgo(insight.daysSinceStudy)}` : ''}
+              {insight.level ? '' : 'No learning data yet · '}
+              {p ? `Goal ${p.dailyMinutes} min/day · last studied ${studyAgo(insight.daysSinceStudy)}` : ''}
               {state && insight.streak > 0 ? ` · ${insight.streak}-day streak` : ''}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <DemoChip />
             <BalanceChip balance={balance} size="lg" />
-            <button type="button" className="btn-primary !py-2.5" onClick={() => setDebrief(true)} data-testid="lesson-debrief"><Icon name="edit" size={16} /> Lesson debrief &amp; week plan</button>
+            <button type="button" className="btn-primary !py-2.5" onClick={() => setDebrief(true)} data-testid="lesson-debrief"><Icon name="edit" size={16} /> Debrief &amp; week plan</button>
             <button type="button" className="btn-ghost !py-2.5" onClick={() => setBooking({ open: true })}><Icon name="calendar" size={16} /> Book a lesson</button>
             <button type="button" className="btn-ghost !py-2.5" onClick={() => setAssign(true)}><Icon name="book" size={16} /> Assign homework</button>
           </div>
         </div>
-        {p && (
-          <div className="grid grid-cols-3 gap-2 p-4 sm:grid-cols-6">
-            {SKILLS.map((s) => (
-              <div key={s} className="rounded-2xl bg-cream-100 p-2 text-center">
-                <p className={`font-display text-xl font-semibold ${tone.text}`}>{p.levels[s]}</p>
-                <p className="text-[10px] uppercase tracking-wider text-ink-mute">{s}</p>
-              </div>
-            ))}
-          </div>
-        )}
         {bookings.data && homework.data && (() => {
           // The next lesson, or failing that "now": the brief covers the time since the lesson before it.
           const next = bookings.data.filter((b) => b.status === 'scheduled' && Date.parse(b.startsAt) > Date.now()).sort((x, y) => x.startsAt.localeCompare(y.startsAt))[0];
           const at = next ? Date.parse(next.startsAt) : Date.now();
-          return <div className="mx-4 mb-4"><LessonBrief name={person.firstName} state={state} homework={homework.data} since={lastLessonBefore(bookings.data, id, Math.min(at, Date.now()))} startOpen title={next ? 'Before the next lesson' : 'Since the last lesson'} /></div>;
+          return <div className="mx-4 mb-4"><LessonBrief name={person.firstName} state={state} homework={homework.data} since={lastLessonBefore(bookings.data, id, Math.min(at, Date.now()))} title={next ? 'Before the next lesson' : 'Since the last lesson'} /></div>;
         })()}
         <LevelAccess studentId={id} name={person.firstName} state={state} />
         {insight.support.length > 0 && (
@@ -171,6 +164,7 @@ export function StudentProfile({ id, params }: { id: string; params: URLSearchPa
 // ── Journey ─────────────────────────────────────────────────────
 
 function JourneyTab({ state, name }: { state: AppState; name: string }) {
+  const [allAch, setAllAch] = useState(false);
   const p = state.profile;
   const days = Object.values(state.days);
   const seconds = totalActiveSeconds(state);
@@ -300,7 +294,7 @@ function JourneyTab({ state, name }: { state: AppState; name: string }) {
       <Section title="Achievements" eyebrow={`${state.achievements.length} of ${ACHIEVEMENTS.length}`}>
         {unlocked.length ? (
           <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {unlocked.map((a) => (
+            {(allAch ? unlocked : unlocked.slice(0, 3)).map((a) => (
               <li key={a.def.id} className="flex items-center gap-3 rounded-2xl bg-saffron-50 p-3">
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-saffron text-ink"><Icon name={achievementIcon(a.def.icon)} /></span>
                 <span className="min-w-0"><b className="block">{a.def.title}</b><span className="block text-xs text-ink-mute">{a.def.description} · {relative(new Date(a.at).toISOString())}</span></span>
@@ -308,6 +302,7 @@ function JourneyTab({ state, name }: { state: AppState; name: string }) {
             ))}
           </ul>
         ) : <p className="text-sm text-ink-mute">Nothing unlocked yet.</p>}
+        {unlocked.length > 3 && <button type="button" className="ctrl mt-2 !py-1 !text-xs" onClick={() => setAllAch(!allAch)}>{allAch ? 'Show fewer' : `Show all ${unlocked.length}`}</button>}
       </Section>
     </div>
   );
