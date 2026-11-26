@@ -19,6 +19,10 @@ const as = async (p, who) => { await p.goto(BASE + '#/demo'); await p.waitForTim
   ok(/With a reason or a contrast/.test(await p.getByTestId('sentence-current').innerText()) && /set by you/.test(await p.getByTestId('sentence-level').innerText()), 'she moves it to step 4');
   await p.getByTestId('sentence-level').screenshot({ path: OUT + '/sentence-teacher.png' });
   await as(p, 'sam');
+  // Sam's interests bring sentences about football, food and music; this test checks the three everyday sentences, so it clears them.
+  await p.goto(BASE + '#/settings'); await p.waitForTimeout(1200);
+  for (const name of ['Football', 'Food & cooking', 'Live music']) { const b = p.getByRole('group', { name: 'Interests' }).getByRole('button', { name }); if ((await b.getAttribute('aria-pressed')) === 'true') await b.click(); }
+  await p.waitForTimeout(600);
   await p.goto(BASE + '#/world'); await p.waitForTimeout(300);
   await p.goto(BASE + '#/verbs?start=1&tense=present&hw='); await p.waitForTimeout(1200);
   const steps = []; const ANS = { 0: null };

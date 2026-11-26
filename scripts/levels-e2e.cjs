@@ -28,7 +28,7 @@ const ok = (c, l) => { console.log(c ? '✓' : '✗', l); if (!c) process.exitCo
   ok(await p.getByTestId('game-porpara').count() === 0 && await p.getByTestId('game-pasado').count() === 0, `games above A1 are not shown at all (${a1} listed)`);
   ok(!/Unlocks at|🔒/.test(await p.locator('main').innerText()), 'nothing on the page mentions locked games');
   await p.goto(BASE + '#/student'); await p.waitForTimeout(1500);
-  const mv = p.getByTestId('moving-up'); await mv.scrollIntoViewIfNeeded();
+  const mv = p.getByTestId('moving-up'); await mv.scrollIntoViewIfNeeded(); await p.getByTestId('moving-up-more').click(); await p.waitForTimeout(300);
   ok(/A2/.test(await mv.innerText()) && (await mv.locator('li').count()) === 5, 'Sam sees the five signs for moving up to A2');
   await mv.screenshot({ path: OUT + '/levels-student.png' });
   await p.goto(BASE + '#/verbs'); await p.waitForTimeout(1200);
