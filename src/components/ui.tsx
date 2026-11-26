@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon, type IconName } from './Icon';
 import { useStore } from '../lib/store';
 
@@ -57,7 +58,8 @@ export function Sheet({ open, onClose, title, children, wide }: { open: boolean;
     window.addEventListener('keydown', on);
     return () => window.removeEventListener('keydown', on);
   }, [open, onClose]);
-  return (
+  // Drawn at the top of the page, so a card's blur or transform can never trap it inside the card.
+  const sheet = (
     <AnimatePresence>
       {open && (
         <motion.div className="fixed inset-0 z-50 flex items-end justify-center sm:items-start sm:pt-[3vh]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -84,6 +86,7 @@ export function Sheet({ open, onClose, title, children, wide }: { open: boolean;
       )}
     </AnimatePresence>
   );
+  return typeof document === 'undefined' ? sheet : createPortal(sheet, document.body);
 }
 
 const ACH_ICON: Record<string, IconName> = { plane: 'plane', key: 'key', cup: 'cup', heart: 'heart', mic: 'mic', flame: 'flame', book: 'book', brain: 'brain', star: 'star', clock: 'clock', bow: 'bow' };
