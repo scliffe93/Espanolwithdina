@@ -63,7 +63,7 @@ export function homeworkBuckets(homework: Homework[], now: number) {
   return {
     todo: homework.filter((h) => h.status === 'assigned').sort((a, b) => a.dueAt.localeCompare(b.dueAt)),
     submitted: homework.filter((h) => h.status === 'submitted').sort((a, b) => done(b).localeCompare(done(a))),
-    reviewed: homework.filter((h) => h.status === 'reviewed').sort((a, b) => (b.feedback?.at ?? '').localeCompare(a.feedback?.at ?? '')),
+    reviewed: homework.filter((h) => h.status === 'reviewed').sort((a, b) => done(b).localeCompare(done(a))),
     overdue: homework.filter((h) => isOverdue(h, now)),
     dueSoon: homework.filter((h) => isDueSoon(h, now)),
   };
@@ -125,7 +125,7 @@ export function DemoChip() {
   );
 }
 
-export type StudentPage = 'home' | 'calendar' | 'homework' | 'feedback' | 'invoices';
+export type StudentPage = 'home' | 'calendar' | 'homework' | 'learning' | 'feedback' | 'invoices';
 
 export function StudentNav({ page }: { page: StudentPage }) {
   return (
@@ -134,7 +134,7 @@ export function StudentNav({ page }: { page: StudentPage }) {
         label="Student pages"
         value={page}
         onChange={(p) => navigate(p === 'home' ? 'student' : `student/${p}`)}
-        options={[{ value: 'home', label: 'Overview' }, { value: 'calendar', label: 'Lessons' }, { value: 'homework', label: 'Homework' }, { value: 'feedback', label: 'Feedback' }, { value: 'invoices', label: 'Invoices' }]}
+        options={[{ value: 'home', label: 'Overview' }, { value: 'calendar', label: 'Lessons' }, { value: 'homework', label: 'Homework' }, { value: 'learning', label: 'Learning' }, { value: 'feedback', label: 'Feedback' }, { value: 'invoices', label: 'Invoices' }]}
       />
     </div>
   );
@@ -269,7 +269,7 @@ export function LessonCard({ b, now, index = 0 }: { b: Booking; now: number; ind
 
 // ── Homework & feedback cards ───────────────────────────────────
 
-export function HomeworkCard({ h, now, highlight, index = 0 }: { h: Homework; now: number; highlight?: boolean; index?: number }) {
+export function HomeworkCard({ h, now, highlight, index = 0, lesson }: { h: Homework; now: number; highlight?: boolean; index?: number; lesson?: string }) {
   const kind = h.activity.kind;
   const viewable = kind === 'written' || kind === 'speaking' || kind === 'material';
   const start = () => navigate(homeworkRoute(h));
@@ -277,7 +277,7 @@ export function HomeworkCard({ h, now, highlight, index = 0 }: { h: Homework; no
     <motion.article initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index, 6) * 0.04 }} className={`card flex flex-col p-4 sm:p-5 ${highlight ? 'ring-2 ring-olive' : ''}`} aria-label={h.activity.title} data-testid={`hw-card-${h.id}`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="eyebrow">{HOMEWORK_KIND_LABEL[kind]}</p>
+          <p className="eyebrow">{lesson ? `${lesson} · ` : ''}{HOMEWORK_KIND_LABEL[kind]}</p>
           <h3 className="mt-0.5 text-lg font-semibold leading-snug">{h.activity.title}</h3>
           <p className="text-sm text-ink-soft">{describeActivity(h.activity)}</p>
         </div>

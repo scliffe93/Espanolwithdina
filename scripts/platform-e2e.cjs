@@ -32,6 +32,7 @@ async function bookLesson(page, studentId, days, time, topic) {
 }
 async function assignHomework(page, title, days) {
   await tap(page.getByRole('button', { name: /Assign homework/ }).first());
+  await page.getByTestId('hw-mode-list').click().catch(() => {});
   await page.locator('#hw-template').selectOption({ index: 0 }).catch(() => {});
   await page.locator('#hw-title').fill(title);
   const [date] = plusDays(days);

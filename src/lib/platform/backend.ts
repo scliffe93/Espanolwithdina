@@ -1,6 +1,7 @@
 import { DEMO_TEACHER_ID } from './types';
 import type { AppState } from '../../types';
-import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, Marking, PlatformData, Person, StudentSettings, TeacherConfig, LibraryPlan, LessonGroup, StudentGroup } from './types';
+import type { ActivityEvent, ActivityType, Booking, BookingInput, Credit, Feedback, FeedbackKind, Homework, HomeworkActivity, HomeworkResult, Invoice, Marking, PlatformData, Person, StudentSettings, TeacherConfig, LibraryPlan, LessonGroup, StudentGroup, FileRef, Resource } from './types';
+import { FILE_MAX_BYTES, fileMime } from './types';
 import { settingsId } from './level';
 import { DEFAULT_TEACHER_CONFIG } from './types';
 import { overlaps } from './time';
@@ -34,6 +35,14 @@ export interface PlatformBackend {
   updateBooking(id: string, patch: Partial<BookingInput> & { status?: Booking['status'] }): Promise<Booking>;
   cancelBooking(id: string): Promise<Booking>;
   homework(opts?: { studentId?: string }): Promise<Homework[]>;
+  /** Teacher: store a PDF or a photo so it can be attached to homework or put in a learning bank. */
+  uploadFile(file: File): Promise<FileRef>;
+  /** The file itself, to show in the page. */
+  fileBlob(id: string): Promise<Blob>;
+  /** The learning bank: explanations the teacher has shared, newest first (student: their own). */
+  resources(opts?: { studentId?: string }): Promise<Resource[]>;
+  shareResources(input: { studentIds: string[]; files: FileRef[] }): Promise<Resource[]>;
+  deleteResource(id: string): Promise<void>;
   assignHomework(input: { studentIds: string[]; activity: HomeworkActivity; instructions: string; dueAt: string; plan?: Homework['plan'] }): Promise<Homework[]>;
   updateHomework(id: string, patch: { instructions?: string; dueAt?: string; activity?: HomeworkActivity }): Promise<Homework>;
   deleteHomework(id: string): Promise<void>;
@@ -128,7 +137,20 @@ export interface DemoStorage {
   loadData(): Promise<PlatformData | null>;
   saveData(d: PlatformData): Promise<void>;
   loadStudentState(studentId: string): Promise<AppState | null>;
+  /** Uploaded files, kept on this device in the demo. */
+  saveFile?(id: string, file: Blob): Promise<void>;
+  loadFile?(id: string): Promise<Blob | null>;
 }
+
+/** Why a file can't be uploaded, or null when it can. */
+export function fileProblem(file: { name: string; type: string; size: number }): string | null {
+  if (!fileMime(file)) return `“${file.name}” can’t be used. Upload a PDF, a photo, or a Word, PowerPoint or Excel file.`;
+  if (file.size > FILE_MAX_BYTES) return `“${file.name}” is too big. The limit is 20 MB for each file.`;
+  if (!file.size) return `“${file.name}” is empty.`;
+  return null;
+}
+/** A file's name without its ending, as a title. */
+export const fileTitle = (name: string) => name.replace(/\.[a-z0-9]+$/i, '').replace(/[_-]+/g, ' ').trim() || name;
 
 export class DemoBackend implements PlatformBackend {
   readonly kind = 'demo' as const;
@@ -219,6 +241,37 @@ export class DemoBackend implements PlatformBackend {
     let list = this.data.homework.filter((h) => (this.isTeacher() ? h.teacherId === this.actor.id : h.studentId === this.actor.id));
     if (opts.studentId) list = list.filter((h) => h.studentId === opts.studentId);
     return list.sort((a, b) => a.dueAt.localeCompare(b.dueAt));
+  }
+
+  async uploadFile(file: File): Promise<FileRef> {
+    this.assertTeacher();
+    const problem = fileProblem(file);
+    if (problem) throw new PlatformError('invalid', problem);
+    if (!this.storage.saveFile) throw new PlatformError('invalid', 'Files can’t be stored here.');
+    const ref: FileRef = { id: `f-${uid()}`, name: file.name.slice(0, 120), mime: fileMime(file), size: file.size };
+    await this.storage.saveFile(ref.id, file);
+    return ref;
+  }
+  async fileBlob(id: string) {
+    const blob = await this.storage.loadFile?.(id);
+    if (!blob) throw new PlatformError('not_found', 'That file is no longer here.');
+    return blob;
+  }
+  async resources(opts: { studentId?: string } = {}) {
+    let list = (this.data.resources ?? []).filter((r) => (this.isTeacher() ? r.teacherId === this.actor.id : r.studentId === this.actor.id));
+    if (opts.studentId) list = list.filter((r) => r.studentId === opts.studentId);
+    return list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+  async shareResources(input: { studentIds: string[]; files: FileRef[] }) {
+    this.assertTeacher();
+    if (!input.studentIds.length) throw new PlatformError('invalid', 'Choose at least one student.');
+    const items = input.studentIds.flatMap((studentId) => input.files.map<Resource>((file) => ({ id: `res-${uid()}`, teacherId: this.actor.id, studentId, title: fileTitle(file.name), file: { id: file.id, name: file.name, mime: file.mime, size: file.size }, createdAt: this.iso() })));
+    await this.commit((d) => { d.resources = [...(d.resources ?? []), ...items]; });
+    return items;
+  }
+  async deleteResource(id: string) {
+    this.assertTeacher();
+    await this.commit((d) => { d.resources = (d.resources ?? []).filter((r) => !(r.id === id && r.teacherId === this.actor.id)); });
   }
 
   async assignHomework(input: { studentIds: string[]; activity: HomeworkActivity; instructions: string; dueAt: string; plan?: Homework['plan'] }) {

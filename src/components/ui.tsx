@@ -60,11 +60,11 @@ export function Sheet({ open, onClose, title, children, wide }: { open: boolean;
   return (
     <AnimatePresence>
       {open && (
-        <motion.div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+        <motion.div className="fixed inset-0 z-50 flex items-end justify-center sm:items-start sm:pt-[3vh]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
           <div className="absolute inset-0 bg-ink/40 backdrop-blur-sm" onClick={onClose} />
           <motion.div
             role="dialog" aria-modal="true" aria-label={title}
-            className={`relative w-full overflow-y-auto overscroll-contain bg-cream px-6 pb-6 pb-safe shadow-lift ${full ? 'h-full max-h-none sm:max-w-none' : `max-h-[94vh] rounded-t-4xl sm:rounded-4xl ${wide ? 'sm:max-w-4xl' : 'sm:max-w-lg'}`}`}
+            className={`relative w-full overflow-y-auto overscroll-contain bg-cream px-6 pb-6 pb-safe shadow-lift ${full ? 'sheet-full sm:-mt-[3vh] max-h-none sm:max-w-none' : `sheet-box rounded-t-4xl sm:rounded-4xl ${wide ? 'sm:max-w-4xl' : 'sm:max-w-lg'}`}`}
             data-full={full || undefined}
             initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 320, damping: 30 }}
@@ -77,6 +77,8 @@ export function Sheet({ open, onClose, title, children, wide }: { open: boolean;
               </span>
             </div>
             {children}
+            {/* Room after the last row, so it can be scrolled well clear of the bottom edge. */}
+            <div className="h-10" aria-hidden />
           </motion.div>
         </motion.div>
       )}

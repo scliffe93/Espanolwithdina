@@ -2,7 +2,7 @@ import { useCallback, useState, type ReactNode } from 'react';
 import { Icon, type IconName } from '../../components/Icon';
 import { PlatformError } from '../../lib/platform/backend';
 import { usePlatform, usePlatformQuery, type AppState } from '../../lib/platform/context';
-import { describeActivity } from '../../lib/platform/homework';
+import { describeActivity, handedInAt, lessonLabel } from '../../lib/platform/homework';
 import { COMMON_ZONES, addMinutes, browserZone, fmtDateTime, fmtTime, relative, zoneLabel } from '../../lib/platform/time';
 import { HOMEWORK_KIND_LABEL, type ActivityEvent, type Booking, type BookingFormat, type BookingStatus, type Homework, type HomeworkStatus, type Person } from '../../lib/platform/types';
 import { navigate } from '../../lib/router';
@@ -285,7 +285,21 @@ export function dueLabel(h: Homework, zone: string): { text: string; overdue: bo
   return { text: `${overdue ? 'Overdue — was due' : 'Due'} ${fmtDateTime(h.dueAt, zone)} (${relative(h.dueAt)})`, overdue };
 }
 
-export function HomeworkRow({ h, people, zone, onOpen, showStudent = true }: { h: Homework; people: Person[]; zone: string; onOpen: (h: Homework) => void; showStudent?: boolean }) {
+/** Homework in the order it came back: the latest handed in first; work not handed in yet follows, by deadline. */
+export function byHandedIn(a: Homework, b: Homework): number {
+  const x = handedInAt(a), y = handedInAt(b);
+  if (x && y) return y.localeCompare(x);
+  if (x || y) return x ? -1 : 1;
+  return a.dueAt.localeCompare(b.dueAt);
+}
+
+/** Names the lesson each piece of homework belongs to ("Homework for lesson 5"), from every lesson booked. */
+export function useLessonLabel(): (h: Homework) => string {
+  const bookings = usePlatformQuery((b) => b.bookings());
+  return useCallback((h: Homework) => lessonLabel(h, bookings.data ?? []), [bookings.data]);
+}
+
+export function HomeworkRow({ h, people, zone, onOpen, showStudent = true, lesson }: { h: Homework; people: Person[]; zone: string; onOpen: (h: Homework) => void; showStudent?: boolean; lesson?: string }) {
   const tone = toneFor(people, h.studentId);
   const due = dueLabel(h, zone);
   return (
@@ -297,9 +311,20 @@ export function HomeworkRow({ h, people, zone, onOpen, showStudent = true }: { h
           <StatusChip status={h.status} />
           <span className="text-xs text-ink-mute">{HOMEWORK_KIND_LABEL[h.activity.kind]}</span>
         </div>
-        <p className="mt-0.5 font-semibold">{h.activity.title}</p>
-        <p className="text-sm text-ink-soft">{describeActivity(h.activity)}</p>
-        <p className={`text-xs ${due.overdue ? 'font-semibold text-terracotta-dark' : 'text-ink-mute'}`}>{due.text}</p>
+        {lesson ? (
+          <>
+            <p className="mt-0.5 font-semibold" data-testid="hw-lesson">{lesson}</p>
+            <p className="text-sm text-ink-soft">{h.activity.title} · {describeActivity(h.activity)}</p>
+          </>
+        ) : (
+          <>
+            <p className="mt-0.5 font-semibold">{h.activity.title}</p>
+            <p className="text-sm text-ink-soft">{describeActivity(h.activity)}</p>
+          </>
+        )}
+        {h.result?.completedAt
+          ? <p className="text-xs font-medium text-ink-soft" data-testid="hw-handed-in">Handed in {fmtDateTime(h.result.completedAt, zone)} ({relative(h.result.completedAt)})</p>
+          : <p className={`text-xs ${due.overdue ? 'font-semibold text-terracotta-dark' : 'text-ink-mute'}`}>{due.text}</p>}
         {h.result?.summary && <p className="mt-1 text-xs text-ink-soft"><Icon name="check" size={12} className="mr-1 inline text-olive" />{h.result.summary}</p>}
       </div>
       <button type="button" className={h.status === 'submitted' ? 'btn-primary !px-4 !py-2 !text-sm' : 'ctrl'} onClick={() => onOpen(h)}>

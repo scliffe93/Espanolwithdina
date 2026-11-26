@@ -1,7 +1,8 @@
 import { Icon } from '../../components/Icon';
 import { Empty, PageHeader } from '../../components/ui';
 import { usePlatform } from '../../lib/platform/context';
-import type { Homework } from '../../lib/platform/types';
+import type { Booking, Homework } from '../../lib/platform/types';
+import { lessonLabel } from '../../lib/platform/homework';
 import { navigate } from '../../lib/router';
 import { DemoChip, ErrorCard, HomeworkCard, Loading, StudentNav, homeworkBuckets, useStudentData } from './shared';
 
@@ -9,14 +10,14 @@ import { DemoChip, ErrorCard, HomeworkCard, Loading, StudentNav, homeworkBuckets
 // Student homework — To do / Submitted / Reviewed.
 // ───────────────────────────────────────────────────────────────
 
-function Group({ title, hint, items, now, empty, highlight }: { title: string; hint: string; items: Homework[]; now: number; empty: string; highlight?: string | null }) {
+function Group({ title, hint, items, now, empty, highlight, bookings }: { title: string; hint: string; items: Homework[]; now: number; empty: string; highlight?: string | null; bookings: Booking[] }) {
   return (
     <section className="mt-7 first:mt-0" aria-labelledby={`hw-group-${title}`}>
       <div className="mb-3 flex flex-wrap items-baseline gap-x-2">
         <h2 id={`hw-group-${title}`} className="text-xl font-semibold">{title} <span className="text-base font-medium text-ink-mute">{items.length}</span></h2>
         <span className="text-sm text-ink-mute">{hint}</span>
       </div>
-      {items.length ? <div className="grid gap-3 lg:grid-cols-2">{items.map((h, i) => <HomeworkCard key={h.id} h={h} now={now} index={i} highlight={h.id === highlight} />)}</div> : <p className="text-sm text-ink-mute">{empty}</p>}
+      {items.length ? <div className="grid gap-3 lg:grid-cols-2">{items.map((h, i) => <HomeworkCard key={h.id} h={h} now={now} index={i} highlight={h.id === highlight} lesson={lessonLabel(h, bookings)} />)}</div> : <p className="text-sm text-ink-mute">{empty}</p>}
     </section>
   );
 }
@@ -46,9 +47,9 @@ export function HomeworkPage({ params }: { params: URLSearchParams }) {
       )}
       {buckets && data?.homework.length ? (
         <>
-          <Group title="To do" hint="Sorted by deadline" items={buckets.todo} now={now} empty="Nothing to do right now — nice." highlight={done} />
-          <Group title="Submitted" hint="Waiting for Dina’s feedback" items={buckets.submitted} now={now} empty="Nothing waiting for feedback." highlight={done} />
-          <Group title="Reviewed" hint="With Dina’s feedback" items={buckets.reviewed} now={now} empty="Nothing reviewed yet." highlight={done} />
+          <Group bookings={data?.bookings ?? []} title="To do" hint="Sorted by deadline" items={buckets.todo} now={now} empty="Nothing to do right now — nice." highlight={done} />
+          <Group bookings={data?.bookings ?? []} title="Submitted" hint="Latest handed in first" items={buckets.submitted} now={now} empty="Nothing waiting for feedback." highlight={done} />
+          <Group bookings={data?.bookings ?? []} title="Reviewed" hint="With Dina’s feedback" items={buckets.reviewed} now={now} empty="Nothing reviewed yet." highlight={done} />
         </>
       ) : null}
     </div>

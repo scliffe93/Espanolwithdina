@@ -39,11 +39,13 @@ const asActor = async (p, who) => { await p.goto(BASE + '#/demo'); await p.waitF
   await asActor(p, 'dina');
   await p.goto(BASE + '#/teach/student/demo-sam'); await p.waitForTimeout(1500);
   await p.getByRole('button', { name: 'Assign homework' }).first().click(); await p.waitForTimeout(900);
+  if (await p.getByTestId('hw-mode-list').count()) { await p.getByTestId('hw-mode-list').click(); await p.waitForTimeout(300); }
   await p.locator('#hw-template').selectOption({ label: 'Vocabulary: a word pack by level' }); await p.waitForTimeout(300);
   await p.locator('#hw-pack').selectOption('b2-economia'); await p.waitForTimeout(300);
   ok(/Word pack: Work and money \(B2\)/.test(await p.locator('body').innerText()), 'the assignment preview names the pack');
   await p.getByTestId('hw-assign-submit').click({ noWaitAfter: true }); await p.waitForTimeout(1800);
   await p.getByRole('button', { name: 'Assign homework' }).first().click(); await p.waitForTimeout(900);
+  if (await p.getByTestId('hw-mode-list').count()) { await p.getByTestId('hw-mode-list').click(); await p.waitForTimeout(300); }
   await p.locator('#hw-template').selectOption({ label: 'Grammar: Preterite vs imperfect (from B1)' }); await p.waitForTimeout(300);
   await p.getByTestId('hw-assign-submit').click({ noWaitAfter: true }); await p.waitForTimeout(1800);
   await p.getByTestId('level-edit').click(); await p.getByTestId('level-select').selectOption('A2'); await p.getByTestId('level-save').click(); await p.waitForTimeout(1200);

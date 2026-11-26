@@ -44,7 +44,19 @@ export interface Config {
   push?: VapidKeys & { hosts?: string[]; fetch?: typeof fetch };
   /** The shared secret the scheduler sends with `cron/tick` (absent = timed notifications are off). */
   cronSecret?: string;
+  /** Where uploaded files live (absent = uploads are off). The function only signs links; the browser sends and reads the file itself. */
+  files?: FileStore;
 }
+
+/** The file store, as the function uses it: sign a one-time upload link, sign a link to read, remove. */
+export interface FileStore {
+  signUpload(key: string): Promise<string>;
+  signDownload(key: string, seconds: number): Promise<string>;
+  remove(keys: string[]): Promise<void>;
+}
+const FILE_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'text/plain'];
+const FILE_MAX_BYTES = 20 * 1024 * 1024;
+const FILE_ID = /^f-[A-Za-z0-9-]{8,60}$/;
 
 const MIN = 60_000;
 const DAY = 86_400_000;
@@ -532,7 +544,7 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
     // may only log activity or submit homework); the teacher reads all and writes all.
     const isAdmin = user.role === 'admin';
     const isTeacher = user.role === 'teacher' || isAdmin; // the admin can do everything the teacher can
-    const KINDS = ['booking', 'homework', 'feedback', 'activity', 'invoice', 'config', 'credit', 'student', 'lesson', 'lessonwork'];
+    const KINDS = ['booking', 'homework', 'feedback', 'activity', 'invoice', 'config', 'credit', 'student', 'lesson', 'lessonwork', 'resource'];
     const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const parseRow = (r: { data: unknown }) => (typeof r.data === 'string' ? JSON.parse(r.data) : r.data) as Record<string, unknown>;
     const studentExists = async (id: string) => UUID.test(id) && (await db.query("select 1 from public.lwd_users where id = $1 and role = 'student'", [id])).length > 0;
@@ -581,6 +593,41 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
       return { status: 200, json: r ? { data: parseRow(r), updatedAt: new Date(r.updated_at).toISOString() } : { data: null, updatedAt: null } };
     }
 
+    // ── the teacher's files (PDFs and photos attached to homework or kept in a student's learning bank) ──
+    // Which rows point at a file: a learning-bank item, or homework with the file attached.
+    // The database driver in production stores a row's data as a JSON *string* (see the lesson room below), and a
+    // string has no fields to look inside, so each row is unwrapped first. Without that no row ever matched on the
+    // live site: a student was told "That file is not available" for a file sitting in their own learning bank.
+    const DATA = "(case when jsonb_typeof(data) = 'string' then (data #>> '{}')::jsonb else data end)";
+    const fileRefs = (fileId: string, studentId?: string) => db.query(
+      `select 1 from public.lwd_platform where ((kind = 'resource' and ${DATA}->'file'->>'id' = $1) or (kind = 'homework' and ${DATA}->'activity'->'files' @> $2::jsonb))${studentId ? ' and student_id = $3' : ''} limit 1`,
+      studentId ? [fileId, JSON.stringify([{ id: fileId }]), studentId] : [fileId, JSON.stringify([{ id: fileId }])]);
+    const filesIn = (kind: string, d: Record<string, unknown>): string[] => {
+      const list = kind === 'resource' ? [d.file] : kind === 'homework' ? ((d.activity as Record<string, unknown> | undefined)?.files as unknown[] | undefined) ?? [] : [];
+      return (Array.isArray(list) ? list : []).map((f) => str((f as Record<string, unknown> | null)?.id)).filter((id) => FILE_ID.test(id));
+    };
+
+    if (path === 'platform/files' && method === 'POST') {
+      if (!isTeacher) throw new HttpError(403, 'forbidden', 'Only the teacher can upload files.');
+      if (!config.files) throw new HttpError(503, 'files_off', 'File uploads are not switched on yet.');
+      const b = await body(req);
+      const name = str(b.name).replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 120), mime = str(b.mime), size = Number(b.size);
+      if (!name || !FILE_TYPES.includes(mime)) throw new HttpError(400, 'invalid', 'Upload a PDF, a photo, or a Word, PowerPoint or Excel file.');
+      if (!(size > 0) || size > FILE_MAX_BYTES) throw new HttpError(400, 'invalid', 'That file is too big. The limit is 20 MB.');
+      const id = `f-${crypto.randomUUID()}`;
+      return { status: 201, json: { file: { id, name, mime, size }, uploadUrl: await config.files.signUpload(id) } };
+    }
+
+    const fileOf = path.match(/^platform\/files\/([A-Za-z0-9-]{1,64})$/);
+    if (fileOf && method === 'GET') {
+      const id = fileOf[1];
+      if (!FILE_ID.test(id)) throw new HttpError(400, 'invalid', 'Bad file id.');
+      if (!config.files) throw new HttpError(503, 'files_off', 'File uploads are not switched on yet.');
+      // The teacher can open any file; a student only one that their own homework or learning bank points at.
+      if (!isTeacher && !(await fileRefs(id, user.id)).length) throw new HttpError(404, 'not_found', 'That file is not available.');
+      return { status: 200, json: { url: await config.files.signDownload(id, 3600) } };
+    }
+
     if (path === 'platform/records' && method === 'GET') {
       const kind = qs.get('kind') ?? '';
       if (!KINDS.includes(kind)) throw new HttpError(400, 'invalid', 'Unknown record kind.');
@@ -620,6 +667,11 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
       let rec: Record<string, unknown> = { ...(b.data as Record<string, unknown>), id, studentId };
       if (kind !== 'activity') rec.teacherId = user.id; // never trust the client's teacherId
       if (kind === 'lesson') rec = { id, studentId, teacherId: user.id, ...cleanPlan(rec), createdAt: str(prev?.createdAt) || iso(now()), updatedAt: iso(now()) };
+      if (kind === 'resource') {
+        const f = (rec.file ?? {}) as Record<string, unknown>;
+        if (!FILE_ID.test(str(f.id)) || !FILE_TYPES.includes(str(f.mime))) throw new HttpError(400, 'invalid', 'Attach a file first.');
+        rec = { id, studentId, teacherId: user.id, title: str(rec.title).trim().slice(0, 120) || 'Learning', file: { id: str(f.id), name: str(f.name).slice(0, 120), mime: str(f.mime), size: Number(f.size) || 0 }, createdAt: str(prev?.createdAt) || iso(now()) };
+      }
       if (kind === 'booking' && rec.status === 'scheduled') {
         const start = Date.parse(str(rec.startsAt));
         const dur = Number(rec.durationMin);
@@ -652,6 +704,13 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
             }
           }
           else if (rec.status === 'reviewed' && prev.status !== 'reviewed') msg = { title: `${from} has marked your homework`, body: title, url: '#/student/homework', tag: `hw-${id}` };
+        } else if (kind === 'resource' && !prev) {
+          // Several files shared at once: one notification.
+          const bucket = `push:res:${studentId}`;
+          if ((await failures(bucket, MIN)) === 0) {
+            await db.query('insert into public.lwd_attempts (bucket, at) values ($1, $2)', [bucket, iso(now())]);
+            msg = { title: `New learning from ${from}`, body: `${clip(rec.title)}. It stays in your learning bank.`, url: '#/student/learning', tag: 'res-new' };
+          }
         } else if (kind === 'feedback' && !prev) {
           msg = { title: `New feedback from ${from}`, body: clip(rec.body) || 'Open the app to read it.', url: '#/student/feedback', tag: `fb-${id}` };
         } else if (kind === 'booking') {
@@ -777,7 +836,15 @@ export function createHandler(db: Db, hasher: Hasher, config: Config) {
     if (path === 'platform/records/delete' && method === 'POST') {
       const b = await body(req);
       if (!isTeacher) throw new HttpError(403, 'forbidden', 'Only the teacher can do that.');
-      await db.query("delete from public.lwd_platform where id = $1 and kind in ('homework', 'feedback', 'invoice', 'credit', 'lesson')", [str(b.id)]);
+      const gone = await db.query<{ kind: string; data: unknown }>("delete from public.lwd_platform where id = $1 and kind in ('homework', 'feedback', 'invoice', 'credit', 'lesson', 'resource') returning kind, data", [str(b.id)]);
+      // A file nothing points at any more is removed from the store (never the reason a delete fails).
+      if (config.files && gone[0]) {
+        try {
+          const unused: string[] = [];
+          for (const fid of filesIn(gone[0].kind, parseRow(gone[0]))) if (!(await fileRefs(fid)).length) unused.push(fid);
+          if (unused.length) await config.files.remove(unused);
+        } catch (e) { console.error('file cleanup failed', e); }
+      }
       await db.query("delete from public.lwd_platform where id = $1 and kind = 'lessonwork'", [workId(str(b.id))]);
       return { status: 204 };
     }

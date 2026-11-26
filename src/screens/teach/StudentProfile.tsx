@@ -11,7 +11,8 @@ import { allVerbMastery, currentStreak, totalActiveSeconds, weekSummary } from '
 import { addDays, dayKey, formatMinutes, weekStart } from '../../lib/dates';
 import { usePlatform, usePlatformQuery, type AppState } from '../../lib/platform/context';
 import { LessonBrief, lastLessonBefore } from './LessonBrief';
-import { fmtDateTime, relative } from '../../lib/platform/time';
+import { fmtDate, fmtDateTime, relative } from '../../lib/platform/time';
+import { FileCard, FilePicker } from '../../components/Files';
 import type { Booking, Feedback, FeedbackKind, Homework, Role } from '../../lib/platform/types';
 import { buildTeacherReport } from '../../lib/report';
 import { navigate } from '../../lib/router';
@@ -26,7 +27,7 @@ import { DebriefForm } from './DebriefForm';
 import { LevelAccess } from './LevelAccess';
 import { BalanceCard, BalanceChip, SellPackageSheet, useBalance, type RoomOnly } from './Packages';
 import { pct, studentInsight, studyAgo } from './insights';
-import { ActivityList, Avatar, ConfirmButton, DemoChip, ErrorText, Field, HomeworkRow, LessonCard, Loading, Section, Stat, toneFor, useAction, useStudents, useViewZone } from './shared';
+import { ActivityList, Avatar, ConfirmButton, DemoChip, ErrorText, Field, HomeworkRow, byHandedIn, useLessonLabel, LessonCard, Loading, Section, Stat, toneFor, useAction, useStudents, useViewZone } from './shared';
 
 type Tab = 'journey' | 'analytics' | 'lessons' | 'homework' | 'feedback' | 'activity';
 const TABS: { value: Tab; label: string }[] = [
@@ -150,6 +151,7 @@ export function StudentProfile({ id, params }: { id: string; params: URLSearchPa
       {tab === 'lessons' && balance && config.data && <div className="mb-4"><BalanceCard balance={balance} currency={config.data.currency} onSell={() => setSelling(true)} roomOnly={roomOnly} onCount={(r) => void countRoomLesson(r)} busy={counting.busy} />{counting.error && <ErrorText error={counting.error} />}</div>}
       {tab === 'lessons' && <LessonsTab bookings={bookings.data} people={people} zone={zone} onEdit={(b) => setBooking({ open: true, edit: b })} onBook={() => setBooking({ open: true })} />}
       {tab === 'homework' && <HomeworkTab homework={homework.data} people={people} zone={zone} onOpen={setReview} onAssign={() => setAssign(true)} />}
+      {tab === 'homework' && <LearningBank studentId={id} name={person.firstName} />}
       {tab === 'feedback' && <FeedbackTab studentId={id} name={person.firstName} feedback={feedback.data} zone={zone} />}
       {tab === 'activity' && (
         <Section title="Recent activity" eyebrow="From the app">
@@ -350,22 +352,46 @@ function LessonsTab({ bookings, people, zone, onEdit, onBook }: { bookings: Book
 // ── Homework ────────────────────────────────────────────────────
 
 function HomeworkTab({ homework, people, zone, onOpen, onAssign }: { homework: Homework[] | null; people: { id: string; firstName: string; username: string; role: Role }[]; zone: string; onOpen: (h: Homework) => void; onAssign: () => void }) {
+  const lessonOf = useLessonLabel();
   if (!homework) return <Loading />;
   const groups: { status: Homework['status']; title: string; eyebrow: string; empty: string }[] = [
-    { status: 'submitted', title: 'Awaiting your review', eyebrow: 'Submitted', empty: 'Nothing waiting for review.' },
+    { status: 'submitted', title: 'Awaiting your review', eyebrow: 'Submitted · latest handed in first', empty: 'Nothing waiting for review.' },
     { status: 'assigned', title: 'Assigned', eyebrow: 'In progress', empty: 'No open homework — assign something for the next lesson.' },
-    { status: 'reviewed', title: 'Reviewed', eyebrow: 'Done', empty: 'No reviewed homework yet.' },
+    { status: 'reviewed', title: 'Reviewed', eyebrow: 'Done · latest handed in first', empty: 'No reviewed homework yet.' },
   ];
   return (
     <div className="grid gap-4">
       {groups.map((g, i) => {
-        const items = homework.filter((h) => h.status === g.status).sort((a, b) => (g.status === 'reviewed' ? b.dueAt.localeCompare(a.dueAt) : a.dueAt.localeCompare(b.dueAt)));
+        const items = homework.filter((h) => h.status === g.status).sort(g.status === 'assigned' ? (a, b) => a.dueAt.localeCompare(b.dueAt) : byHandedIn);
         return (
           <Section key={g.status} title={g.title} eyebrow={g.eyebrow} right={i === 0 ? <button type="button" className="btn-primary !py-2" onClick={onAssign}><Icon name="book" size={16} /> Assign homework</button> : undefined}>
-            {items.length ? <div className="grid gap-2">{items.map((h) => <HomeworkRow key={h.id} h={h} people={people} zone={zone} onOpen={onOpen} showStudent={false} />)}</div> : <p className="text-sm text-ink-mute">{g.empty}</p>}
+            {items.length ? <div className="grid gap-2">{items.map((h) => <HomeworkRow key={h.id} h={h} people={people} zone={zone} onOpen={onOpen} showStudent={false} lesson={lessonOf(h)} />)}</div> : <p className="text-sm text-ink-mute">{g.empty}</p>}
           </Section>
         );
       })}
+    </div>
+  );
+}
+
+/** The explanations shared with this student. They stay until the teacher removes them. */
+function LearningBank({ studentId, name }: { studentId: string; name: string }) {
+  const { backend, bump } = usePlatform();
+  const bank = usePlatformQuery((b) => b.resources({ studentId }), [studentId]);
+  const { run, busy, error } = useAction();
+  return (
+    <div className="mt-4" data-testid="teach-learning-bank">
+      <Section title="Learning bank" eyebrow={`What ${name} can always go back to`}>
+        {!bank.data ? <Loading /> : bank.data.length ? (
+          <div className="grid gap-2">
+            {bank.data.map((r) => <FileCard key={r.id} file={r.file} label={`Shared ${fmtDate(r.createdAt)}`} right={<ConfirmButton confirmLabel="Remove it?" disabled={busy} onConfirm={async () => { await run(() => backend!.deleteResource(r.id)); bump(); }}><Icon name="trash" size={15} /> Remove</ConfirmButton>} />)}
+          </div>
+        ) : <p className="text-sm text-ink-mute">Nothing yet. Add a file below and {name} can open it at any time.</p>}
+        <div className="mt-3 rounded-2xl bg-cream-50 p-3 ring-1 ring-ink/5">
+          <p className="mb-2 text-sm font-medium">Add to {name}’s learning bank</p>
+          <FilePicker id="bank-add" files={[]} button="Upload a file" onChange={async (files) => { const f = files[files.length - 1]; if (f) await run(() => backend!.shareResources({ studentIds: [studentId], files: [f] })); }} />
+        </div>
+        <ErrorText error={error} />
+      </Section>
     </div>
   );
 }

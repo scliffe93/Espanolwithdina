@@ -70,6 +70,43 @@ export interface HomeworkActivity {
   minWords?: number;
   /** material: exercises built from the teacher's own document or text. */
   material?: MaterialSet;
+  /** The teacher's own files (PDFs, photos of a page): explanations to learn from and the questions to answer. */
+  files?: HomeworkFile[];
+}
+
+/** A file the teacher uploaded. The file itself lives in the file store; this is what points at it. */
+export interface FileRef { id: string; name: string; mime: string; size: number }
+/** 'learning' explains something and stays in the student's learning bank; 'questions' is the work to do. */
+export type FileRole = 'learning' | 'questions';
+export interface HomeworkFile extends FileRef { role: FileRole }
+/** What the teacher can upload: PDFs, photos, Word, PowerPoint and Excel files, and plain text. */
+export const FILE_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'text/plain'];
+export const FILE_MAX_BYTES = 20 * 1024 * 1024;
+const BY_ENDING: Record<string, string> = { pdf: FILE_TYPES[0], jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', heic: 'image/heic', heif: 'image/heif', docx: FILE_TYPES[7], doc: 'application/msword', pptx: FILE_TYPES[9], ppt: 'application/vnd.ms-powerpoint', xlsx: FILE_TYPES[11], xls: 'application/vnd.ms-excel', txt: 'text/plain' };
+/** The kind of a chosen file. Some devices give no type (or a vague one) for Word files and iPad photos, so the name's ending decides. */
+export function fileMime(file: { name: string; type: string }): string {
+  const byName = BY_ENDING[file.name.toLowerCase().split('.').pop() ?? ''];
+  return byName ?? (FILE_TYPES.includes(file.type) ? file.type : '');
+}
+/** How a file is shown in the page: drawn (pdf, image, word, text) or offered as a download only. */
+export function fileKind(mime: string): 'pdf' | 'image' | 'word' | 'text' | 'other' {
+  if (mime === 'application/pdf') return 'pdf';
+  if (mime.startsWith('image/')) return 'image';
+  if (mime === FILE_TYPES[7]) return 'word';
+  if (mime === 'text/plain') return 'text';
+  return 'other';
+}
+export const FILE_KIND_LABEL: Record<string, string> = { 'application/pdf': 'PDF', 'application/msword': 'Word', [FILE_TYPES[7]]: 'Word', [FILE_TYPES[9]]: 'PowerPoint', 'application/vnd.ms-powerpoint': 'PowerPoint', [FILE_TYPES[11]]: 'Excel', 'application/vnd.ms-excel': 'Excel', 'text/plain': 'Text' };
+export const FILE_ID = /^f-[A-Za-z0-9-]{8,60}$/;
+
+/** One item in a student's learning bank: an explanation from the teacher that stays there to come back to. */
+export interface Resource {
+  id: string;
+  teacherId: string;
+  studentId: string;
+  title: string;
+  file: FileRef;
+  createdAt: string;
 }
 
 export type HomeworkStatus = 'assigned' | 'submitted' | 'reviewed';
@@ -327,6 +364,7 @@ export interface PlatformData {
   groups?: LessonGroup[];
   classes?: StudentGroup[];
   lessonWork?: LessonWork[];
+  resources?: Resource[];
 }
 
 /**

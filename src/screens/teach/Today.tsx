@@ -17,7 +17,7 @@ import { HomeworkAssignForm } from './HomeworkAssignForm';
 import { HomeworkReview } from './HomeworkReview';
 import { dayRangeUtc, placeInZone, shiftDate, todayIn } from './calendarMath';
 import { studentInsight, studyAgo } from './insights';
-import { ActivityList, Avatar, ConfirmButton, DemoChip, ErrorText, HomeworkRow, LessonCard, Loading, Section, openStudent, toneFor, useAction, useStudents, useViewZone } from './shared';
+import { ActivityList, Avatar, ConfirmButton, DemoChip, ErrorText, HomeworkRow, byHandedIn, useLessonLabel, LessonCard, Loading, Section, openStudent, toneFor, useAction, useStudents, useViewZone } from './shared';
 
 function greeting(hour: number): string {
   if (hour < 6) return 'Buenas noches';
@@ -47,6 +47,7 @@ export function Today() {
   const [booking, setBooking] = useState<{ open: boolean; edit?: Booking; prefill?: BookingPrefill }>({ open: false });
   const [assign, setAssign] = useState<{ open: boolean; ids?: string[] }>({ open: false });
   const [review, setReview] = useState<Homework | null>(null);
+  const lessonOf = useLessonLabel();
 
   const people = students.data?.people ?? [];
   const progress = students.data?.progress ?? {};
@@ -129,7 +130,7 @@ export function Today() {
 
           <Section title="Homework awaiting review" eyebrow="Deberes" right={awaiting.length ? <span className="rounded-full bg-saffron px-2.5 py-1 text-xs font-bold text-ink">{awaiting.length}</span> : undefined}>
             {!homework.data ? <Loading /> : awaiting.length ? (
-              <div className="grid gap-2">{awaiting.map((h) => <HomeworkRow key={h.id} h={h} people={people} zone={zone} onOpen={setReview} />)}</div>
+              <div className="grid gap-2">{[...awaiting].sort(byHandedIn).map((h) => <HomeworkRow key={h.id} h={h} people={people} zone={zone} onOpen={setReview} lesson={lessonOf(h)} />)}</div>
             ) : <p className="text-sm text-ink-mute">All caught up — nothing submitted that you haven’t reviewed. <button type="button" className="font-semibold text-terracotta underline-offset-2 hover:underline" onClick={() => navigate('teach/homework')}>See all homework</button></p>}
           </Section>
         </div>

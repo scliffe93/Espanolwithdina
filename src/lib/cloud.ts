@@ -127,7 +127,7 @@ export const reportApi = {
 };
 
 export interface PlatformPerson { id: string; username: string; firstName: string; role: 'student' | 'teacher' | 'admin' }
-export type PlatformKind = 'booking' | 'homework' | 'feedback' | 'activity' | 'invoice' | 'config' | 'credit' | 'student' | 'lesson';
+export type PlatformKind = 'booking' | 'homework' | 'feedback' | 'activity' | 'invoice' | 'config' | 'credit' | 'student' | 'lesson' | 'resource';
 
 /** Teaching platform endpoints (same Edge Function). Every call is scoped server-side to the signed-in person's role. */
 export const platformApi = {
@@ -139,6 +139,8 @@ export const platformApi = {
   syncLesson: <P, W>(token: string, id: string, answer?: { blockId: string; value: string }) => request<{ plan: P; work: W | null; now: string }>('platform/lessons/sync', { token, body: { id, ...(answer ?? {}) } }),
   sendWriting: <T>(token: string, input: { title: string; prompt: string; text: string; minWords?: number }) => request<{ record: T }>('platform/writing', { token, body: input }),
   reportInvoicePaid: <T>(token: string, id: string, info: { method?: string; note?: string }) => request<{ record: T }>('platform/invoices/report-paid', { token, body: { id, ...info } }),
+  newFile: (token: string, file: { name: string; mime: string; size: number }) => request<{ file: { id: string; name: string; mime: string; size: number }; uploadUrl: string }>('platform/files', { token, body: file }),
+  fileUrl: (token: string, id: string) => request<{ url: string }>(`platform/files/${encodeURIComponent(id)}`, { token }),
   remove: (token: string, id: string) => request<void>('platform/records/delete', { method: 'POST', token, body: { id } }),
   addStudent: (token: string, input: { username: string; firstName: string; password?: string }) => request<{ user: PlatformPerson; recoveryCode: string; password?: string }>('platform/students', { token, body: input }),
 };

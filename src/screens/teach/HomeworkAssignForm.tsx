@@ -15,6 +15,9 @@ import { ErrorText, Field, StudentPicker, ZoneSelect, nameOf, useAction } from '
 import { MaterialBuilder } from './MaterialBuilder';
 import { VOCAB_PACKS } from '../../data/vocabPacks';
 import type { MaterialSet } from '../../lib/material';
+import { FilePicker } from '../../components/Files';
+import { fileTitle } from '../../lib/platform/backend';
+import type { FileRef } from '../../lib/platform/types';
 
 type VocabVia = 'review' | 'swipe' | 'serestar' | 'order' | 'metro';
 const VOCAB_VIA: { value: VocabVia; label: string }[] = [
@@ -25,7 +28,10 @@ const VOCAB_VIA: { value: VocabVia; label: string }[] = [
   { value: 'metro', label: 'Metro Rush game' },
 ];
 
-/** Assign one of the app's real activities as homework to one or both students. */
+/**
+ * Assign homework. It starts with one choice: the teacher's own homework (her PDFs or photos: explanations to learn
+ * from, kept in the student's learning bank, and the questions to answer) or one of the app's activities from the list.
+ */
 export function HomeworkAssignForm({ open, onClose, people, progress, initialStudentIds, viewZone, onAssigned }: {
   open: boolean;
   onClose: () => void;
@@ -55,6 +61,12 @@ export function HomeworkAssignForm({ open, onClose, people, progress, initialStu
   const [dueTime, setDueTime] = useState('20:00');
   const [material, setMaterial] = useState<MaterialSet | null>(null);
   const [packId, setPackId] = useState(VOCAB_PACKS[0].id);
+  const [mode, setMode] = useState<'own' | 'list' | null>(null);
+  const [learning, setLearning] = useState<FileRef[]>([]);
+  const [questions, setQuestions] = useState<FileRef[]>([]);
+  const [uploading, setUploading] = useState(0);
+  const own = mode === 'own';
+  const track = (b: boolean) => setUploading((n) => Math.max(0, n + (b ? 1 : -1)));
 
   useEffect(() => {
     if (!open) return;
@@ -75,6 +87,10 @@ export function HomeworkAssignForm({ open, onClose, people, progress, initialStu
     setDueDate(shiftDate(todayIn(viewZone), 3));
     setDueTime('20:00');
     setMaterial(null);
+    setMode(null);
+    setLearning([]);
+    setQuestions([]);
+    setUploading(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -92,7 +108,13 @@ export function HomeworkAssignForm({ open, onClose, people, progress, initialStu
   const sceneOptions = useMemo(() => sceneGroups.flatMap((g) => g.scenes), [sceneGroups]);
   const effectiveScene = sceneOptions.some((s) => s.id === sceneId) ? sceneId : (sceneOptions[0]?.id ?? '');
 
+  // Own homework: there is work to hand in when there are questions or a typed task; with explanations only, nothing is due.
+  const hasWork = questions.length > 0 || !!prompt.trim();
   const activity: HomeworkActivity = useMemo(() => {
+    if (own) {
+      const first = questions[0] ?? learning[0];
+      return { kind: 'written', title: titleTouched && title.trim() ? title.trim() : first ? fileTitle(first.name) : 'Homework', ...(prompt.trim() ? { prompt: prompt.trim() } : {}), files: [...learning.map((f) => ({ ...f, role: 'learning' as const })), ...questions.map((f) => ({ ...f, role: 'questions' as const }))] };
+    }
     let a = template.build({
       pack: packId,
       verbs: verbs.length ? verbs : undefined,
@@ -105,7 +127,7 @@ export function HomeworkAssignForm({ open, onClose, people, progress, initialStu
     if (a.kind === 'vocabulary' && vocabVia !== 'review') a = { ...a, review: undefined, game: vocabVia };
     if (a.kind === 'material' && material) a = { ...a, material, title: titleTouched && title.trim() ? title.trim() : `From “${material.title}”` };
     return a;
-  }, [template, kind, verbs, effectiveScene, prompt, title, titleTouched, tense, minWords, vocabVia, material, packId]);
+  }, [own, learning, questions, template, kind, verbs, effectiveScene, prompt, title, titleTouched, tense, minWords, vocabVia, material, packId]);
 
   const dueAt = useMemo(() => {
     if (!dueDate || !dueTime) return '';
@@ -118,7 +140,7 @@ export function HomeworkAssignForm({ open, onClose, people, progress, initialStu
 
   // Level ceilings of the chosen students: a tense above one is allowed (the teacher chose it) but flagged.
   const settings = usePlatformQuery(async (b) => Object.fromEntries(await Promise.all(people.map(async (p) => [p.id, await b.studentSettings(p.id).catch(() => null)]))), [people.map((p) => p.id).join(',')]);
-  const aboveCeiling = kind === 'verbs' ? studentIds.filter((id) => { const m = settings.data?.[id]?.maxLevel; return !!m && levelIdx(TENSES.find((t) => t.id === tense)!.minLevel) > levelIdx(m); }) : [];
+  const aboveCeiling = !own && kind === 'verbs' ? studentIds.filter((id) => { const m = settings.data?.[id]?.maxLevel; return !!m && levelIdx(TENSES.find((t) => t.id === tense)!.minLevel) > levelIdx(m); }) : [];
 
   const q = verbQuery.trim().toLowerCase();
   const verbMatches = useMemo(() => VERBS.filter((v) => !verbs.includes(v.inf) && (!q || v.inf.includes(q) || v.en.toLowerCase().includes(q))).slice(0, q ? 16 : 10), [q, verbs]);
@@ -127,13 +149,28 @@ export function HomeworkAssignForm({ open, onClose, people, progress, initialStu
     e.preventDefault();
     if (!backend) return;
     if (!studentIds.length) return setError('Choose at least one student.');
+    if (uploading) return setError('Wait for the upload to finish.');
+    if (own && !hasWork) {
+      // Explanations only: they go straight to the learning bank, with nothing to hand in.
+      if (!learning.length) return setError('Upload a file or type the task first.');
+      const shared = await run(() => backend.shareResources({ studentIds, files: learning }), people, dueZone);
+      if (shared) {
+        notify('Added to the learning bank', `${learning.length} file${learning.length === 1 ? '' : 's'} · ${studentIds.map((id) => nameOf(people, id)).join(' & ')}`);
+        onClose();
+      }
+      return;
+    }
     if (!activity.title.trim()) return setError('Give the homework a title.');
-    if (kind === 'story' && !activity.sceneId) return setError('Choose a story chapter.');
-    if (wantsPrompt && !activity.prompt?.trim()) return setError('Write the prompt the student should answer.');
-    if (kind === 'material' && !activity.material?.items.length) return setError('Read a document or paste text and build at least one exercise first.');
+    if (!own && kind === 'story' && !activity.sceneId) return setError('Choose a story chapter.');
+    if (!own && wantsPrompt && !activity.prompt?.trim()) return setError('Write the prompt the student should answer.');
+    if (!own && kind === 'material' && !activity.material?.items.length) return setError('Read a document or paste text and build at least one exercise first.');
     if (!dueAt) return setError('Choose a deadline.');
     if (new Date(dueAt).getTime() < Date.now()) return setError('The deadline is in the past — pick a later date or time.');
-    const items = await run(() => backend.assignHomework({ studentIds, activity, instructions: instructions.trim(), dueAt }), people, dueZone);
+    const items = await run(async () => {
+      const made = await backend.assignHomework({ studentIds, activity, instructions: instructions.trim(), dueAt });
+      if (own && learning.length) await backend.shareResources({ studentIds, files: learning });
+      return made;
+    }, people, dueZone);
     if (items) {
       notify('Homework assigned', `${activity.title} · ${items.map((h) => nameOf(people, h.studentId)).join(' & ')}`);
       onAssigned?.(items);
@@ -145,12 +182,46 @@ export function HomeworkAssignForm({ open, onClose, people, progress, initialStu
 
   return (
     <Sheet open={open} onClose={onClose} title="Assign homework" wide>
+      {!mode && (
+        <div className="grid gap-3 sm:grid-cols-2" data-testid="hw-mode">
+          <button type="button" className="card flex flex-col items-start gap-2 p-5 text-left transition hover:ring-2 hover:ring-azul" onClick={() => { setMode('own'); setPrompt(''); }} data-testid="hw-mode-own">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-azul text-white" aria-hidden><Icon name="upload" size={20} /></span>
+            <span className="text-lg font-semibold">Assign my own homework</span>
+            <span className="text-sm text-ink-soft">Upload your own files (PDF, photos, Word): an explanation to learn from, the questions to answer, or both.</span>
+          </button>
+          <button type="button" className="card flex flex-col items-start gap-2 p-5 text-left transition hover:ring-2 hover:ring-azul" onClick={() => setMode('list')} data-testid="hw-mode-list">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-ink text-white" aria-hidden><Icon name="dumbbell" size={20} /></span>
+            <span className="text-lg font-semibold">Choose an activity from the list</span>
+            <span className="text-sm text-ink-soft">Verb practice, grammar drills, word packs, games, story chapters, speaking and writing, done inside the app.</span>
+          </button>
+        </div>
+      )}
+      {mode && (
       <form className="grid gap-5 lg:grid-cols-[1.2fr_1fr]" onSubmit={submit} noValidate>
         <div className="grid gap-4">
+          <div><button type="button" className="ctrl" onClick={() => { setMode(null); setError(null); }} data-testid="hw-mode-back"><Icon name="arrowLeft" size={15} /> {own ? 'My own homework' : 'Activity from the list'} · change</button></div>
           <div className="grid gap-1 text-sm font-medium">
             <span>Who</span>
             <StudentPicker people={people} value={studentIds} onChange={setStudentIds} multiple label="Students" />
           </div>
+          {own && (
+            <>
+              <div className="grid gap-2 rounded-2xl bg-cream-50 p-3 ring-1 ring-ink/5">
+                <p className="text-sm font-medium">Learning <span className="font-normal text-ink-mute">(optional)</span></p>
+                <p className="text-xs text-ink-mute">An explanation to read first, like a box of pronouns and why each one is used. It stays in the student’s learning bank, so they can come back to it at any time.</p>
+                <FilePicker id="hw-learning" files={learning} onChange={setLearning} onBusy={track} button="Upload the learning" />
+              </div>
+              <div className="grid gap-2 rounded-2xl bg-cream-50 p-3 ring-1 ring-ink/5">
+                <p className="text-sm font-medium">Questions <span className="font-normal text-ink-mute">(optional)</span></p>
+                <p className="text-xs text-ink-mute">The work to do after the learning. The student reads it in the app, types the answers and hands them in for you to mark.</p>
+                <FilePicker id="hw-questions" files={questions} onChange={setQuestions} onBusy={track} button="Upload the questions" />
+                <Field id="hw-own-task" label="Or type the task">
+                  <textarea id="hw-own-task" className="input min-h-[72px]" value={prompt} onChange={(e) => setPrompt(e.target.value)} maxLength={600} placeholder="e.g. Escribe cinco frases con los pronombres de la tabla." />
+                </Field>
+              </div>
+            </>
+          )}
+          {!own && (<>
           <Field id="hw-template" label="Activity">
             <select id="hw-template" className="input" value={tpl} onChange={(e) => setTpl(Number(e.target.value))}>
               {HOMEWORK_TEMPLATES.map((t, i) => <option key={t.label} value={i}>{t.label}</option>)}
@@ -231,7 +302,9 @@ export function HomeworkAssignForm({ open, onClose, people, progress, initialStu
               )}
             </>
           )}
+          </>)}
 
+          {(!own || hasWork) && (<>
           <Field id="hw-title" label="Title the student sees">
             <div className="flex gap-2">
               <input id="hw-title" className="input" value={titleTouched ? title : activity.title} onChange={(e) => { setTitle(e.target.value); setTitleTouched(true); }} maxLength={100} />
@@ -241,28 +314,42 @@ export function HomeworkAssignForm({ open, onClose, people, progress, initialStu
           <Field id="hw-instructions" label="Instructions" hint="Shown on the student’s homework page.">
             <textarea id="hw-instructions" aria-describedby="hw-instructions-hint" className="input min-h-[84px]" placeholder="e.g. Aim for 80%+ and note the sentences you miss." value={instructions} onChange={(e) => setInstructions(e.target.value)} maxLength={800} />
           </Field>
+          </>)}
         </div>
 
         <div className="grid content-start gap-4">
+          {(!own || hasWork) && (<>
           <div className="grid grid-cols-2 gap-3">
             <Field id="hw-due-date" label="Deadline"><input id="hw-due-date" type="date" className="input" value={dueDate} onChange={(e) => setDueDate(e.target.value)} required /></Field>
             <Field id="hw-due-time" label="Time"><input id="hw-due-time" type="time" step={300} className="input" value={dueTime} onChange={(e) => setDueTime(e.target.value)} required /></Field>
           </div>
           <ZoneSelect id="hw-due-zone" value={dueZone} onChange={setDueZone} label="Deadline time zone" />
+          </>)}
 
           <div className="rounded-2xl bg-cream-100 p-4 text-sm" aria-live="polite">
             <p className="eyebrow mb-1">Preview</p>
-            <p className="font-semibold">{activity.title}</p>
-            <p className="text-ink-soft">{describeActivity(activity)}</p>
+            {own && !hasWork ? (
+              <>
+                <p className="font-semibold">{learning.length ? `${learning.length} file${learning.length === 1 ? '' : 's'} for the learning bank` : 'Nothing uploaded yet'}</p>
+                <p className="text-ink-soft">No questions, so there is nothing to hand in and no deadline.</p>
+              </>
+            ) : (
+              <>
+                <p className="font-semibold">{activity.title}</p>
+                <p className="text-ink-soft">{describeActivity(activity)}</p>
+                {own && learning.length > 0 && <p className="mt-1 text-ink-soft">The learning also stays in the learning bank.</p>}
+              </>
+            )}
             {activity.prompt && <p className="mt-1 italic text-ink-soft">“{activity.prompt}”</p>}
             <p className="mt-2 text-ink-mute">For {studentIds.length ? studentIds.map((id) => nameOf(people, id)).join(' & ') : '—'}</p>
-            {dueAt && <p className="text-ink-mute">Due {fmtDateTime(dueAt, dueZone)} · {zoneLabel(dueZone)}{dueZone !== viewZone ? ` (= ${fmtDateTime(dueAt, viewZone)} in ${zoneLabel(viewZone)})` : ''}</p>}
+            {dueAt && (!own || hasWork) && <p className="text-ink-mute">Due {fmtDateTime(dueAt, dueZone)} · {zoneLabel(dueZone)}{dueZone !== viewZone ? ` (= ${fmtDateTime(dueAt, viewZone)} in ${zoneLabel(viewZone)})` : ''}</p>}
             {aboveCeiling.length > 0 && <p className="mt-2 rounded-xl bg-saffron-50 px-3 py-2 text-xs text-ink-soft" data-testid="above-ceiling">Above the level ceiling you set for {aboveCeiling.map((id) => `${nameOf(people, id)} (${settings.data?.[id]?.maxLevel})`).join(' and ')}. They can still do it because you assigned it.</p>}
           </div>
           <ErrorText error={error} />
-          <button type="submit" className="btn-primary" disabled={busy} data-testid="hw-assign-submit"><Icon name="send" size={16} /> {busy ? 'Assigning…' : `Assign to ${studentIds.length === 1 ? nameOf(people, studentIds[0]) : `${studentIds.length} students`}`}</button>
+          <button type="submit" className="btn-primary" disabled={busy || uploading > 0} data-testid="hw-assign-submit"><Icon name="send" size={16} /> {busy ? 'Sending…' : uploading ? 'Uploading…' : `${own && !hasWork ? 'Add to the learning bank of' : 'Assign to'} ${studentIds.length === 1 ? nameOf(people, studentIds[0]) : `${studentIds.length} students`}`}</button>
         </div>
       </form>
+      )}
     </Sheet>
   );
 }

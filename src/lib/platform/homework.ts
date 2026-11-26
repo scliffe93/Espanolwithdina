@@ -6,7 +6,7 @@ import { PACK_BY_ID, VOCAB_PACKS } from '../../data/vocabPacks';
 import { DELE_TASKS } from '../../data/dele';
 import { useRoute, navigate } from '../router';
 import { usePlatform } from './context';
-import type { ActivityType, Homework, HomeworkActivity, HomeworkKind, HomeworkResult } from './types';
+import type { ActivityType, Booking, Homework, HomeworkActivity, HomeworkKind, HomeworkResult } from './types';
 
 // ───────────────────────────────────────────────────────────────
 // Homework ↔ the existing curriculum.
@@ -42,6 +42,24 @@ export function homeworkRoute(h: Homework): string {
   }
 }
 
+/** When the student handed it in (empty until they have). */
+export const handedInAt = (h: Homework) => h.result?.completedAt ?? '';
+
+/**
+ * The lesson a piece of homework belongs to: the student's lesson nearest in time to when it was handed in
+ * (or to when it was set, until it is handed in), so it can be gone through in that lesson. Lessons are numbered
+ * per student in date order, cancelled ones left out. Null when the student has no lessons.
+ */
+export function lessonFor(h: Homework, bookings: Booking[]): { number: number; total: number; booking: Booking } | null {
+  const lessons = bookings.filter((b) => b.studentId === h.studentId && b.status !== 'cancelled').sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  if (!lessons.length) return null;
+  const at = Date.parse(handedInAt(h) || h.assignedAt);
+  let best = 0;
+  for (let i = 1; i < lessons.length; i++) if (Math.abs(Date.parse(lessons[i].startsAt) - at) < Math.abs(Date.parse(lessons[best].startsAt) - at)) best = i;
+  return { number: best + 1, total: lessons.length, booking: lessons[best] };
+}
+export const lessonLabel = (h: Homework, bookings: Booking[]) => { const l = lessonFor(h, bookings); return l ? `Homework for lesson ${l.number}` : ''; };
+
 /** Short, human description of what the student has to do. */
 export function describeActivity(a: HomeworkActivity): string {
   switch (a.kind) {
@@ -51,7 +69,12 @@ export function describeActivity(a: HomeworkActivity): string {
     case 'listening': return `Listening game: ${{ metro: 'Metro Rush', order: 'Order Up!', swipe: '¿Sí o no?', serestar: 'Ser o Estar', penalty: 'Penalty Shoot-out', derbi: 'The Derby Quiz', lineup: 'Line-up' }[a.game ?? 'order']}`;
     case 'vocabulary': return a.game ? `Vocabulary game: ${a.game}` : a.pack && PACK_BY_ID[a.pack] ? `Word pack: ${PACK_BY_ID[a.pack].title} (${PACK_BY_ID[a.pack].level})` : 'Memory review of the vocabulary deck';
     case 'speaking': return 'Speaking challenge (record yourself)';
-    case 'written': return `Written homework${a.minWords ? ` (${a.minWords}+ words)` : ''}`;
+    case 'written': {
+      if (!a.files?.length) return `Written homework${a.minWords ? ` (${a.minWords}+ words)` : ''}`;
+      const n = (role: 'learning' | 'questions') => a.files!.filter((f) => f.role === role).length;
+      const part = (count: number, one: string, many: string) => (count ? `${count} ${count === 1 ? one : many}` : '');
+      return `From your teacher: ${[part(n('learning'), 'explanation to read', 'explanations to read'), part(n('questions'), 'file of questions', 'files of questions')].filter(Boolean).join(' and ') || 'a task to answer'}`;
+    }
     case 'material': return a.material ? `${a.material.items.length} exercise${a.material.items.length === 1 ? '' : 's'} from “${a.material.title}”` : 'Exercises from your material';
   }
 }
